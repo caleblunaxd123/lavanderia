@@ -11,11 +11,13 @@ public class ConfiguracionController : TenantAwareControllerBase
 {
     private readonly IConfiguracionNegocioRepository _repo;
     private readonly INegocioRepository _negocios;
+    private readonly IServicioRepository _servicios;
 
-    public ConfiguracionController(IConfiguracionNegocioRepository repo, INegocioRepository negocios)
+    public ConfiguracionController(IConfiguracionNegocioRepository repo, INegocioRepository negocios, IServicioRepository servicios)
     {
         _repo = repo;
         _negocios = negocios;
+        _servicios = servicios;
     }
 
     /// <summary>
@@ -30,7 +32,10 @@ public class ConfiguracionController : TenantAwareControllerBase
         var negocioId = User.Identity?.IsAuthenticated == true ? NegocioId : (int?)null;
         var c = await _repo.ObtenerAsync(negocioId, ct);
         if (c is null) return NotFound();
-        return Ok(Map(c));
+        var dto = Map(c);
+        if (negocioId.HasValue)
+            dto.ServicioDeliveryId = (await _servicios.ObtenerCargoDeliveryAsync(negocioId.Value, ct))?.Id;
+        return Ok(dto);
     }
 
     /// <summary>
@@ -46,7 +51,9 @@ public class ConfiguracionController : TenantAwareControllerBase
         if (negocio is null) return NotFound();
         var c = await _repo.ObtenerAsync(negocio.Id, ct);
         if (c is null) return NotFound();
-        return Ok(Map(c));
+        var dto = Map(c);
+        dto.ServicioDeliveryId = (await _servicios.ObtenerCargoDeliveryAsync(negocio.Id, ct))?.Id;
+        return Ok(dto);
     }
 
     [HttpPut]
@@ -72,8 +79,22 @@ public class ConfiguracionController : TenantAwareControllerBase
         existente.MensajePieTicket = dto.MensajePieTicket;
         existente.CondicionesServicio = dto.CondicionesServicio;
         existente.NotasProduccion = dto.NotasProduccion;
+        existente.CostoDelivery = dto.CostoDelivery;
 
         await _repo.ActualizarAsync(existente, NegocioId, ct);
+
+        // El servidor jamas confia en el precio que manda el cliente al crear un pedido: siempre
+        // recalcula Total = Servicio.Precio * Cantidad (ver PedidoService.CrearAsync). Por eso el
+        // Precio del servicio de sistema debe reflejar el CostoDelivery configurado aqui, o el
+        // cargo de delivery se aplicaria como S/ 0 en el pedido real sin importar lo que Registrar
+        // muestre en pantalla.
+        var servicioDelivery = await _servicios.ObtenerCargoDeliveryAsync(NegocioId, ct);
+        if (servicioDelivery is not null && servicioDelivery.Precio != dto.CostoDelivery)
+        {
+            servicioDelivery.Precio = dto.CostoDelivery;
+            await _servicios.ActualizarAsync(servicioDelivery, NegocioId, ct);
+        }
+
         return NoContent();
     }
 
@@ -95,6 +116,7 @@ public class ConfiguracionController : TenantAwareControllerBase
         AnchoTicketMm = c.AnchoTicketMm,
         MensajePieTicket = c.MensajePieTicket,
         CondicionesServicio = c.CondicionesServicio,
-        NotasProduccion = c.NotasProduccion
+        NotasProduccion = c.NotasProduccion,
+        CostoDelivery = c.CostoDelivery
     };
 }

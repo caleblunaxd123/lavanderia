@@ -127,3 +127,20 @@
     </div>
   </div>
 }
+
+@if (confirmarDesactivar(); as c) {
+  <div class="modal-backdrop" (click)="confirmarDesactivar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Desactivar categoría?</h3>
+      <button class="modal__close" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p><strong>{{ c.nombre }}</strong> dejará de estar disponible para asignar a nuevos servicios.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarDesactivar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" (click)="confirmarDesactivarOk()">Sí, desactivar</button>
+      </div>
+    </div>
+  </div>
+}

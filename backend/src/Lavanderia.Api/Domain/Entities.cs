@@ -37,6 +37,7 @@ public class ConfiguracionNegocio
     public string? MensajePieTicket { get; set; }
     public string? CondicionesServicio { get; set; }
     public string? NotasProduccion { get; set; }
+    public decimal CostoDelivery { get; set; }
 }
 
 public class Rol
@@ -140,6 +141,7 @@ public class Servicio
     public int? CategoriaId { get; set; }
     public string? CategoriaNombre { get; set; }
     public bool Activo { get; set; } = true;
+    public bool EsCargoDelivery { get; set; }
 }
 
 public class AreaLavado
@@ -179,6 +181,7 @@ public class Pedido
     public string? ClienteCelular { get; set; }
     public string? ClienteDni { get; set; }
     public int UsuarioId { get; set; }
+    public string? UsuarioNombre { get; set; }
     public DateTime FechaIngreso { get; set; }
     public DateTime? FechaEntregaEst { get; set; }
     public string Modalidad { get; set; } = "Tienda";

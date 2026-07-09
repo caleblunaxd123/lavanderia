@@ -45,9 +45,61 @@
   font-family: inherit;
 
   &--primario { background: var(--naranja); color: #fff; }
-  &--whatsapp { background: #25d366; color: #fff; }
   &--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
+  &--descargar { background: var(--azul-claro); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+  &--pdf { background: #25d366; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
   &:disabled { opacity: .55; cursor: not-allowed; }
+}
+
+.whatsapp-envio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px 6px 6px;
+
+  &__boton {
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #25d366;
+    color: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:disabled { opacity: .5; cursor: not-allowed; }
+  }
+
+  &__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    span {
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    input {
+      border: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a202c;
+      font-family: inherit;
+      width: 130px;
+      padding: 0;
+
+      &:focus { outline: none; }
+    }
+  }
 }
 
 .toggle-grupo {
@@ -79,6 +131,59 @@
 
       &.is-active {
         background: var(--naranja);
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .acciones-print {
+    padding: 10px;
+
+    &__inner {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    &__hint {
+      grid-column: 1 / -1;
+      min-width: 0;
+      font-size: 11px;
+    }
+  }
+
+  .btn {
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .whatsapp-envio {
+    grid-column: 1 / -1;
+    padding-right: 8px;
+
+    &__campo {
+      flex: 1;
+      min-width: 0;
+
+      input {
+        width: 100%;
+      }
+    }
+  }
+
+  .toggle-grupo {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+
+    &__botones {
+      flex: 1;
+
+      button {
+        flex: 1;
+        min-height: 34px;
       }
     }
   }
@@ -161,6 +266,13 @@
     font-weight: 900;
     line-height: 1;
     letter-spacing: -1px;
+  }
+
+  &__barcode {
+    text-align: center;
+    padding: 2px 0 4px;
+
+    svg { max-width: 100%; }
   }
 
   &__rows {
@@ -350,11 +462,15 @@
   .ticket {
     box-shadow: none;
     padding: 4mm 2mm;
-    width: 100% !important;
+    // Ancho fijo en mm (no 100%): si el destino de impresión es un papel normal
+    // (ej. "Guardar como PDF" en A4/Carta) el ticket debe mantener su ancho real de
+    // ticketera en vez de estirarse a ocupar toda la hoja.
+    width: 80mm !important;
     font-size: 10pt;
   }
 
   .ticket[data-ancho="58"] {
+    width: 58mm !important;
     font-size: 8pt;
   }
 

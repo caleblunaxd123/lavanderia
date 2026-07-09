@@ -164,6 +164,33 @@ export class RegistrarComponent implements OnInit {
     });
   }
 
+  // Al cambiar a Delivery se agrega automaticamente el cargo configurado en Ajustes > Negocio
+  // (ver ConfiguracionNegocio.costoDelivery / servicioDeliveryId), igual que el editable con
+  // el que ya cuentan los demas items del carrito. Al volver a Tienda se retira esa linea.
+  cambiarModalidad(m: 'Tienda' | 'Delivery') {
+    this.modalidad = m;
+    const idDelivery = this.config.configuracion().servicioDeliveryId;
+    if (!idDelivery) return;
+
+    if (m === 'Delivery') {
+      const costo = this.config.configuracion().costoDelivery;
+      if (costo <= 0) return;
+      const yaEsta = this.items().some(i => i.servicioId === idDelivery);
+      if (!yaEsta) {
+        this.items.update(list => [...list, {
+          servicioId: idDelivery,
+          nombre: 'Servicio a Domicilio',
+          precio: costo,
+          unidad: 'Unidad',
+          cantidad: 1,
+          descripcion: ''
+        }]);
+      }
+    } else {
+      this.items.update(list => list.filter(i => i.servicioId !== idDelivery));
+    }
+  }
+
   seleccionarClienteFrecuente(c: Cliente) {
     this.clienteExistente = c;
     this.nombre = c.nombre;
@@ -269,6 +296,7 @@ export class RegistrarComponent implements OnInit {
 
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
+      && this.celular.trim().length > 0
       && this.items().length > 0
       && this.totalFinal() > 0
       && !this.registrando();

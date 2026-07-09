@@ -1,0 +1,33 @@
+.plataforma-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 24px;
+  background: linear-gradient(90deg, #1e293b 0%, #334155 100%);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  &__marca {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+
+  &__logout {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}

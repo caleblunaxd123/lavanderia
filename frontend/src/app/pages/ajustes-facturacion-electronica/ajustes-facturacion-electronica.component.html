@@ -27,12 +27,12 @@
                (ngModelChange)="actualizarCampo('razonSocial', $event)"
                placeholder="Mi Lavandería SAC" />
 
-        <label>RUC *</label>
+        <label>RUC * <app-info-tooltip texto="El número de RUC de tu negocio registrado ante SUNAT. Es obligatorio para poder emitir boletas y facturas electrónicas."></app-info-tooltip></label>
         <input type="text" [ngModel]="form().rucEmisor"
                (ngModelChange)="actualizarCampo('rucEmisor', $event)"
                maxlength="11" placeholder="20123456789" />
 
-        <label>Ambiente</label>
+        <label>Ambiente <app-info-tooltip texto="Pruebas (Beta): para practicar, los comprobantes NO valen legalmente. Producción: los comprobantes emitidos son reales y válidos ante SUNAT."></app-info-tooltip></label>
         <div class="switch-ambiente">
           <button type="button" [class.is-active]="form().ambiente === 'BETA'" (click)="actualizarCampo('ambiente', 'BETA')">
             Pruebas (Beta)
@@ -59,7 +59,7 @@
       </div>
 
       <div class="card seccion">
-        <h3>Certificado digital</h3>
+        <h3>Certificado digital <app-info-tooltip texto="Un archivo especial (.pfx) que SUNAT usa para verificar que tú emitiste el comprobante, como una firma digital. Te lo entrega SUNAT o tu proveedor de facturación electrónica."></app-info-tooltip></h3>
 
         @if (form().tieneCertificado) {
           <p class="ok-badge">✓ Ya tienes un certificado cargado. Sube uno nuevo solo si necesitas reemplazarlo.</p>
@@ -78,7 +78,7 @@
       </div>
 
       <div class="card seccion">
-        <h3>Credenciales SOL</h3>
+        <h3>Credenciales SOL <app-info-tooltip texto="El usuario y clave de tu 'Clave SOL' (portal de SUNAT). SOL significa 'SUNAT Operaciones en Línea' — es lo que usas para entrar a la web de SUNAT."></app-info-tooltip></h3>
 
         @if (form().tieneCredencialesSol) {
           <p class="ok-badge">✓ Ya tienes credenciales SOL guardadas. Ingresa una clave nueva solo si necesitas cambiarla.</p>

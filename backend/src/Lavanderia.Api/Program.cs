@@ -138,6 +138,7 @@ using (var scope = app.Services.CreateScope())
     {
         var seeder = scope.ServiceProvider.GetRequiredService<DbInitializer>();
         await seeder.EjecutarAsync();
+        await seeder.EjecutarPropietarioAsync();
     }
     catch (Exception ex)
     {

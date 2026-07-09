@@ -25,6 +25,8 @@ export class ComprobantesListComponent implements OnInit {
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
   readonly descargandoId = signal<number | null>(null);
+  readonly reenviandoId = signal<number | null>(null);
+  readonly confirmarAnular = signal<Comprobante | null>(null);
 
   ngOnInit() { this.cargar(); }
 
@@ -52,11 +54,30 @@ export class ComprobantesListComponent implements OnInit {
     });
   }
 
-  anular(c: Comprobante) {
-    if (!confirm(`¿Anular el comprobante ${c.numeroCompleto}? Esta acción no se puede deshacer.`)) return;
+  reenviar(c: Comprobante) {
+    this.reenviandoId.set(c.id);
+    this.svc.reenviar(c.id).subscribe({
+      next: actualizado => {
+        this.reenviandoId.set(null);
+        if (actualizado.estado === 'ACEPTADO') this.toast.exito('SUNAT aceptó el comprobante.');
+        else this.toast.advertencia(actualizado.descripcionRespuestaSunat ?? 'SUNAT volvió a rechazar el comprobante.');
+        this.cargar();
+      },
+      error: (err) => {
+        this.reenviandoId.set(null);
+        this.toast.error(err.error?.mensaje ?? 'No se pudo reenviar el comprobante.');
+      }
+    });
+  }
+
+  pedirAnular(c: Comprobante) { this.confirmarAnular.set(c); }
+
+  confirmarAnularOk() {
+    const c = this.confirmarAnular();
+    if (!c) return;
     this.svc.anular(c.id).subscribe({
-      next: res => { this.toast.info(res.mensaje); this.cargar(); },
-      error: () => this.toast.error('No se pudo anular el comprobante.')
+      next: res => { this.toast.info(res.mensaje); this.confirmarAnular.set(null); this.cargar(); },
+      error: () => { this.toast.error('No se pudo anular el comprobante.'); this.confirmarAnular.set(null); }
     });
   }
 

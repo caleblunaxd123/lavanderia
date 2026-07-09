@@ -38,8 +38,13 @@
                 <button class="btn-icon" (click)="verPdf(c)" [disabled]="descargandoId() === c.id" title="Ver PDF">
                   <app-icon name="printer" [size]="15"></app-icon>
                 </button>
+                @if (c.estado === 'RECHAZADO' || c.estado === 'ERROR') {
+                  <button class="btn-icon" (click)="reenviar(c)" [disabled]="reenviandoId() === c.id" title="Reenviar a SUNAT">
+                    <app-icon name="refresh" [size]="15"></app-icon>
+                  </button>
+                }
                 @if (c.estado !== 'ANULADO') {
-                  <button class="btn-icon" (click)="anular(c)" title="Anular">
+                  <button class="btn-icon" (click)="pedirAnular(c)" title="Anular">
                     <app-icon name="disable" [size]="15"></app-icon>
                   </button>
                 }
@@ -61,3 +66,20 @@
     </div>
   }
 </div>
+
+@if (confirmarAnular(); as c) {
+  <div class="modal-backdrop" (click)="confirmarAnular.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Anular comprobante?</h3>
+      <button class="modal__close" (click)="confirmarAnular.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p>Vas a anular <strong>{{ c.numeroCompleto }}</strong> ({{ c.clienteNombre }}, S/ {{ c.total.toFixed(2) }}). Esta acción no se puede deshacer.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarAnular.set(null)">Cancelar</button>
+        <button class="btn btn--danger" (click)="confirmarAnularOk()">Sí, anular</button>
+      </div>
+    </div>
+  </div>
+}

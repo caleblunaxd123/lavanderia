@@ -35,6 +35,9 @@
   cursor: pointer;
   background: var(--azul-oscuro);
   color: #fff;
+
+  &--ghost { background: transparent; color: #64748b; border: 1px solid var(--gris-borde); }
+  &--danger { background: #dc2626; color: #fff; }
 }
 
 .estado { padding: 24px; text-align: center; color: #64748b; }
@@ -105,6 +108,67 @@
 
   &:hover { background: #eaf1ff; border-color: var(--azul-oscuro); }
   &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+// ---------- Modal ----------
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 40;
+}
+
+.modal {
+  position: fixed;
+  z-index: 41;
+  background: #fff;
+  border-radius: 12px;
+  width: 92%;
+  max-width: 440px;
+  max-height: 92vh;
+  overflow: hidden;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 24px 60px rgba(0,0,0,.24);
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(90deg, var(--azul-oscuro), var(--azul-claro));
+
+    h3 { margin: 0; font-size: 16px; color: #fff; }
+  }
+
+  &__close {
+    background: rgba(255,255,255,.2);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover { background: rgba(255,255,255,.35); }
+  }
+
+  &__body { padding: 20px; overflow-y: auto; }
+
+  &__actions {
+    padding: 16px 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--gris-borde);
+  }
 }
 
 @media (max-width: 720px) {

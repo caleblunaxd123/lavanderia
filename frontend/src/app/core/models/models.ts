@@ -47,6 +47,8 @@ export interface ConfiguracionNegocio {
   mensajePieTicket?: string | null;
   condicionesServicio?: string | null;
   notasProduccion?: string | null;
+  costoDelivery: number;
+  servicioDeliveryId?: number | null;
 }
 
 export interface Cliente {
@@ -95,6 +97,7 @@ export interface Pedido {
   clienteNombre?: string;
   clienteCelular?: string;
   clienteDni?: string | null;
+  usuarioNombre?: string | null;
   fechaIngreso: string;
   fechaEntregaEst?: string | null;
   modalidad: 'Tienda' | 'Delivery';
@@ -142,6 +145,29 @@ export interface PedidoAbandonado {
   montoPagado: number;
   fechaListo: string;
   diasEsperando: number;
+}
+
+export interface NegocioResumen {
+  id: number;
+  nombre: string;
+  slug: string;
+  activo: boolean;
+  fechaCreacion: string;
+  cantidadSedes: number;
+  cantidadUsuarios: number;
+}
+
+export interface CrearNegocioRequest {
+  nombre: string;
+  slug: string;
+  rucEmpresa?: string | null;
+  titularNombre?: string | null;
+  titularEmail?: string | null;
+  sedeNombre: string;
+  adminUsuario: string;
+  adminNombreCompleto: string;
+  adminEmail?: string | null;
+  adminPassword: string;
 }
 
 export interface CrearPedidoRequest {

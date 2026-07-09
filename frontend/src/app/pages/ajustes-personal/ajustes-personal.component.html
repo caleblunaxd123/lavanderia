@@ -164,3 +164,20 @@
     </div>
   </div>
 }
+
+@if (confirmarDesactivar(); as e) {
+  <div class="modal-backdrop" (click)="confirmarDesactivar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Desactivar empleado?</h3>
+      <button class="modal__close" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p><strong>{{ e.nombre }}</strong> ya no aparecerá disponible para asignar turnos ni tareas.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarDesactivar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" (click)="confirmarDesactivarOk()">Sí, desactivar</button>
+      </div>
+    </div>
+  </div>
+}

@@ -55,6 +55,7 @@ export class InventarioComponent implements OnInit {
   guardandoInsumo = signal(false);
 
   readonly confirmarEliminar = signal<Insumo | null>(null);
+  readonly confirmarDesactivar = signal<Insumo | null>(null);
 
   // ---------- Registrar movimiento ----------
   readonly modalMovimiento = signal(false);
@@ -181,9 +182,21 @@ export class InventarioComponent implements OnInit {
   }
 
   toggleActivo(i: Insumo) {
-    this.svc.cambiarEstado(i.id, !i.activo).subscribe({
+    if (i.activo) { this.confirmarDesactivar.set(i); return; }
+    this.aplicarCambioEstado(i, true);
+  }
+
+  confirmarDesactivarOk() {
+    const i = this.confirmarDesactivar();
+    if (!i) return;
+    this.aplicarCambioEstado(i, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(i: Insumo, activo: boolean) {
+    this.svc.cambiarEstado(i.id, activo).subscribe({
       next: () => {
-        this.toast.info(!i.activo ? 'Insumo reactivado' : 'Insumo desactivado');
+        this.toast.info(activo ? 'Insumo reactivado' : 'Insumo desactivado');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

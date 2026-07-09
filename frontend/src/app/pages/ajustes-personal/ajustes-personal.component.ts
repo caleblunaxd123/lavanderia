@@ -39,6 +39,7 @@ export class AjustesPersonalComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<Empleado | null>(null);
   readonly confirmarEliminar = signal<Empleado | null>(null);
+  readonly confirmarDesactivar = signal<Empleado | null>(null);
   form: Partial<Empleado> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -129,9 +130,21 @@ export class AjustesPersonalComponent implements OnInit {
   }
 
   toggleActivo(e: Empleado) {
-    this.svc.cambiarEstado(e.id, !e.activo).subscribe({
+    if (e.activo) { this.confirmarDesactivar.set(e); return; }
+    this.aplicarCambioEstado(e, true);
+  }
+
+  confirmarDesactivarOk() {
+    const e = this.confirmarDesactivar();
+    if (!e) return;
+    this.aplicarCambioEstado(e, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(e: Empleado, activo: boolean) {
+    this.svc.cambiarEstado(e.id, activo).subscribe({
       next: () => {
-        this.toast.info(!e.activo ? 'Empleado reactivado' : 'Empleado desactivado');
+        this.toast.info(activo ? 'Empleado reactivado' : 'Empleado desactivado');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

@@ -316,7 +316,10 @@
           Pedido #{{ p.numero }}
           @if (p.esUrgente) { <span class="badge-urgente" title="Servicio urgente"><app-icon name="fire" [size]="13"></app-icon> URGENTE</span> }
         </h3>
-        <p>{{ p.clienteNombre }} · {{ p.clienteCelular || 'Sin celular' }}</p>
+        <p>
+          {{ p.clienteNombre }} · {{ p.clienteCelular || 'Sin celular' }}
+          @if (p.usuarioNombre) { · Atendido por: {{ p.usuarioNombre }} }
+        </p>
       </div>
       <button class="modal-detalle__close" (click)="cerrarDetalle()"><app-icon name="close" [size]="16"></app-icon></button>
     </div>

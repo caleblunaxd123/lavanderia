@@ -95,6 +95,10 @@ public class PedidoService : IPedidoService
         // Redondeo a los 10 centimos mas cercanos (no circulan monedas de 1, 2 y 5 centimos en Peru)
         var total = Math.Round(totalSinRedondear * 10m, MidpointRounding.AwayFromZero) / 10m;
         var redondeo = total - totalSinRedondear;
+        if (req.MontoPagado < 0)
+            throw new InvalidOperationException("El monto pagado no puede ser negativo.");
+        if (req.MontoPagado > total + 0.01m)
+            throw new InvalidOperationException($"El monto pagado excede el total del pedido (S/ {total:F2}).");
         var estadoPago = req.MontoPagado <= 0 ? "PENDIENTE" : req.MontoPagado >= total ? "PAGADO" : "PARCIAL";
 
         // Area inicial (si no la mandaron, usar la primera activa)
@@ -399,6 +403,7 @@ public class PedidoService : IPedidoService
         ClienteNombre = p.ClienteNombre,
         ClienteCelular = p.ClienteCelular,
         ClienteDni = p.ClienteDni,
+        UsuarioNombre = p.UsuarioNombre,
         FechaIngreso = p.FechaIngreso,
         FechaEntregaEst = p.FechaEntregaEst,
         Modalidad = p.Modalidad,
@@ -415,6 +420,7 @@ public class PedidoService : IPedidoService
         AreaActualNombre = p.AreaActualNombre,
         Observaciones = p.Observaciones,
         Anulado = p.Anulado,
+        MotivoAnulacion = p.MotivoAnulacion,
         CodigoAntiguo = p.CodigoAntiguo,
         Items = p.Items.Select(i => new PedidoItemDto
         {

@@ -48,7 +48,10 @@ export class LoginComponent implements OnInit {
         // La marca (logo/nombre/colores) se cargó antes del login con el negocio "por defecto";
         // hay que refrescarla ahora que el token trae el negocio real del usuario.
         this.config.cargar().subscribe({ error: () => {} });
-        const destino = this.auth.usuario()?.sedeId ? '/inicio' : '/seleccionar-sede';
+        const usuario = this.auth.usuario();
+        const destino = usuario?.rol === 'PROPIETARIO'
+          ? '/plataforma'
+          : (usuario?.sedeId ? '/inicio' : '/seleccionar-sede');
         this.router.navigate([destino]);
       },
       error: (err: HttpErrorResponse) => {

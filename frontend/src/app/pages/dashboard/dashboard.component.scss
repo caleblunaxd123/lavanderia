@@ -29,6 +29,67 @@
 
 .estado-simple { padding: 40px; text-align: center; color: #64748b; }
 
+// ---------- Onboarding (primeros pasos) ----------
+.onboarding {
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 { margin: 0; font-size: 14.5px; color: #1e3a8a; }
+  }
+
+  &__cerrar {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+
+    &:hover { color: #1e3a8a; }
+  }
+
+  &__lista {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+
+      a { color: var(--azul-oscuro); font-weight: 600; text-decoration: underline; }
+
+      &.is-hecho { color: #64748b; text-decoration: line-through; opacity: .7; }
+    }
+  }
+
+  &__check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid #93c5fd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #147a45;
+
+    .is-hecho & { background: #dcfce7; border-color: #86efac; }
+  }
+}
+
 // ---------- KPIs ----------
 .kpis {
   display: grid;

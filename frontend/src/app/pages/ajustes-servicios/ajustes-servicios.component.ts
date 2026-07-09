@@ -39,6 +39,7 @@ export class AjustesServiciosComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<ServicioEditable | null>(null);
   readonly confirmarEliminar = signal<ServicioEditable | null>(null);
+  readonly confirmarDesactivar = signal<ServicioEditable | null>(null);
   form: Partial<ServicioEditable> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -130,10 +131,22 @@ export class AjustesServiciosComponent implements OnInit {
   }
 
   toggleActivo(s: ServicioEditable) {
-    const actualizado = { ...s, activo: !s.activo };
+    if (s.activo) { this.confirmarDesactivar.set(s); return; }
+    this.aplicarCambioEstado(s, true);
+  }
+
+  confirmarDesactivarOk() {
+    const s = this.confirmarDesactivar();
+    if (!s) return;
+    this.aplicarCambioEstado(s, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(s: ServicioEditable, activo: boolean) {
+    const actualizado = { ...s, activo };
     this.svc.actualizar(s.id, actualizado).subscribe({
       next: () => {
-        this.toast.info(actualizado.activo ? 'Servicio reactivado' : 'Servicio desactivado');
+        this.toast.info(activo ? 'Servicio reactivado' : 'Servicio desactivado');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

@@ -4,8 +4,35 @@
       <h2>{{ saludo() }}, {{ usuario()?.nombreCompleto }}</h2>
       <p>Este es el resumen del negocio ahora mismo.</p>
     </div>
-    <a routerLink="/registrar" class="btn btn--primario">+ Nuevo pedido</a>
+    @if (tieneModulo('REGISTRAR')) {
+      <a routerLink="/registrar" class="btn btn--primario">+ Nuevo pedido</a>
+    }
   </header>
+
+  @if (mostrarOnboarding()) {
+    <section class="card onboarding">
+      <div class="onboarding__header">
+        <h3>Primeros pasos para dejar todo listo</h3>
+        <button type="button" class="onboarding__cerrar" (click)="cerrarOnboarding()" title="Cerrar">
+          <app-icon name="close" [size]="14"></app-icon>
+        </button>
+      </div>
+      <ul class="onboarding__lista">
+        @for (paso of pasosOnboarding(); track paso.clave) {
+          <li [class.is-hecho]="paso.hecho">
+            <span class="onboarding__check">
+              @if (paso.hecho) { <app-icon name="check" [size]="13"></app-icon> }
+            </span>
+            @if (paso.hecho) {
+              <span>{{ paso.titulo }}</span>
+            } @else {
+              <a [routerLink]="paso.ruta">{{ paso.titulo }}</a>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
 
   @if (cargando() && !data()) {
     <div class="kpis">
@@ -17,16 +44,18 @@
     @if (data(); as d) {
     <!-- KPIs principales -->
     <div class="kpis">
-      <a routerLink="/pedidos" class="kpi kpi--azul">
-        <div class="kpi__valor">{{ d.totalEnProceso + d.totalPendientes }}</div>
-        <div class="kpi__label">En proceso</div>
-        <div class="kpi__hint">Pedidos activos ahora</div>
-      </a>
-      <a routerLink="/pedidos" class="kpi kpi--verde">
-        <div class="kpi__valor">{{ d.totalListos }}</div>
-        <div class="kpi__label">Listos para recojo</div>
-        <div class="kpi__hint">Avisar al cliente</div>
-      </a>
+      @if (tieneModulo('PEDIDOS')) {
+        <a routerLink="/pedidos" class="kpi kpi--azul">
+          <div class="kpi__valor">{{ d.totalEnProceso + d.totalPendientes }}</div>
+          <div class="kpi__label">En proceso</div>
+          <div class="kpi__hint">Pedidos activos ahora</div>
+        </a>
+        <a routerLink="/pedidos" class="kpi kpi--verde">
+          <div class="kpi__valor">{{ d.totalListos }}</div>
+          <div class="kpi__label">Listos para recojo</div>
+          <div class="kpi__hint">Avisar al cliente</div>
+        </a>
+      }
       <div class="kpi kpi--naranja">
         <div class="kpi__valor">S/ {{ d.ventasDelDia | number:'1.2-2' }}</div>
         <div class="kpi__label">Ventas de hoy</div>
@@ -59,6 +88,7 @@
 
     <!-- Accesos rápidos -->
     <section class="atajos">
+      @if (tieneModulo('REGISTRAR')) {
       <a routerLink="/registrar" class="atajo">
         <div class="atajo__ilus">
           <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -78,6 +108,8 @@
         <strong>Nuevo pedido</strong>
         <span>Registrar entrada de ropa</span>
       </a>
+      }
+      @if (tieneModulo('PEDIDOS')) {
       <a routerLink="/pedidos" class="atajo">
         <div class="atajo__ilus">
           <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -102,6 +134,8 @@
         <strong>Lista de pedidos</strong>
         <span>Ver todos y avanzar etapas</span>
       </a>
+      }
+      @if (tieneModulo('CLIENTES')) {
       <a routerLink="/clientes" class="atajo">
         <div class="atajo__ilus">
           <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -122,6 +156,8 @@
         <strong>Clientes</strong>
         <span>Buscar o registrar</span>
       </a>
+      }
+      @if (tieneModulo('CAJA')) {
       <a routerLink="/cuadre-caja" class="atajo">
         <div class="atajo__ilus">
           <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
@@ -141,6 +177,7 @@
         <strong>Cuadre de caja</strong>
         <span>Cerrar el día</span>
       </a>
+      }
     </section>
     }
   }

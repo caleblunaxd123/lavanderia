@@ -13,6 +13,7 @@ public class DbInitializer
     private readonly IRolRepository _roles;
     private readonly INegocioRepository _negocios;
     private readonly ISedeRepository _sedes;
+    private readonly IConfiguracionNegocioRepository _configuracion;
     private readonly IConfiguration _config;
     private readonly ILogger<DbInitializer> _log;
 
@@ -21,6 +22,7 @@ public class DbInitializer
         IRolRepository roles,
         INegocioRepository negocios,
         ISedeRepository sedes,
+        IConfiguracionNegocioRepository configuracion,
         IConfiguration config,
         ILogger<DbInitializer> log)
     {
@@ -28,6 +30,7 @@ public class DbInitializer
         _roles = roles;
         _negocios = negocios;
         _sedes = sedes;
+        _configuracion = configuracion;
         _config = config;
         _log = log;
     }
@@ -50,6 +53,19 @@ public class DbInitializer
         var slug = _config.GetValue<string>("SeedAdmin:Slug") ?? Slugificar(nombreNegocio);
         var negocioId = await _negocios.CrearAsync(new Negocio { Nombre = nombreNegocio, Slug = slug, Activo = true }, ct);
         var sedeId = await _sedes.CrearAsync(new Sede { NegocioId = negocioId, Nombre = "Principal", Activo = true }, ct);
+        await _configuracion.ActualizarAsync(new ConfiguracionNegocio
+        {
+            NombreNegocio = nombreNegocio,
+            ColorPrimario = "#0b57d0",
+            ColorSecundario = "#29b6f6",
+            ColorAcento = "#f5a623",
+            Igv = 18m,
+            MetaMensual = 0m,
+            SolesPorPunto = 1m,
+            AnchoTicketMm = 80,
+            MensajePieTicket = "Gracias por su preferencia.",
+            CostoDelivery = 0m
+        }, negocioId, ct);
 
         var usuario = _config.GetValue<string>("SeedAdmin:Usuario") ?? "admin";
         var password = _config.GetValue<string>("SeedAdmin:Password") ?? "admin123";
@@ -70,6 +86,53 @@ public class DbInitializer
         _log.LogWarning(
             "Usuario admin creado con id={Id} (negocioId={NegocioId}, sedeId={SedeId}). Credenciales por defecto: {Usuario}/{Password}. CAMBIAR EN PRODUCCION.",
             id, negocioId, sedeId, usuario, password);
+    }
+
+    /// <summary>
+    /// Crea el primer usuario PROPIETARIO (dueno de la plataforma SaaS) si aun no existe.
+    /// Independiente de EjecutarAsync(): ese corta en seco si YA hay usuarios activos (que es
+    /// el caso normal, ya que este sistema viene con datos), asi que este seed necesita su
+    /// propio gate de idempotencia (existe el usuario configurado?) en vez de reusar aquel.
+    /// El rol PROPIETARIO y el negocio reservado "plataforma-interna" los crea la migracion
+    /// 021_propietario_plataforma.sql antes de que esto corra.
+    /// </summary>
+    public async Task EjecutarPropietarioAsync(CancellationToken ct = default)
+    {
+        var usuario = _config.GetValue<string>("SeedPropietario:Usuario") ?? "propietario";
+
+        var existente = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
+        if (existente is not null)
+        {
+            _log.LogInformation("Usuario propietario ya existe, no se crea de nuevo.");
+            return;
+        }
+
+        var rolPropietario = await _roles.BuscarPorCodigoAsync("PROPIETARIO", ct);
+        var negocioPlataforma = await _negocios.ObtenerPorSlugIncluyendoInactivoAsync("plataforma-interna", ct);
+        if (rolPropietario is null || negocioPlataforma is null)
+        {
+            _log.LogWarning("No se pudo crear el usuario propietario: falta aplicar 021_propietario_plataforma.sql.");
+            return;
+        }
+
+        var password = _config.GetValue<string>("SeedPropietario:Password") ?? "propietario123";
+        var nombre = _config.GetValue<string>("SeedPropietario:NombreCompleto") ?? "Propietario";
+
+        var id = await _usuarios.CrearAsync(new Usuario
+        {
+            UsuarioLogin = usuario,
+            NombreCompleto = nombre,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            RolId = rolPropietario.Id,
+            RolCodigo = rolPropietario.Codigo,
+            NegocioId = negocioPlataforma.Id,
+            SedeId = null,
+            Activo = true
+        }, ct);
+
+        _log.LogWarning(
+            "Usuario propietario creado con id={Id}. Credenciales por defecto: {Usuario}/{Password}. CAMBIAR EN PRODUCCION.",
+            id, usuario, password);
     }
 
     /// <summary>Slug de URL a partir del nombre del negocio (minusculas, sin acentos ni espacios).</summary>

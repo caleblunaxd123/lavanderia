@@ -74,6 +74,11 @@ public class ConfiguracionNegocioDto
     [StringLength(300)] public string? MensajePieTicket { get; set; }
     [StringLength(2000)] public string? CondicionesServicio { get; set; }
     [StringLength(500)] public string? NotasProduccion { get; set; }
+    [Range(0, 1000)] public decimal CostoDelivery { get; set; }
+    // Solo lectura: id del servicio de sistema al que Registrar debe apuntar al agregar
+    // automaticamente el cargo de delivery al carrito (ver 022_costo_delivery.sql). Se ignora
+    // si viene en el body de un PUT.
+    public int? ServicioDeliveryId { get; set; }
 }
 
 // ---------- Cliente ----------
@@ -158,6 +163,7 @@ public class PedidoDto
     public string? ClienteNombre { get; set; }
     public string? ClienteCelular { get; set; }
     public string? ClienteDni { get; set; }
+    public string? UsuarioNombre { get; set; }
     public DateTime FechaIngreso { get; set; }
     public DateTime? FechaEntregaEst { get; set; }
     public string Modalidad { get; set; } = "";
@@ -174,6 +180,7 @@ public class PedidoDto
     public string? AreaActualNombre { get; set; }
     public string? Observaciones { get; set; }
     public bool Anulado { get; set; }
+    public string? MotivoAnulacion { get; set; }
     public string? CodigoAntiguo { get; set; }
     public List<PedidoItemDto> Items { get; set; } = new();
 }
@@ -475,3 +482,25 @@ public class ComprobanteDto
     public string? DescripcionRespuestaSunat { get; set; }
     public DateTime FechaEmision { get; set; }
 }
+
+// ---------- Panel de propietario de plataforma (alta de negocios/tenants) ----------
+
+public record NegocioResumenDto(
+    int Id, string Nombre, string Slug, bool Activo, DateTime FechaCreacion,
+    int CantidadSedes, int CantidadUsuarios);
+
+public class CrearNegocioRequest
+{
+    [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
+    [Required, StringLength(50, MinimumLength = 2)] public string Slug { get; set; } = "";
+    public string? RucEmpresa { get; set; }
+    public string? TitularNombre { get; set; }
+    public string? TitularEmail { get; set; }
+    [Required, StringLength(80, MinimumLength = 2)] public string SedeNombre { get; set; } = "";
+    [Required, StringLength(50, MinimumLength = 3)] public string AdminUsuario { get; set; } = "";
+    [Required, StringLength(120, MinimumLength = 2)] public string AdminNombreCompleto { get; set; } = "";
+    public string? AdminEmail { get; set; }
+    [Required, StringLength(100, MinimumLength = 4)] public string AdminPassword { get; set; } = "";
+}
+
+public record CambiarEstadoNegocioRequest(bool Activo);

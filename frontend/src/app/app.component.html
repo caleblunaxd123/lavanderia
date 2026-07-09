@@ -1,5 +1,8 @@
 @if (mostrarHeader()) {
   <app-header />
 }
+@if (esPlataforma()) {
+  <app-plataforma-header />
+}
 <router-outlet />
 <app-toaster />

@@ -3,6 +3,7 @@ import { Component, HostListener, OnInit, computed, inject, signal } from '@angu
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { HeaderComponent } from './layout/header/header.component';
+import { PlataformaHeaderComponent } from './layout/plataforma-header/plataforma-header.component';
 import { AuthService } from './core/services/auth.service';
 import { ConfiguracionService } from './core/services/configuracion.service';
 import { TenantContextService } from './core/services/tenant-context.service';
@@ -10,7 +11,7 @@ import { ToasterComponent } from './shared/toaster/toaster.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, HeaderComponent, ToasterComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaHeaderComponent, ToasterComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
@@ -21,12 +22,14 @@ export class AppComponent implements OnInit {
   private readonly tenant = inject(TenantContextService);
 
   private readonly rutaActual = signal<string>('/');
+  readonly esPlataforma = computed(() => this.rutaActual().startsWith('/plataforma'));
   readonly mostrarHeader = computed(() => {
     const r = this.rutaActual();
     if (!this.auth.autenticado()) return false;
     if (r.startsWith('/login')) return false;
     if (r.startsWith('/ticket/')) return false;  // ticket es fullscreen para imprimir
     if (r.startsWith('/cuadre-caja/imprimir/')) return false;  // cuadre imprimible tambien
+    if (this.esPlataforma()) return false;  // usa su propio header minimo
     return true;
   });
 

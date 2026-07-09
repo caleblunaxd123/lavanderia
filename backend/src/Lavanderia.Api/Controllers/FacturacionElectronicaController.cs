@@ -203,6 +203,47 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         return File(bytes, "application/pdf", $"{c.Tipo}-{c.Serie}-{c.Correlativo}.pdf");
     }
 
+    [HttpPost("facturacion/comprobantes/{id:int}/reenviar")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<ComprobanteDto>> Reenviar(int id, CancellationToken ct)
+    {
+        var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        if (c is null) return NotFound();
+        if (c.Estado is not ("RECHAZADO" or "ERROR"))
+            return BadRequest(new { mensaje = "Solo se puede reenviar un comprobante rechazado o con error." });
+
+        var pedido = await _pedidos.ObtenerPorIdAsync(c.PedidoId, SedeId!.Value, ct);
+        if (pedido is null) return NotFound(new { mensaje = "El pedido asociado ya no existe." });
+
+        var config = await _facturacion.ObtenerConfigAsync(NegocioId, ct);
+        if (config is null || !config.Activo || config.CertificadoPfx is null
+            || string.IsNullOrEmpty(config.SolClaveCifrada) || string.IsNullOrEmpty(config.CertificadoPasswordCifrada)
+            || string.IsNullOrEmpty(config.RucEmisor))
+            return BadRequest(new { mensaje = "Configura la facturación electrónica en Ajustes antes de reenviar comprobantes." });
+
+        var credenciales = new CredencialesEmisor(
+            config.Ambiente, config.RucEmisor!, config.RazonSocial ?? "",
+            config.SolUsuario ?? "", _secretos.Desproteger(config.SolClaveCifrada!),
+            config.CertificadoPfx!, _secretos.Desproteger(config.CertificadoPasswordCifrada!));
+
+        ResultadoEmision resultado;
+        try
+        {
+            resultado = await _provider.EmitirAsync(new SolicitudEmision(c, pedido.Items, credenciales, config), ct);
+        }
+        catch (Exception ex)
+        {
+            resultado = new ResultadoEmision(false, "ERROR", null, ex.Message, null, null);
+        }
+
+        await _facturacion.ActualizarResultadoAsync(
+            id, resultado.Estado, resultado.Codigo, resultado.Descripcion,
+            resultado.XmlFirmado, resultado.CdrZip, null, DateTime.Now, ct);
+
+        var final = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        return Ok(Map(final!));
+    }
+
     [HttpPost("facturacion/comprobantes/{id:int}/anular")]
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Anular(int id, CancellationToken ct)

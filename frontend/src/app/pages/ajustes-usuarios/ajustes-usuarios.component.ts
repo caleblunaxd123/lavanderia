@@ -42,6 +42,7 @@ export class AjustesUsuariosComponent implements OnInit {
 
   readonly modalAbierto = signal(false);
   readonly editando = signal<UsuarioAdmin | null>(null);
+  readonly confirmarDesactivar = signal<UsuarioAdmin | null>(null);
   form: Partial<UsuarioAdmin> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -124,9 +125,22 @@ export class AjustesUsuariosComponent implements OnInit {
   }
 
   toggleActivo(u: UsuarioAdmin) {
-    this.svc.cambiarEstado(u.id, !u.activo).subscribe({
+    if (u.id === this.miPropioUsuarioId) return;
+    if (u.activo) { this.confirmarDesactivar.set(u); return; }
+    this.aplicarCambioEstado(u, true);
+  }
+
+  confirmarDesactivarOk() {
+    const u = this.confirmarDesactivar();
+    if (!u) return;
+    this.aplicarCambioEstado(u, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(u: UsuarioAdmin, activo: boolean) {
+    this.svc.cambiarEstado(u.id, activo).subscribe({
       next: () => {
-        this.toast.info(!u.activo ? 'Usuario activado' : 'Usuario desactivado');
+        this.toast.info(activo ? 'Usuario activado' : 'Usuario desactivado');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

@@ -2,8 +2,8 @@
   <div class="page__header card">
     <h2>Nuevo pedido @if (siguienteNumero()) { <small class="numero-preview">N° {{ siguienteNumero() }}</small> }</h2>
     <div class="modalidad">
-      <button class="modalidad__btn" [class.is-active]="modalidad==='Tienda'" (click)="modalidad='Tienda'">Tienda</button>
-      <button class="modalidad__btn" [class.is-active]="modalidad==='Delivery'" (click)="modalidad='Delivery'">Delivery</button>
+      <button class="modalidad__btn" [class.is-active]="modalidad==='Tienda'" (click)="cambiarModalidad('Tienda')">Tienda</button>
+      <button class="modalidad__btn" [class.is-active]="modalidad==='Delivery'" (click)="cambiarModalidad('Delivery')">Delivery</button>
     </div>
     <button class="btn btn--primario" [disabled]="!puedeRegistrar" (click)="registrarOrden()">
       {{ registrando() ? 'Registrando…' : 'Registrar' }}
@@ -74,6 +74,9 @@
             <div>
               <strong><app-icon name="check" [size]="13"></app-icon> {{ clienteExistente.nombre }}</strong>
               <span>{{ clienteExistente.celular || 'Sin celular' }}</span>
+              @if (clienteExistente.puntos > 0) {
+                <span class="puntos-badge">{{ clienteExistente.puntos }} pts</span>
+              }
             </div>
             <button type="button" class="btn-quitar-cliente" (click)="quitarClienteSeleccionado()" title="Quitar selección"><app-icon name="close" [size]="12"></app-icon></button>
           </div>
@@ -95,6 +98,9 @@
                 <li (click)="seleccionarClienteFrecuente(c)">
                   <strong>{{ c.nombre }}</strong>
                   <span>{{ c.celular || 'Sin celular' }}{{ c.dni ? ' · DNI ' + c.dni : '' }}</span>
+                  @if (c.puntos > 0) {
+                    <span class="puntos-badge">{{ c.puntos }} pts</span>
+                  }
                 </li>
               }
             </ul>
@@ -106,8 +112,9 @@
         <label>Nombre *</label>
         <input type="text" placeholder="Nombre completo" [(ngModel)]="nombre" />
 
-        <label>Celular</label>
+        <label>Celular *</label>
         <input type="text" placeholder="9XXXXXXXX" [(ngModel)]="celular" />
+        <p class="hint">Necesario para avisar por WhatsApp cuando el pedido esté listo.</p>
 
         <label>Dirección</label>
         <input type="text" placeholder="Dirección (para delivery)" [(ngModel)]="direccion" />

@@ -2,9 +2,30 @@
 <div class="acciones-print">
   <div class="acciones-print__inner">
     <button class="btn btn--primario" (click)="imprimir()"><app-icon name="printer" [size]="16"></app-icon> Imprimir ticket</button>
-    <button class="btn btn--whatsapp" (click)="enviarWhatsapp()" [disabled]="!pedido()?.clienteCelular">
-      Enviar WhatsApp
+
+    <div class="whatsapp-envio">
+      <button class="whatsapp-envio__boton" (click)="enviarWhatsapp()" [disabled]="!celularEnvio().trim()" title="Enviar mensaje de WhatsApp">
+        <app-icon name="whatsapp" [size]="20"></app-icon>
+      </button>
+      <label class="whatsapp-envio__campo">
+        <span>Número Celular:</span>
+        <input
+          type="text"
+          [value]="celularEnvio()"
+          (input)="celularEnvio.set($any($event.target).value)"
+          placeholder="Sin celular"
+        />
+      </label>
+    </div>
+
+    <button class="btn btn--descargar" (click)="descargarImagen()" [disabled]="generandoImagen()">
+      <app-icon name="download" [size]="16"></app-icon> {{ generandoImagen() ? 'Generando…' : 'Descargar Imagen' }}
     </button>
+
+    <button class="btn btn--pdf" (click)="compartirPdfWhatsapp()" [disabled]="generandoPdf() || !celularEnvio().trim()">
+      <app-icon name="download" [size]="16"></app-icon> {{ generandoPdf() ? 'Generando PDF…' : 'Compartir PDF' }}
+    </button>
+
     <button class="btn btn--ghost" (click)="cerrar()">Cerrar</button>
 
     <div class="toggle-grupo">
@@ -61,6 +82,11 @@
         <span class="ticket__numero-valor">N° {{ p.numero }}</span>
       </div>
 
+      <!-- Codigo de barras: permite escanear el N° con un lector USB en vez de teclearlo -->
+      <div class="ticket__barcode">
+        <svg id="ticket-barcode"></svg>
+      </div>
+
       <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
 
       <!-- Fechas -->
@@ -88,6 +114,7 @@
         <strong>CLIENTE</strong>
         <p>{{ p.clienteNombre }}</p>
         @if (p.clienteCelular) { <p>Tel: {{ p.clienteCelular }}</p> }
+        @if (p.usuarioNombre) { <p>Atendido por: {{ p.usuarioNombre }}</p> }
       </div>
 
       <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>

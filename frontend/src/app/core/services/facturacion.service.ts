@@ -71,4 +71,8 @@ export class FacturacionService {
   anular(id: number) {
     return this.http.post<{ mensaje: string }>(`${this.base}/comprobantes/${id}/anular`, {});
   }
+
+  reenviar(id: number) {
+    return this.http.post<Comprobante>(`${this.base}/comprobantes/${id}/reenviar`, {});
+  }
 }

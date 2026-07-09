@@ -36,6 +36,7 @@ export class AjustesAreasComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<AreaLavadoEditable | null>(null);
   readonly confirmarEliminar = signal<AreaLavadoEditable | null>(null);
+  readonly confirmarDesactivar = signal<AreaLavadoEditable | null>(null);
   form: Partial<AreaLavadoEditable> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -124,9 +125,21 @@ export class AjustesAreasComponent implements OnInit {
   }
 
   toggleActiva(a: AreaLavadoEditable) {
-    this.svc.cambiarEstado(a.id, !a.activa).subscribe({
+    if (a.activa) { this.confirmarDesactivar.set(a); return; }
+    this.aplicarCambioEstado(a, true);
+  }
+
+  confirmarDesactivarOk() {
+    const a = this.confirmarDesactivar();
+    if (!a) return;
+    this.aplicarCambioEstado(a, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(a: AreaLavadoEditable, activa: boolean) {
+    this.svc.cambiarEstado(a.id, activa).subscribe({
       next: () => {
-        this.toast.info(!a.activa ? 'Área reactivada' : 'Área desactivada');
+        this.toast.info(activa ? 'Área reactivada' : 'Área desactivada');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

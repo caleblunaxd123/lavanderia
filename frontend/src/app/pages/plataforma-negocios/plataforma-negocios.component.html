@@ -1,0 +1,90 @@
+<div class="page">
+  <div class="page__header">
+    <div>
+      <h2>Empresas</h2>
+      <p>Clientes que alquilan el sistema. Cada uno tiene sus propios datos, usuarios y sedes.</p>
+    </div>
+    <button class="btn btn--primario" (click)="nueva()">+ Nueva empresa</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (negocios().length === 0) {
+    <app-empty-state icono="lista" titulo="Sin empresas aún" mensaje="Crea la primera empresa para empezar a alquilar el sistema.">
+      <button class="btn btn--primario" (click)="nueva()">+ Nueva empresa</button>
+    </app-empty-state>
+  } @else {
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead><tr><th>Nombre</th><th>Slug</th><th>Sedes</th><th>Usuarios</th><th>Creada</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          @for (n of negocios(); track n.id) {
+            <tr [class.inactivo]="!n.activo">
+              <td class="nombre">{{ n.nombre }}</td>
+              <td class="mono">{{ n.slug }}</td>
+              <td class="mono">{{ n.cantidadSedes }}</td>
+              <td class="mono">{{ n.cantidadUsuarios }}</td>
+              <td>{{ n.fechaCreacion | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <span [class]="'badge ' + (n.activo ? 'badge--verde' : 'badge--gris')">
+                  {{ n.activo ? 'Activa' : 'Suspendida' }}
+                </span>
+              </td>
+              <td class="acciones-row">
+                <button class="btn-icon" (click)="toggleActivo(n)" [title]="n.activo ? 'Suspender' : 'Reactivar'">
+                  @if (n.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div class="cards">
+      @for (n of negocios(); track n.id) {
+        <div class="card negocio-card" [class.inactivo]="!n.activo">
+          <div class="negocio-card__head">
+            <strong>{{ n.nombre }}</strong>
+            <span [class]="'badge ' + (n.activo ? 'badge--verde' : 'badge--gris')">
+              {{ n.activo ? 'Activa' : 'Suspendida' }}
+            </span>
+          </div>
+          <div class="negocio-card__body">
+            <div><span>Slug:</span> {{ n.slug }}</div>
+            <div><span>Sedes:</span> {{ n.cantidadSedes }}</div>
+            <div><span>Usuarios:</span> {{ n.cantidadUsuarios }}</div>
+            <div><span>Creada:</span> {{ n.fechaCreacion | date:'dd/MM/yyyy' }}</div>
+          </div>
+          <div class="negocio-card__acciones">
+            <button class="btn-icon" (click)="toggleActivo(n)" [title]="n.activo ? 'Suspender' : 'Reactivar'">
+              @if (n.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+@if (confirmarDesactivar(); as n) {
+  <div class="modal-backdrop" (click)="confirmarDesactivar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Suspender empresa?</h3>
+      <button class="modal__close" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p><strong>{{ n.nombre }}</strong> y todo su personal no podrán iniciar sesión hasta que la reactives.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarDesactivar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" (click)="confirmarDesactivarOk()">Sí, suspender</button>
+      </div>
+    </div>
+  </div>
+}

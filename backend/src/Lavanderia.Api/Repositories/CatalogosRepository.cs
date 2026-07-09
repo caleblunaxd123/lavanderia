@@ -12,6 +12,7 @@ public interface IServicioRepository
     Task ActualizarAsync(Servicio s, int negocioId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int negocioId, CancellationToken ct = default);
     Task<int> ContarUsoAsync(int servicioId, int negocioId, CancellationToken ct = default);
+    Task<Servicio?> ObtenerCargoDeliveryAsync(int negocioId, CancellationToken ct = default);
 }
 
 public class ServicioRepository : IServicioRepository
@@ -27,22 +28,36 @@ public class ServicioRepository : IServicioRepository
         Unidad = r.GetString(r.GetOrdinal("Unidad")),
         CategoriaId = r.GetNullableInt("CategoriaId"),
         CategoriaNombre = r.GetNullableString("CategoriaNombre"),
-        Activo = r.GetBoolean(r.GetOrdinal("Activo"))
+        Activo = r.GetBoolean(r.GetOrdinal("Activo")),
+        EsCargoDelivery = r.GetBoolean(r.GetOrdinal("EsCargoDelivery"))
     };
 
     private const string SelectConCategoria = @"
-        SELECT s.Id, s.Nombre, s.Precio, s.Unidad, s.CategoriaId, cat.Nombre AS CategoriaNombre, s.Activo
+        SELECT s.Id, s.Nombre, s.Precio, s.Unidad, s.CategoriaId, cat.Nombre AS CategoriaNombre, s.Activo, s.EsCargoDelivery
         FROM dbo.Servicio s
         LEFT JOIN dbo.Categoria cat ON cat.Id = s.CategoriaId";
 
+    // El cargo de delivery es un servicio de sistema (ver 022_costo_delivery.sql): no debe
+    // aparecer en el picker de Registrar ni en el CRUD de Ajustes > Servicios, solo se
+    // administra su monto desde Ajustes > Negocio.
     public async Task<List<Servicio>> ListarActivosAsync(int negocioId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = SelectConCategoria + " WHERE s.Activo = 1 AND s.NegocioId = @NegocioId ORDER BY s.Nombre";
+        cmd.CommandText = SelectConCategoria + " WHERE s.Activo = 1 AND s.NegocioId = @NegocioId AND s.EsCargoDelivery = 0 ORDER BY s.Nombre";
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadListAsync(MapConCategoria, ct);
+    }
+
+    public async Task<Servicio?> ObtenerCargoDeliveryAsync(int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = SelectConCategoria + " WHERE s.NegocioId = @NegocioId AND s.EsCargoDelivery = 1";
+        cmd.AddParam("@NegocioId", negocioId);
+        return await cmd.ReadFirstOrDefaultAsync(MapConCategoria, ct);
     }
 
     public async Task<Servicio?> ObtenerPorIdAsync(int id, int negocioId, CancellationToken ct = default)
@@ -61,7 +76,7 @@ public class ServicioRepository : IServicioRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = SelectConCategoria + " WHERE s.NegocioId = @NegocioId ORDER BY s.Activo DESC, s.Nombre";
+        cmd.CommandText = SelectConCategoria + " WHERE s.NegocioId = @NegocioId AND s.EsCargoDelivery = 0 ORDER BY s.Activo DESC, s.Nombre";
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadListAsync(MapConCategoria, ct);
     }
@@ -72,15 +87,16 @@ public class ServicioRepository : IServicioRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Servicio (NegocioId, Nombre, Precio, Unidad, CategoriaId, Activo)
+            INSERT INTO dbo.Servicio (NegocioId, Nombre, Precio, Unidad, CategoriaId, Activo, EsCargoDelivery)
             OUTPUT INSERTED.Id
-            VALUES (@NegocioId, @Nombre, @Precio, @Unidad, @CategoriaId, @Activo)";
+            VALUES (@NegocioId, @Nombre, @Precio, @Unidad, @CategoriaId, @Activo, @EsCargoDelivery)";
         cmd.AddParam("@NegocioId", s.NegocioId);
         cmd.AddParam("@Nombre", s.Nombre);
         cmd.AddParam("@Precio", s.Precio);
         cmd.AddParam("@Unidad", s.Unidad);
         cmd.AddParam("@CategoriaId", s.CategoriaId);
         cmd.AddParam("@Activo", s.Activo);
+        cmd.AddParam("@EsCargoDelivery", s.EsCargoDelivery);
         return await cmd.ReadScalarAsync<int>(ct);
     }
 

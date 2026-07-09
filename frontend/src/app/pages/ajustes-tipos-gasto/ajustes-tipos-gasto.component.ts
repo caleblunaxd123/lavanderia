@@ -36,6 +36,7 @@ export class AjustesTiposGastoComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<TipoGastoEditable | null>(null);
   readonly confirmarEliminar = signal<TipoGastoEditable | null>(null);
+  readonly confirmarDesactivar = signal<TipoGastoEditable | null>(null);
   form: Partial<TipoGastoEditable> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -123,9 +124,21 @@ export class AjustesTiposGastoComponent implements OnInit {
   }
 
   toggleActivo(t: TipoGastoEditable) {
-    this.svc.cambiarEstado(t.id, !t.activo).subscribe({
+    if (t.activo) { this.confirmarDesactivar.set(t); return; }
+    this.aplicarCambioEstado(t, true);
+  }
+
+  confirmarDesactivarOk() {
+    const t = this.confirmarDesactivar();
+    if (!t) return;
+    this.aplicarCambioEstado(t, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(t: TipoGastoEditable, activo: boolean) {
+    this.svc.cambiarEstado(t.id, activo).subscribe({
       next: () => {
-        this.toast.info(!t.activo ? 'Tipo de gasto reactivado' : 'Tipo de gasto desactivado');
+        this.toast.info(activo ? 'Tipo de gasto reactivado' : 'Tipo de gasto desactivado');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

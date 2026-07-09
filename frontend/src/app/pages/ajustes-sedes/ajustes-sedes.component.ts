@@ -36,6 +36,7 @@ export class AjustesSedesComponent implements OnInit {
 
   readonly modalAbierto = signal(false);
   readonly editando = signal<Sede | null>(null);
+  readonly confirmarDesactivar = signal<Sede | null>(null);
   form: Partial<Sede> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -103,9 +104,21 @@ export class AjustesSedesComponent implements OnInit {
   }
 
   toggleActivo(s: Sede) {
-    this.svc.cambiarEstado(s.id, !s.activo).subscribe({
+    if (s.activo) { this.confirmarDesactivar.set(s); return; }
+    this.aplicarCambioEstado(s, true);
+  }
+
+  confirmarDesactivarOk() {
+    const s = this.confirmarDesactivar();
+    if (!s) return;
+    this.aplicarCambioEstado(s, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(s: Sede, activo: boolean) {
+    this.svc.cambiarEstado(s.id, activo).subscribe({
       next: () => {
-        this.toast.info(!s.activo ? 'Sede reactivada' : 'Sede desactivada');
+        this.toast.info(activo ? 'Sede reactivada' : 'Sede desactivada');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

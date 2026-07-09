@@ -36,6 +36,7 @@ export class AjustesRolPersonalComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<RolPersonal | null>(null);
   readonly confirmarEliminar = signal<RolPersonal | null>(null);
+  readonly confirmarDesactivar = signal<RolPersonal | null>(null);
   form: Partial<RolPersonal> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -123,9 +124,21 @@ export class AjustesRolPersonalComponent implements OnInit {
   }
 
   toggleActivo(r: RolPersonal) {
-    this.svc.cambiarEstado(r.id, !r.activo).subscribe({
+    if (r.activo) { this.confirmarDesactivar.set(r); return; }
+    this.aplicarCambioEstado(r, true);
+  }
+
+  confirmarDesactivarOk() {
+    const r = this.confirmarDesactivar();
+    if (!r) return;
+    this.aplicarCambioEstado(r, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(r: RolPersonal, activo: boolean) {
+    this.svc.cambiarEstado(r.id, activo).subscribe({
       next: () => {
-        this.toast.info(!r.activo ? 'Rol reactivado' : 'Rol desactivado');
+        this.toast.info(activo ? 'Rol reactivado' : 'Rol desactivado');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

@@ -25,6 +25,7 @@ public class UsuariosController : ControllerBase
 
     // El nuevo usuario siempre pertenece al mismo negocio que el admin que lo crea.
     private int NegocioIdActual => int.Parse(User.FindFirstValue("negocioId") ?? "0");
+    private int UsuarioIdActual => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
     public async Task<ActionResult<List<UsuarioAdminDto>>> Listar(CancellationToken ct)
@@ -99,6 +100,9 @@ public class UsuariosController : ControllerBase
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoUsuarioRequest req, CancellationToken ct)
     {
+        if (!req.Activo && id == UsuarioIdActual)
+            return BadRequest(new { mensaje = "No puedes desactivar tu propio usuario." });
+
         var existente = await _usuarios.ObtenerPorIdAsync(id, NegocioIdActual, ct);
         if (existente is null) return NotFound();
         await _usuarios.CambiarEstadoAsync(id, req.Activo, NegocioIdActual, ct);

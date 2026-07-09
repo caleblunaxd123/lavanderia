@@ -40,6 +40,7 @@ export class PromocionesComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<Promocion | null>(null);
   readonly confirmarEliminar = signal<Promocion | null>(null);
+  readonly confirmarDesactivar = signal<Promocion | null>(null);
   form: FormPromocion = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -153,9 +154,21 @@ export class PromocionesComponent implements OnInit {
   }
 
   toggleActiva(p: Promocion) {
-    this.svc.cambiarEstado(p.id, !p.activa).subscribe({
+    if (p.activa) { this.confirmarDesactivar.set(p); return; }
+    this.aplicarCambioEstado(p, true);
+  }
+
+  confirmarDesactivarOk() {
+    const p = this.confirmarDesactivar();
+    if (!p) return;
+    this.aplicarCambioEstado(p, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(p: Promocion, activa: boolean) {
+    this.svc.cambiarEstado(p.id, activa).subscribe({
       next: () => {
-        this.toast.info(!p.activa ? 'Promoción activada' : 'Promoción desactivada');
+        this.toast.info(activa ? 'Promoción activada' : 'Promoción desactivada');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

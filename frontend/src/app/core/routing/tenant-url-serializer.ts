@@ -15,7 +15,7 @@ import { TenantContextService } from '../services/tenant-context.service';
 const SEGMENTOS_RESERVADOS = new Set([
   'login', 'ticket', 'cuadre-caja', 'seleccionar-sede', 'inicio', 'pedidos', 'registrar',
   'registro-antiguo', 'clientes', 'promociones', 'reportes', 'inventario', 'ajustes',
-  'facturacion', 'assets',
+  'facturacion', 'assets', 'plataforma',
 ]);
 
 const SLUG_VALIDO = /^[a-z0-9][a-z0-9-]{1,49}$/i;
@@ -31,7 +31,7 @@ export class TenantUrlSerializer extends DefaultUrlSerializer {
       const resto = match[2] || '/';
       return super.parse(resto.startsWith('/') ? resto : `/${resto}`);
     }
-    if (!match) this.tenant.establecerSlug(null);
+    this.tenant.establecerSlug(null);
     return super.parse(url);
   }
 

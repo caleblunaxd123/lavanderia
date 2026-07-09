@@ -38,6 +38,10 @@ public class AuthController : ControllerBase
         if (!BCrypt.Net.BCrypt.Verify(req.Password, usuario.PasswordHash))
             return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
 
+        var negocioUsuario = await _negocios.ObtenerPorIdAsync(usuario.NegocioId, ct);
+        if (negocioUsuario is null || (!negocioUsuario.Activo && usuario.RolCodigo != "PROPIETARIO"))
+            return Unauthorized(new { mensaje = "La empresa esta suspendida. Contacta al administrador de la plataforma." });
+
         // Si la URL trae el slug de una empresa, el usuario autenticado debe pertenecer a ella.
         // Sin esto, cualquier usuario global podria "entrar" visualmente por la URL de otra empresa.
         if (!string.IsNullOrWhiteSpace(req.EmpresaSlug))

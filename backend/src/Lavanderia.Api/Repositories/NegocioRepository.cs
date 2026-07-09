@@ -1,4 +1,5 @@
 using Lavanderia.Api.Domain;
+using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Infrastructure;
 
 namespace Lavanderia.Api.Repositories;
@@ -6,7 +7,13 @@ namespace Lavanderia.Api.Repositories;
 public interface INegocioRepository
 {
     Task<int> CrearAsync(Negocio n, CancellationToken ct = default);
+    Task<Negocio?> ObtenerPorIdAsync(int id, CancellationToken ct = default);
     Task<Negocio?> ObtenerPorSlugAsync(string slug, CancellationToken ct = default);
+    /// <summary>Sin filtro de Activo: para resolver el negocio reservado de la plataforma (Activo=0 a proposito).</summary>
+    Task<Negocio?> ObtenerPorSlugIncluyendoInactivoAsync(string slug, CancellationToken ct = default);
+    Task<bool> ExisteSlugAsync(string slug, CancellationToken ct = default);
+    Task<List<NegocioResumenDto>> ListarConConteosAsync(CancellationToken ct = default);
+    Task<bool> CambiarEstadoAsync(int id, bool activo, CancellationToken ct = default);
 }
 
 public class NegocioRepository : INegocioRepository
@@ -44,6 +51,19 @@ public class NegocioRepository : INegocioRepository
         return await cmd.ReadScalarAsync<int>(ct);
     }
 
+    public async Task<Negocio?> ObtenerPorIdAsync(int id, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, Activo, FechaCreacion
+            FROM dbo.Negocio
+            WHERE Id = @Id";
+        cmd.AddParam("@Id", id);
+        return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
     public async Task<Negocio?> ObtenerPorSlugAsync(string slug, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
@@ -55,6 +75,71 @@ public class NegocioRepository : INegocioRepository
             WHERE Slug = @Slug AND Activo = 1";
         cmd.AddParam("@Slug", slug);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<Negocio?> ObtenerPorSlugIncluyendoInactivoAsync(string slug, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, Activo, FechaCreacion
+            FROM dbo.Negocio
+            WHERE Slug = @Slug";
+        cmd.AddParam("@Slug", slug);
+        return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    // A diferencia de ObtenerPorSlugAsync (que solo mira negocios activos, pensado para el
+    // login), esta valida unicidad al crear un negocio nuevo: debe rechazar tambien un slug
+    // ya usado por un negocio suspendido o por el negocio reservado de la plataforma.
+    public async Task<bool> ExisteSlugAsync(string slug, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(1) FROM dbo.Negocio WHERE Slug = @Slug";
+        cmd.AddParam("@Slug", slug);
+        return await cmd.ReadScalarAsync<int>(ct) > 0;
+    }
+
+    // Excluye el negocio reservado de la plataforma (Slug = 'plataforma-interna'): no es un
+    // cliente real y no debe aparecer en el panel de propietario.
+    public async Task<List<NegocioResumenDto>> ListarConConteosAsync(CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT n.Id, n.Nombre, n.Slug, n.Activo, n.FechaCreacion,
+                   COUNT(DISTINCT s.Id) AS CantidadSedes,
+                   COUNT(DISTINCT u.Id) AS CantidadUsuarios
+            FROM dbo.Negocio n
+            LEFT JOIN dbo.Sede s ON s.NegocioId = n.Id
+            LEFT JOIN dbo.Usuario u ON u.NegocioId = n.Id
+            WHERE n.Slug <> 'plataforma-interna'
+            GROUP BY n.Id, n.Nombre, n.Slug, n.Activo, n.FechaCreacion
+            ORDER BY n.FechaCreacion DESC";
+        return await cmd.ReadListAsync(r => new NegocioResumenDto(
+            r.GetInt32(r.GetOrdinal("Id")),
+            r.GetString(r.GetOrdinal("Nombre")),
+            r.GetString(r.GetOrdinal("Slug")),
+            r.GetBoolean(r.GetOrdinal("Activo")),
+            r.GetDateTime(r.GetOrdinal("FechaCreacion")),
+            r.GetInt32(r.GetOrdinal("CantidadSedes")),
+            r.GetInt32(r.GetOrdinal("CantidadUsuarios"))
+        ), ct);
+    }
+
+    public async Task<bool> CambiarEstadoAsync(int id, bool activo, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Negocio SET Activo = @Activo WHERE Id = @Id";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@Activo", activo);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 }
 

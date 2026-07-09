@@ -2,13 +2,24 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { CatalogosService } from '../../core/services/catalogos.service';
+import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Dashboard, PedidosService } from '../../core/services/pedidos.service';
+import { PersonalService } from '../../core/services/personal.service';
 import { ToastService } from '../../core/services/toast.service';
+import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+
+interface PasoOnboarding {
+  clave: string;
+  titulo: string;
+  hecho: boolean;
+  ruta: string;
+}
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, RouterLink, SkeletonComponent],
+  imports: [CommonModule, RouterLink, SkeletonComponent, IconComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -16,10 +27,47 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly svc = inject(PedidosService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly config = inject(ConfiguracionService);
+  private readonly catalogos = inject(CatalogosService);
+  private readonly personalSvc = inject(PersonalService);
 
   readonly data = signal<Dashboard | null>(null);
   readonly cargando = signal(false);
   readonly usuario = this.auth.usuario;
+
+  // Checklist de primeros pasos para un negocio recien creado (solo ADMIN, y solo
+  // mientras falte algo por hacer o el usuario no lo haya cerrado desde este navegador).
+  readonly pasosOnboarding = signal<PasoOnboarding[]>([]);
+  readonly onboardingCerrado = signal(false);
+  readonly mostrarOnboarding = computed(() =>
+    this.usuario()?.rol === 'ADMIN' &&
+    !this.onboardingCerrado() &&
+    this.pasosOnboarding().some(p => !p.hecho)
+  );
+
+  private claveCierre(): string {
+    return `lav.onboarding.cerrado.${this.usuario()?.negocioId ?? 0}`;
+  }
+
+  private cargarOnboarding() {
+    if (this.usuario()?.rol !== 'ADMIN') return;
+    this.onboardingCerrado.set(localStorage.getItem(this.claveCierre()) === '1');
+
+    this.catalogos.servicios().subscribe(servicios => {
+      this.personalSvc.listar().subscribe(personal => {
+        this.pasosOnboarding.set([
+          { clave: 'logo', titulo: 'Pon el logo de tu lavandería', hecho: !!this.config.configuracion().logoUrl, ruta: '/ajustes/negocio' },
+          { clave: 'servicios', titulo: 'Crea tus servicios y precios', hecho: servicios.length > 0, ruta: '/ajustes/servicios' },
+          { clave: 'personal', titulo: 'Registra a tus trabajadores', hecho: personal.length > 0, ruta: '/ajustes/personal' },
+        ]);
+      });
+    });
+  }
+
+  cerrarOnboarding() {
+    localStorage.setItem(this.claveCierre(), '1');
+    this.onboardingCerrado.set(true);
+  }
 
   readonly saludo = computed(() => {
     const h = new Date().getHours();
@@ -32,6 +80,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.cargar();
+    this.cargarOnboarding();
     // Refresco cada 60s para tener siempre datos frescos
     this.timerId = setInterval(() => this.cargar(true), 60_000);
   }
@@ -47,6 +96,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (!silencioso) this.toast.error('No se pudo cargar el resumen.');
       }
     });
+  }
+
+  tieneModulo(modulo: string): boolean {
+    return this.usuario()?.modulosPermitidos?.includes(modulo) ?? false;
   }
 
   colorArea(cantidad: number): string {

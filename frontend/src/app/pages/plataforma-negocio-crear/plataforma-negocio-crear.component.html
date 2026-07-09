@@ -1,0 +1,71 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="cancelar()"><app-icon name="arrow-left" [size]="14"></app-icon> Empresas</button>
+    <div>
+      <h2>Nueva empresa</h2>
+      <p>Crea el negocio, su primera sede y el usuario administrador que la va a manejar.</p>
+    </div>
+  </div>
+
+  <div class="card form-wrap">
+    <form (submit)="guardar(); $event.preventDefault()">
+      <h3>Datos de la empresa</h3>
+
+      <label>Nombre de la empresa *</label>
+      <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Lavanderia Don Pepe"
+        (ngModelChange)="onNombreChange()" />
+
+      <label>Slug de acceso (URL) *</label>
+      <input type="text" [(ngModel)]="form.slug" name="slug" placeholder="Ej: donpepe"
+        (ngModelChange)="onSlugChange()" />
+      <p class="hint">Sus usuarios entraran por <strong>{{ urlAcceso }}</strong></p>
+
+      <div class="row-2">
+        <div>
+          <label>RUC <small class="hint">(opcional)</small></label>
+          <input type="text" [(ngModel)]="form.rucEmpresa" name="rucEmpresa" placeholder="Ej: 20999888771" inputmode="numeric" maxlength="11" />
+        </div>
+        <div>
+          <label>Nombre del titular <small class="hint">(opcional)</small></label>
+          <input type="text" [(ngModel)]="form.titularNombre" name="titularNombre" placeholder="Ej: Pepe Perez" />
+        </div>
+      </div>
+
+      <label>Email del titular <small class="hint">(opcional)</small></label>
+      <input type="email" [(ngModel)]="form.titularEmail" name="titularEmail" placeholder="correo@ejemplo.com" autocomplete="email" />
+
+      <label>Nombre de la primera sede *</label>
+      <input type="text" [(ngModel)]="form.sedeNombre" name="sedeNombre" placeholder="Ej: Principal" />
+
+      <h3>Usuario administrador</h3>
+
+      <div class="row-2">
+        <div>
+          <label>Usuario (acceso) *</label>
+          <input type="text" [(ngModel)]="form.adminUsuario" name="adminUsuario" placeholder="Ej: admindonpepe" autocomplete="username" />
+        </div>
+        <div>
+          <label>Contrasena *</label>
+          <input type="password" [(ngModel)]="form.adminPassword" name="adminPassword" autocomplete="new-password" />
+        </div>
+      </div>
+
+      <label>Nombre completo *</label>
+      <input type="text" [(ngModel)]="form.adminNombreCompleto" name="adminNombreCompleto" placeholder="Ej: Pepe Perez" />
+
+      <label>Email <small class="hint">(opcional)</small></label>
+      <input type="email" [(ngModel)]="form.adminEmail" name="adminEmail" placeholder="correo@ejemplo.com" autocomplete="email" />
+
+      @if (errorForm()) {
+        <div class="form__error">{{ errorForm() }}</div>
+      }
+
+      <div class="form__actions">
+        <button type="button" class="btn btn--ghost" (click)="cancelar()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="guardando()">
+          {{ guardando() ? 'Creando...' : 'Crear empresa' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -16,6 +16,7 @@ const FALLBACK: ConfiguracionNegocio = {
   solesPorPunto: 1,
   anchoTicketMm: 80,
   mensajePieTicket: 'Gracias por su preferencia.',
+  costoDelivery: 0,
 };
 
 @Injectable({ providedIn: 'root' })

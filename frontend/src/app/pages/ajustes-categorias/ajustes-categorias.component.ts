@@ -36,6 +36,7 @@ export class AjustesCategoriasComponent implements OnInit {
   readonly modalAbierto = signal(false);
   readonly editando = signal<Categoria | null>(null);
   readonly confirmarEliminar = signal<Categoria | null>(null);
+  readonly confirmarDesactivar = signal<Categoria | null>(null);
   form: Partial<Categoria> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
@@ -123,9 +124,21 @@ export class AjustesCategoriasComponent implements OnInit {
   }
 
   toggleActiva(c: Categoria) {
-    this.svc.cambiarEstado(c.id, !c.activa).subscribe({
+    if (c.activa) { this.confirmarDesactivar.set(c); return; }
+    this.aplicarCambioEstado(c, true);
+  }
+
+  confirmarDesactivarOk() {
+    const c = this.confirmarDesactivar();
+    if (!c) return;
+    this.aplicarCambioEstado(c, false);
+    this.confirmarDesactivar.set(null);
+  }
+
+  private aplicarCambioEstado(c: Categoria, activa: boolean) {
+    this.svc.cambiarEstado(c.id, activa).subscribe({
       next: () => {
-        this.toast.info(!c.activa ? 'Categoría reactivada' : 'Categoría desactivada');
+        this.toast.info(activa ? 'Categoría reactivada' : 'Categoría desactivada');
         this.cargar();
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')

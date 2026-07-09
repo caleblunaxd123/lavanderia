@@ -166,3 +166,21 @@
     </div>
   </div>
 }
+
+<!-- Modal confirmar desactivar -->
+@if (confirmarDesactivar(); as s) {
+  <div class="modal-backdrop" (click)="confirmarDesactivar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Desactivar servicio?</h3>
+      <button class="modal__close" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p><strong>{{ s.nombre }}</strong> dejará de estar visible en el wizard de registro.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarDesactivar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" (click)="confirmarDesactivarOk()">Sí, desactivar</button>
+      </div>
+    </div>
+  </div>
+}

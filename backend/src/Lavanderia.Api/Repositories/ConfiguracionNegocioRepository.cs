@@ -28,7 +28,7 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
         cmd.CommandText = @$"
             SELECT TOP 1 Id, NombreNegocio, LogoUrl, ColorPrimario, ColorSecundario, ColorAcento,
                          Direccion, Telefono, Ruc, HorarioAtencion, Igv, MetaMensual, SolesPorPunto,
-                         AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion
+                         AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery
             FROM dbo.ConfiguracionNegocio
             {whereNegocio}
             ORDER BY Id";
@@ -51,7 +51,8 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
             AnchoTicketMm = r.GetInt32(r.GetOrdinal("AnchoTicketMm")),
             MensajePieTicket = r.GetNullableString("MensajePieTicket"),
             CondicionesServicio = r.GetNullableString("CondicionesServicio"),
-            NotasProduccion = r.GetNullableString("NotasProduccion")
+            NotasProduccion = r.GetNullableString("NotasProduccion"),
+            CostoDelivery = r.GetDecimal(r.GetOrdinal("CostoDelivery"))
         }, ct);
     }
 
@@ -82,15 +83,16 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
                 MensajePieTicket = @MensajePieTicket,
                 CondicionesServicio = @CondicionesServicio,
                 NotasProduccion = @NotasProduccion,
+                CostoDelivery = @CostoDelivery,
                 FechaActualizacion = SYSDATETIME()
             WHEN NOT MATCHED THEN INSERT
                 (NegocioId, NombreNegocio, LogoUrl, ColorPrimario, ColorSecundario, ColorAcento,
                  Direccion, Telefono, Ruc, HorarioAtencion, Igv, MetaMensual, SolesPorPunto,
-                 AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion)
+                 AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery)
                 VALUES
                 (@NegocioId, @NombreNegocio, @LogoUrl, @ColorPrimario, @ColorSecundario, @ColorAcento,
                  @Direccion, @Telefono, @Ruc, @HorarioAtencion, @Igv, @MetaMensual, @SolesPorPunto,
-                 @AnchoTicketMm, @MensajePieTicket, @CondicionesServicio, @NotasProduccion);";
+                 @AnchoTicketMm, @MensajePieTicket, @CondicionesServicio, @NotasProduccion, @CostoDelivery);";
         cmd.AddParam("@NegocioId", negocioId);
         cmd.AddParam("@NombreNegocio", c.NombreNegocio);
         cmd.AddParam("@LogoUrl", c.LogoUrl);
@@ -108,6 +110,7 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
         cmd.AddParam("@MensajePieTicket", c.MensajePieTicket);
         cmd.AddParam("@CondicionesServicio", c.CondicionesServicio);
         cmd.AddParam("@NotasProduccion", c.NotasProduccion);
+        cmd.AddParam("@CostoDelivery", c.CostoDelivery);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 }

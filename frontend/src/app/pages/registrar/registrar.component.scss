@@ -146,6 +146,18 @@
   }
 }
 
+.puntos-badge {
+  display: inline-block !important;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff7e6 !important;
+  color: #92400e !important;
+  font-weight: 700;
+  font-size: 10.5px !important;
+}
+
 .resultados-cliente {
   list-style: none;
   margin: 6px 0 0;

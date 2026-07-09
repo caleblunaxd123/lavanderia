@@ -1,10 +1,24 @@
 import { Routes } from '@angular/router';
-import { authGuard, moduloGuard } from './core/guards/auth.guard';
+import { authGuard, moduloGuard, rolGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
+  },
+  {
+    path: 'plataforma',
+    canActivate: [authGuard, rolGuard(['PROPIETARIO'])],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./pages/plataforma-negocios/plataforma-negocios.component').then(m => m.PlataformaNegociosComponent)
+      },
+      {
+        path: 'nueva',
+        loadComponent: () => import('./pages/plataforma-negocio-crear/plataforma-negocio-crear.component').then(m => m.PlataformaNegocioCrearComponent)
+      }
+    ]
   },
   {
     path: 'ticket/:id',

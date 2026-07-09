@@ -168,13 +168,14 @@ public class PedidoRepository : IPedidoRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT p.Id, p.SedeId, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni,
-                   p.UsuarioId, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
+                   p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
                    p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                    p.AreaActualId, a.Nombre AS AreaActualNombre,
                    p.Observaciones, p.FechaEntregaReal, p.Anulado, p.MotivoAnulacion, p.CodigoAntiguo
             FROM dbo.Pedido p
             INNER JOIN dbo.Cliente c ON c.Id = p.ClienteId
             LEFT JOIN dbo.AreaLavado a ON a.Id = p.AreaActualId
+            LEFT JOIN dbo.Usuario u ON u.Id = p.UsuarioId
             WHERE p.Id = @Id AND p.SedeId = @SedeId";
         cmd.AddParam("@Id", id);
         cmd.AddParam("@SedeId", sedeId);
@@ -234,7 +235,7 @@ public class PedidoRepository : IPedidoRepository
         cmd.CommandText = @$"
             SELECT
                 p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni,
-                p.UsuarioId, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
+                p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
                 p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                 p.AreaActualId, a.Nombre AS AreaActualNombre,
                 p.Observaciones, p.FechaEntregaReal, p.Anulado, p.MotivoAnulacion, p.CodigoAntiguo,
@@ -242,6 +243,7 @@ public class PedidoRepository : IPedidoRepository
             FROM dbo.Pedido p
             INNER JOIN dbo.Cliente c ON c.Id = p.ClienteId
             LEFT JOIN dbo.AreaLavado a ON a.Id = p.AreaActualId
+            LEFT JOIN dbo.Usuario u ON u.Id = p.UsuarioId
             {where}
             ORDER BY p.EsUrgente DESC, p.FechaIngreso DESC
             OFFSET @Salto ROWS FETCH NEXT @Tamano ROWS ONLY";
@@ -277,7 +279,7 @@ public class PedidoRepository : IPedidoRepository
         cmd.CommandText = @$"
             SELECT
                 p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni,
-                p.UsuarioId, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
+                p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
                 p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                 p.AreaActualId, a.Nombre AS AreaActualNombre,
                 p.Observaciones, p.FechaEntregaReal, p.Anulado, p.MotivoAnulacion, p.CodigoAntiguo,
@@ -285,6 +287,7 @@ public class PedidoRepository : IPedidoRepository
             FROM dbo.Pedido p
             INNER JOIN dbo.Cliente c ON c.Id = p.ClienteId
             LEFT JOIN dbo.AreaLavado a ON a.Id = p.AreaActualId
+            LEFT JOIN dbo.Usuario u ON u.Id = p.UsuarioId
             {where}
             ORDER BY p.FechaIngreso DESC
             OFFSET @Salto ROWS FETCH NEXT @Tamano ROWS ONLY";
@@ -725,6 +728,7 @@ public class PedidoRepository : IPedidoRepository
         ClienteCelular = r.GetNullableString("ClienteCelular"),
         ClienteDni = r.GetNullableString("ClienteDni"),
         UsuarioId = r.GetInt32(r.GetOrdinal("UsuarioId")),
+        UsuarioNombre = r.GetNullableString("UsuarioNombre"),
         FechaIngreso = r.GetDateTime(r.GetOrdinal("FechaIngreso")),
         FechaEntregaEst = r.GetNullableDateTime("FechaEntregaEst"),
         Modalidad = r.GetString(r.GetOrdinal("Modalidad")),

@@ -96,6 +96,16 @@
     </div>
 
     <div class="card seccion">
+      <h3>Delivery</h3>
+
+      <label>Costo de Delivery (S/)</label>
+      <input type="number" min="0" step="0.50" [ngModel]="form().costoDelivery"
+             (ngModelChange)="actualizarCampo('costoDelivery', $event)"
+             placeholder="5.00" />
+      <p class="hint">Se agrega automáticamente como "Servicio a Domicilio" en Registrar cuando el pedido es modalidad Delivery. Déjalo en 0 para no cobrar nada extra.</p>
+    </div>
+
+    <div class="card seccion">
       <h3>Ticket de impresión</h3>
 
       <label>Ancho de tu ticketera</label>
