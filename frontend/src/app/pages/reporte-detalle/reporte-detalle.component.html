@@ -1,0 +1,63 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Reportes</button>
+    <div>
+      <h2>{{ meta?.titulo }}</h2>
+      <p>{{ meta?.descripcion }}</p>
+    </div>
+    <button class="btn btn--primario" (click)="exportarCsv()" [disabled]="cargando() || !resultado()?.filas?.length">
+      <app-icon name="download" [size]="15"></app-icon> Exportar CSV
+    </button>
+  </div>
+
+  @if (meta?.usaRango) {
+    <div class="card filtros">
+      <div>
+        <label>Desde</label>
+        <input type="date" [(ngModel)]="desde" />
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" [(ngModel)]="hasta" />
+      </div>
+      <button class="btn btn--secundario" (click)="cargar()">Filtrar</button>
+    </div>
+  }
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (!resultado()?.filas?.length) {
+    <app-empty-state icono="lista" titulo="Sin datos" mensaje="No hay información para este reporte en el rango seleccionado."></app-empty-state>
+  } @else {
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead>
+          <tr>
+            @for (c of resultado()!.columnas; track c) { <th>{{ c }}</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (fila of filasPaginadas(); track $index) {
+            <tr>
+              @for (c of resultado()!.columnas; track c) { <td>{{ fila[c] }}</td> }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card paginacion-wrap">
+      <app-paginacion
+        [pagina]="pagina()"
+        [tamanoPagina]="tamanoPagina()"
+        [total]="resultado()!.filas.length"
+        (paginaChange)="cambiarPagina($event)"
+        (tamanoPaginaChange)="cambiarTamanoPagina($event)">
+      </app-paginacion>
+    </div>
+  }
+</div>

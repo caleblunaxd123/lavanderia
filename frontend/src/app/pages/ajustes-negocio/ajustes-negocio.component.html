@@ -1,0 +1,144 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Configuración del negocio</h2>
+      <p>Nombre, logo, colores e información fiscal.</p>
+    </div>
+  </div>
+
+  <!-- Preview de marca en vivo -->
+  <div class="preview" [style]="previewStyle()">
+    <div class="preview__brand">
+      @if (form().logoUrl) {
+        <img [src]="form().logoUrl" [alt]="form().nombreNegocio" />
+      } @else {
+        <div class="preview__logo-fallback">💧</div>
+      }
+      <div>
+        <strong>{{ form().nombreNegocio || 'Nombre del negocio' }}</strong>
+        <span>Vista previa · así lo verán tus clientes</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="secciones">
+    <div class="card seccion">
+      <h3>Identidad</h3>
+
+      <label>Nombre del negocio *</label>
+      <input type="text" [ngModel]="form().nombreNegocio"
+             (ngModelChange)="actualizarCampo('nombreNegocio', $event)"
+             placeholder="Mi Lavandería" />
+
+      <label>URL del logo</label>
+      <input type="url" [ngModel]="form().logoUrl"
+             (ngModelChange)="actualizarCampo('logoUrl', $event)"
+             placeholder="https://…/logo.png" />
+      <p class="hint">Sube tu logo a Imgur, Cloudinary o similar y pega el link.</p>
+
+      <div class="colores">
+        <div class="color-picker">
+          <label>Color primario</label>
+          <div class="color-picker__row">
+            <input type="color" [ngModel]="form().colorPrimario"
+                   (ngModelChange)="actualizarCampo('colorPrimario', $event)" />
+            <input type="text" [ngModel]="form().colorPrimario"
+                   (ngModelChange)="actualizarCampo('colorPrimario', $event)"
+                   maxlength="9" />
+          </div>
+        </div>
+        <div class="color-picker">
+          <label>Color secundario</label>
+          <div class="color-picker__row">
+            <input type="color" [ngModel]="form().colorSecundario"
+                   (ngModelChange)="actualizarCampo('colorSecundario', $event)" />
+            <input type="text" [ngModel]="form().colorSecundario"
+                   (ngModelChange)="actualizarCampo('colorSecundario', $event)"
+                   maxlength="9" />
+          </div>
+        </div>
+        <div class="color-picker">
+          <label>Color acento</label>
+          <div class="color-picker__row">
+            <input type="color" [ngModel]="form().colorAcento"
+                   (ngModelChange)="actualizarCampo('colorAcento', $event)" />
+            <input type="text" [ngModel]="form().colorAcento"
+                   (ngModelChange)="actualizarCampo('colorAcento', $event)"
+                   maxlength="9" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card seccion">
+      <h3>Datos fiscales</h3>
+
+      <label>RUC</label>
+      <input type="text" [ngModel]="form().ruc"
+             (ngModelChange)="actualizarCampo('ruc', $event)"
+             placeholder="20XXXXXXXXX" />
+
+      <label>Dirección</label>
+      <input type="text" [ngModel]="form().direccion"
+             (ngModelChange)="actualizarCampo('direccion', $event)"
+             placeholder="Av. Ejemplo 123, Lima" />
+
+      <label>Teléfono</label>
+      <input type="text" [ngModel]="form().telefono"
+             (ngModelChange)="actualizarCampo('telefono', $event)"
+             placeholder="+51 9XX XXX XXX" />
+
+      <label>Horario de atención</label>
+      <input type="text" [ngModel]="form().horarioAtencion"
+             (ngModelChange)="actualizarCampo('horarioAtencion', $event)"
+             placeholder="Lun-Sab 8am - 8pm" />
+    </div>
+
+    <div class="card seccion">
+      <h3>Ticket de impresión</h3>
+
+      <label>Ancho de tu ticketera</label>
+      <div class="switch-ancho">
+        <button type="button"
+                [class.is-active]="form().anchoTicketMm === 58"
+                (click)="actualizarCampo('anchoTicketMm', 58)">
+          58 mm
+          <small>Compacta</small>
+        </button>
+        <button type="button"
+                [class.is-active]="form().anchoTicketMm === 80"
+                (click)="actualizarCampo('anchoTicketMm', 80)">
+          80 mm
+          <small>Recomendado</small>
+        </button>
+      </div>
+      <p class="hint">Se aplica automáticamente al imprimir tickets nuevos.</p>
+
+      <label>Mensaje al pie del ticket</label>
+      <textarea rows="3" [ngModel]="form().mensajePieTicket"
+                (ngModelChange)="actualizarCampo('mensajePieTicket', $event)"
+                placeholder="Gracias por su preferencia. Presente este ticket al recoger."></textarea>
+      <p class="hint">Aparece en todos los tickets. Ideal para agradecimiento u horario.</p>
+
+      <label>Condiciones del servicio <small class="hint">(una por línea)</small></label>
+      <textarea rows="8" [ngModel]="form().condicionesServicio"
+                (ngModelChange)="actualizarCampo('condicionesServicio', $event)"
+                placeholder="Entrega solo con boleta...&#10;Después de 45 días se cobra 20% por almacenamiento..."></textarea>
+      <p class="hint">Se muestran numeradas al pie del ticket "Cliente" (no aparecen en el ticket "Producción").</p>
+
+      <label>Notas de producción <small class="hint">(instrucciones para el operario)</small></label>
+      <textarea rows="3" [ngModel]="form().notasProduccion"
+                (ngModelChange)="actualizarCampo('notasProduccion', $event)"
+                placeholder="Ej: Etiqueta amarilla si es urgente. Revisar mancha antes de lavar."></textarea>
+      <p class="hint">Aparecen al pie del ticket "Producción" (no en el ticket "Cliente"). Útil para instrucciones fijas al operario.</p>
+    </div>
+  </div>
+
+  <div class="acciones">
+    <button class="btn btn--ghost" (click)="volver()">Cancelar</button>
+    <button class="btn btn--primario" (click)="guardar()" [disabled]="guardando()">
+      {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+    </button>
+  </div>
+</div>

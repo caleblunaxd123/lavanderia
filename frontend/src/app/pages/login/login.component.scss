@@ -1,0 +1,140 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, var(--azul-oscuro) 0%, var(--azul-claro) 100%);
+}
+
+.login {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+
+  &__card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.15);
+  }
+
+  &__brand {
+    text-align: center;
+    margin-bottom: 24px;
+
+    img {
+      max-width: 72px;
+      max-height: 72px;
+      margin: 0 auto 12px;
+      display: block;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: var(--azul-oscuro);
+    }
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+  }
+
+  &__logo-fallback {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--azul-oscuro);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+
+    svg { width: 32px; height: 32px; }
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  label {
+    font-size: 12px;
+    color: #64748b;
+    margin: 10px 0 4px;
+    font-weight: 600;
+  }
+
+  input {
+    min-height: 44px;
+    padding: 11px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--azul-oscuro);
+      box-shadow: 0 0 0 3px rgba(11,87,208,.15);
+    }
+  }
+
+  &__error {
+    background: #fde8e8;
+    color: #c0392b;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    text-align: center;
+  }
+
+  &__btn {
+    margin-top: 20px;
+    background: var(--azul-oscuro);
+    color: #fff;
+    border: none;
+    min-height: 46px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__foot {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 11px;
+    margin: 20px 0 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .login {
+    align-items: stretch;
+    padding: 14px;
+
+    &__card {
+      align-self: center;
+      padding: 26px 20px 22px;
+      max-width: none;
+      box-shadow: 0 12px 34px rgba(0,0,0,.18);
+    }
+
+    &__brand h1 {
+      font-size: 20px;
+      overflow-wrap: anywhere;
+    }
+  }
+}

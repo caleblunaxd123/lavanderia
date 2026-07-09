@@ -1,0 +1,369 @@
+// ============================================================
+// Ticket para impresora térmica (58mm o 80mm)
+// - En pantalla: preview centrado con fondo gris
+// - Al imprimir: se ajusta a la página @page definida en TS
+// ============================================================
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #e9edf3;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+// -------- Barra superior (solo pantalla) --------
+.acciones-print {
+  background: var(--azul-oscuro);
+  color: #fff;
+  padding: 14px 16px;
+
+  &__inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  &__hint {
+    flex: 1;
+    margin: 0;
+    font-size: 12px;
+    opacity: .9;
+    min-width: 200px;
+  }
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+
+  &--primario { background: var(--naranja); color: #fff; }
+  &--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
+}
+
+.toggle-grupo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &__label {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: .9;
+  }
+
+  &__botones {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.35);
+
+    button {
+      border: none;
+      background: transparent;
+      color: #fff;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+
+      &.is-active {
+        background: var(--naranja);
+      }
+    }
+  }
+}
+
+.msg {
+  text-align: center;
+  padding: 40px;
+  color: #64748b;
+
+  &.error { color: var(--rojo); }
+}
+
+// -------- Ticket container --------
+.ticket-wrap {
+  padding: 24px 16px 60px;
+  display: flex;
+  justify-content: center;
+}
+
+.ticket {
+  background: #fff;
+  color: #000;
+  padding: 10px 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  font-size: 11px;
+  line-height: 1.35;
+
+  // Preview en pantalla — 80mm ≈ 302px; 58mm ≈ 220px
+  &[data-ancho="80"] { width: 302px; }
+  &[data-ancho="58"] { width: 220px; font-size: 10px; }
+
+  &__header {
+    text-align: center;
+    margin-bottom: 4px;
+
+    h1 {
+      font-size: 14px;
+      margin: 4px 0 2px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    p {
+      margin: 1px 0;
+      font-size: 10px;
+    }
+  }
+
+  &__logo {
+    max-width: 60px;
+    max-height: 60px;
+    margin: 0 auto 4px;
+    display: block;
+  }
+
+  &__divider {
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    color: #000;
+    margin: 4px 0;
+  }
+
+  &__numero {
+    text-align: center;
+    padding: 4px 0;
+  }
+
+  &__label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+
+  &__numero-valor {
+    display: block;
+    font-size: 34px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+
+    span { color: #333; }
+    strong { text-align: right; }
+
+    &--total {
+      font-size: 13px;
+      font-weight: 800;
+      padding: 3px 0;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      margin: 4px 0;
+    }
+
+    &--saldo {
+      font-weight: 800;
+    }
+  }
+
+  &__cliente {
+    strong {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+
+    p { margin: 1px 0; font-size: 11px; }
+  }
+
+  &__items {
+    strong {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+  }
+
+  &__item {
+    margin-bottom: 4px;
+  }
+
+  &__item-nombre {
+    font-weight: 700;
+  }
+
+  &__item-linea {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    padding-left: 6px;
+
+    strong { font-size: 11px; }
+  }
+
+  &__item-desc {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9.5px;
+    padding-left: 6px;
+    color: #333;
+    font-style: italic;
+  }
+
+  &__estado {
+    text-align: center;
+    font-size: 11px;
+
+    small { font-size: 9px; color: #333; }
+  }
+
+  &__pie {
+    text-align: center;
+    font-size: 10px;
+    margin: 6px 0;
+    font-style: italic;
+  }
+
+  &__aviso {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    margin: 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  &__condiciones {
+    font-size: 9px;
+    line-height: 1.4;
+
+    strong {
+      display: block;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 14px;
+    }
+
+    li { margin-bottom: 2px; }
+  }
+
+  &__observaciones {
+    font-size: 10px;
+    line-height: 1.4;
+    padding: 6px 8px;
+    border: 1px dashed #000;
+    border-radius: 4px;
+
+    strong {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    p { margin: 0; font-weight: 600; }
+  }
+
+  &__notas-produccion {
+    font-size: 10px;
+    line-height: 1.4;
+
+    strong {
+      display: block;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+      background: #000;
+      color: #fff;
+      padding: 2px 6px;
+    }
+
+    p { margin: 4px 0; }
+    em { font-style: italic; }
+  }
+
+  &__aviso-recojo {
+    text-align: center;
+    font-size: 9px;
+    margin: 4px 0;
+    font-style: italic;
+    line-height: 1.3;
+  }
+
+  &__espacio-final {
+    height: 30px; // corte de papel
+  }
+}
+
+// ============================================================
+// PRINT: cuando el usuario imprime, ocultar la barra superior
+// y hacer que el ticket ocupe todo el ancho de la página
+// (que ya está definido en @page desde el componente TS)
+// ============================================================
+@media print {
+  :host {
+    background: #fff;
+    min-height: 0;
+  }
+
+  .acciones-print { display: none !important; }
+
+  .ticket-wrap {
+    padding: 0;
+  }
+
+  .ticket {
+    box-shadow: none;
+    padding: 4mm 2mm;
+    width: 100% !important;
+    font-size: 10pt;
+  }
+
+  .ticket[data-ancho="58"] {
+    font-size: 8pt;
+  }
+
+  .ticket__numero-valor {
+    font-size: 26pt !important;
+  }
+
+  .ticket__row--total {
+    font-size: 11pt !important;
+  }
+
+  // Evita que se corte info entre paginas
+  .ticket__items, .ticket__rows { page-break-inside: avoid; }
+}

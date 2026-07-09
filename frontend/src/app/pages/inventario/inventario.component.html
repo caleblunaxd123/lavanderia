@@ -1,0 +1,314 @@
+<div class="page">
+  <div class="page__header">
+    <div class="page__title">
+      <h2>Inventario</h2>
+      <p>Stock de consumibles: detergente, bolsas, suavizante, etc.</p>
+    </div>
+    @if (tab() === 'insumos') {
+      <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
+    }
+  </div>
+
+  <div class="tabs">
+    <button class="tabs__item" [class.is-active]="tab()==='insumos'" (click)="cambiarTab('insumos')">Insumos</button>
+    <button class="tabs__item" [class.is-active]="tab()==='historial'" (click)="cambiarTab('historial')">Historial</button>
+  </div>
+
+  @if (tab() === 'insumos') {
+    @if (cargando()) {
+      <div class="estado">Cargando…</div>
+    } @else if (error()) {
+      <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+        <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+      </app-empty-state>
+    } @else if (insumos().length === 0) {
+      <app-empty-state icono="lista" titulo="Sin insumos aún" mensaje="Registra el primer consumible para empezar a controlar tu stock.">
+        <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
+      </app-empty-state>
+    } @else {
+      <!-- Desktop: tabla -->
+      <div class="card tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr><th>Nombre</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (i of insumosPaginados(); track i.id) {
+              <tr [class.inactivo]="!i.activo">
+                <td class="nombre">{{ i.nombre }}</td>
+                <td>{{ i.unidadMedida }}</td>
+                <td class="mono">{{ i.stockActual }}</td>
+                <td class="mono">{{ i.stockMinimo }}</td>
+                <td>
+                  @if (!i.activo) {
+                    <span class="badge badge--gris">Inactivo</span>
+                  } @else if (bajoStock(i)) {
+                    <span class="badge badge--rojo"><app-icon name="warning" [size]="13"></app-icon> Stock bajo</span>
+                  } @else {
+                    <span class="badge badge--verde">OK</span>
+                  }
+                </td>
+                <td class="acciones-row">
+                  <button class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">Registrar movimiento</button>
+                  <button class="btn-icon" (click)="abrirEditarInsumo(i)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                  <button class="btn-icon" (click)="toggleActivo(i)" [title]="i.activo ? 'Desactivar' : 'Reactivar'">
+                    @if (i.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                  </button>
+                  <button class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile: cards -->
+      <div class="cards">
+        @for (i of insumosPaginados(); track i.id) {
+          <div class="card insumo-card" [class.inactivo]="!i.activo">
+            <div class="insumo-card__head">
+              <strong>{{ i.nombre }}</strong>
+              @if (!i.activo) {
+                <span class="badge badge--gris">Inactivo</span>
+              } @else if (bajoStock(i)) {
+                <span class="badge badge--rojo"><app-icon name="warning" [size]="12"></app-icon> Stock bajo</span>
+              } @else {
+                <span class="badge badge--verde">OK</span>
+              }
+            </div>
+            <div class="insumo-card__body">
+              <div><span>Unidad:</span> {{ i.unidadMedida }}</div>
+              <div><span>Stock actual:</span> <strong>{{ i.stockActual }}</strong></div>
+              <div><span>Stock mínimo:</span> {{ i.stockMinimo }}</div>
+            </div>
+            <div class="insumo-card__acciones">
+              <button class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">Registrar movimiento</button>
+              <div class="insumo-card__iconos">
+                <button class="btn-icon" (click)="abrirEditarInsumo(i)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button class="btn-icon" (click)="toggleActivo(i)" [title]="i.activo ? 'Desactivar' : 'Reactivar'">
+                  @if (i.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                </button>
+                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="card paginacion-wrap">
+        <app-paginacion
+          [pagina]="paginaInsumos()"
+          [tamanoPagina]="tamanoPaginaInsumos()"
+          [total]="insumos().length"
+          (paginaChange)="cambiarPaginaInsumos($event)"
+          (tamanoPaginaChange)="cambiarTamanoPaginaInsumos($event)">
+        </app-paginacion>
+      </div>
+    }
+  } @else {
+    <div class="card filtros">
+      <div>
+        <label>Desde</label>
+        <input type="date" [(ngModel)]="desdeHistorial" />
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" [(ngModel)]="hastaHistorial" />
+      </div>
+      <button class="btn btn--secundario" (click)="cargarHistorial()">Filtrar</button>
+    </div>
+
+    @if (cargandoHistorial()) {
+      <div class="estado">Cargando…</div>
+    } @else if (movimientos().length === 0) {
+      <app-empty-state icono="lista" titulo="Sin movimientos" mensaje="No hay movimientos de inventario en el rango seleccionado."></app-empty-state>
+    } @else {
+      <!-- Desktop: tabla -->
+      <div class="card tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr><th>Fecha</th><th>Insumo</th><th>Tipo</th><th>Cantidad</th><th>Costo</th><th>Usuario</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            @for (m of movimientosPaginados(); track m.id) {
+              <tr>
+                <td class="mono">{{ m.fecha | date:'dd/MM/yy HH:mm' }}</td>
+                <td>{{ m.insumoNombre }}</td>
+                <td><span [class]="claseTipo(m.tipo)">{{ etiquetaTipo(m.tipo) }}</span></td>
+                <td class="mono">{{ m.cantidad }}</td>
+                <td class="mono">{{ m.costoTotal ? ('S/ ' + (m.costoTotal | number:'1.2-2')) : '—' }}</td>
+                <td>{{ m.usuarioNombre }}</td>
+                <td>{{ m.descripcion || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile: cards -->
+      <div class="cards">
+        @for (m of movimientosPaginados(); track m.id) {
+          <div class="card movimiento-card">
+            <div class="movimiento-card__head">
+              <strong>{{ m.insumoNombre }}</strong>
+              <span [class]="claseTipo(m.tipo)">{{ etiquetaTipo(m.tipo) }}</span>
+            </div>
+            <div class="movimiento-card__body">
+              <div><span>Fecha:</span> {{ m.fecha | date:'dd/MM/yy HH:mm' }}</div>
+              <div><span>Cantidad:</span> <strong>{{ m.cantidad }}</strong></div>
+              <div><span>Costo:</span> {{ m.costoTotal ? ('S/ ' + (m.costoTotal | number:'1.2-2')) : '—' }}</div>
+              <div><span>Usuario:</span> {{ m.usuarioNombre }}</div>
+              @if (m.descripcion) {
+                <div class="movimiento-card__desc"><span>Nota:</span> {{ m.descripcion }}</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="card paginacion-wrap">
+        <app-paginacion
+          [pagina]="paginaHistorial()"
+          [tamanoPagina]="tamanoPaginaHistorial()"
+          [total]="movimientos().length"
+          (paginaChange)="cambiarPaginaHistorial($event)"
+          (tamanoPaginaChange)="cambiarTamanoPaginaHistorial($event)">
+        </app-paginacion>
+      </div>
+    }
+  }
+</div>
+
+@if (modalInsumo()) {
+  <div class="modal-backdrop" (click)="cerrarModalInsumo()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>{{ editandoInsumo() ? 'Editar insumo' : 'Nuevo insumo' }}</h3>
+      <button class="modal__close" (click)="cerrarModalInsumo()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <form (submit)="guardarInsumo(); $event.preventDefault()">
+      <div class="modal__body">
+        <label>Nombre *</label>
+        <input type="text" [(ngModel)]="formInsumo.nombre" name="nombre" placeholder="Ej: Detergente en polvo" />
+
+        <div class="row-2">
+          <div>
+            <label>Unidad de medida *</label>
+            <input type="text" [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: kg, litro, unidad" />
+          </div>
+          <div>
+            <label>Stock mínimo</label>
+            <input type="number" min="0" step="0.01" [(ngModel)]="formInsumo.stockMinimo" name="stockMinimo" />
+          </div>
+        </div>
+
+        @if (!editandoInsumo()) {
+          <label>Stock inicial</label>
+          <input type="number" min="0" step="0.01" [(ngModel)]="formInsumo.stockActual" name="stockActual" />
+        }
+
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="formInsumo.activo" name="activo" />
+          Insumo activo
+        </label>
+
+        @if (errorFormInsumo()) {
+          <div class="modal__error">{{ errorFormInsumo() }}</div>
+        }
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalInsumo()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="guardandoInsumo()">
+          {{ guardandoInsumo() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (confirmarEliminar(); as i) {
+  <div class="modal-backdrop" (click)="confirmarEliminar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Eliminar insumo?</h3>
+      <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p>Vas a eliminar <strong>{{ i.nombre }}</strong>. Quedará desactivado y podrás reactivarlo luego.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" [disabled]="guardandoInsumo()" (click)="eliminar()">
+          {{ guardandoInsumo() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (modalMovimiento()) {
+  <div class="modal-backdrop" (click)="cerrarModalMovimiento()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>Registrar movimiento · {{ insumoMovimiento?.nombre }}</h3>
+      <button class="modal__close" (click)="cerrarModalMovimiento()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <form (submit)="confirmarMovimiento(); $event.preventDefault()">
+      <div class="modal__body">
+        <label>Tipo de movimiento</label>
+        <div class="tipo-row">
+          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='COMPRA'" (click)="movTipo='COMPRA'">Compra</button>
+          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='CONSUMO'" (click)="movTipo='CONSUMO'">Consumo</button>
+          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='AJUSTE'" (click)="movTipo='AJUSTE'">Ajuste</button>
+        </div>
+
+        <label>Cantidad ({{ insumoMovimiento?.unidadMedida }}) {{ movTipo === 'AJUSTE' ? '· usa negativo para restar' : '' }}</label>
+        <input type="number" step="0.01" [(ngModel)]="movCantidad" name="cantidad" />
+
+        @if (movTipo === 'COMPRA') {
+          <div class="row-2">
+            <div>
+              <label>Costo total (opcional)</label>
+              <input type="number" min="0" step="0.01" [(ngModel)]="movCosto" name="costo" />
+            </div>
+            @if (movCosto > 0) {
+              <div>
+                <label>Método de pago</label>
+                <select [(ngModel)]="movMetodoPago" name="metodoPago">
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="YAPE">Yape</option>
+                  <option value="PLIN">Plin</option>
+                  <option value="TRANSFERENCIA">Transferencia</option>
+                  <option value="POS">POS</option>
+                </select>
+              </div>
+            }
+          </div>
+          @if (movCosto > 0) {
+            <label>Tipo de gasto <small class="hint">(para que quede en Cuadre de Caja)</small></label>
+            <select [(ngModel)]="movTipoGastoId" name="tipoGastoId">
+              <option [ngValue]="''">Sin categoría</option>
+              @for (t of tiposGasto(); track t.id) {
+                <option [ngValue]="t.id">{{ t.nombre }}</option>
+              }
+            </select>
+          }
+        }
+
+        <label>Descripción <small class="hint">(opcional)</small></label>
+        <input type="text" [(ngModel)]="movDescripcion" name="descripcion" placeholder="Ej: compra en Makro" />
+
+        @if (movCosto > 0 && movTipo === 'COMPRA') {
+          <p class="hint">Esto también se registrará como gasto en el Cuadre de Caja de hoy.</p>
+        }
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalMovimiento()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="!puedeRegistrarMovimiento">
+          {{ guardandoMovimiento() ? 'Guardando…' : 'Registrar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

@@ -1,0 +1,363 @@
+// ============================
+// Header responsive
+// - Desktop: navbar de dos niveles con tabs
+// - Mobile:  brand + hamburguesa + drawer lateral
+// ============================
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 24px;
+  background: linear-gradient(90deg, var(--azul-oscuro) 0%, var(--azul-claro) 100%);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  &__hamburger {
+    display: none;
+    background: transparent;
+    border: none;
+    padding: 8px;
+    width: 40px;
+    height: 40px;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    cursor: pointer;
+
+    span {
+      display: block;
+      height: 3px;
+      background: #fff;
+      border-radius: 3px;
+    }
+  }
+
+  &__primary {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  &__icon {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+  }
+
+  &__logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+
+    strong {
+      font-size: 16px;
+      letter-spacing: .5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    span {
+      font-size: 10px;
+      letter-spacing: 1px;
+      opacity: .85;
+    }
+  }
+}
+
+// ---------- Badge de sede: siempre visible, fijo en la parte inferior ----------
+.sede-badge {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 30;
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(90deg, var(--azul-oscuro), var(--azul-claro));
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+
+    &:not(.is-fijo):hover { filter: brightness(1.1); }
+    &.is-fijo { cursor: default; }
+    &:disabled { opacity: .6; cursor: not-allowed; }
+  }
+
+  &__menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.25);
+    min-width: 180px;
+    overflow: hidden;
+    z-index: 25;
+  }
+
+  &__item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #1a202c;
+    cursor: pointer;
+
+    &:hover { background: #eaf1ff; }
+    &.is-active { color: var(--azul-oscuro); font-weight: 700; background: #eaf1ff; }
+  }
+}
+
+@media (max-width: 720px) {
+  .sede-badge {
+    bottom: 12px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .sede-badge__btn span {
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.tab {
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px 8px 0 0;
+  opacity: .85;
+  transition: background .15s, opacity .15s;
+  white-space: nowrap;
+
+  &:hover {
+    opacity: 1;
+    background: rgba(255,255,255,.12);
+  }
+
+  &.is-active {
+    background: #fff;
+    color: var(--azul-oscuro);
+    opacity: 1;
+  }
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255,255,255,.2);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+
+  strong {
+    font-size: 12.5px;
+  }
+
+  span {
+    font-size: 10px;
+    opacity: .8;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+}
+
+.user-menu__btn {
+  border: none;
+  background: rgba(255,255,255,.15);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover { background: rgba(255,255,255,.25); }
+}
+
+.subbar {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  background: var(--azul-claro);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar { display: none; }
+}
+
+.tab--sub {
+  border-radius: 0 0 8px 8px;
+  padding: 10px 18px;
+
+  &.is-active {
+    background: #fff;
+    color: var(--azul-oscuro);
+  }
+}
+
+// ---------- Drawer lateral (móvil) ----------
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 30;
+  animation: fade .15s ease-out;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 82%;
+  max-width: 320px;
+  background: #fff;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0,0,0,.15);
+  animation: slide .18s ease-out;
+
+  &__header {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--azul-oscuro) 0%, var(--azul-claro) 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    strong { font-size: 16px; }
+    span { font-size: 12px; opacity: .85; }
+  }
+
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+
+    a {
+      padding: 14px 20px;
+      color: #1a202c;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      border-left: 3px solid transparent;
+
+      &.is-active {
+        background: #eaf1ff;
+        color: var(--azul-oscuro);
+        border-left-color: var(--azul-oscuro);
+      }
+    }
+  }
+
+  &__separator {
+    height: 1px;
+    background: var(--gris-borde);
+    margin: 6px 20px;
+  }
+
+  &__logout {
+    text-align: left;
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    color: var(--rojo);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover { background: #fef2f2; }
+  }
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+// ---------- Responsive ----------
+@media (max-width: 900px) {
+  .user-info { display: none; }
+  .brand__text span { display: none; }
+  .brand__text strong { max-width: 140px; }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    padding: 8px 14px;
+    gap: 10px;
+
+    &__hamburger { display: flex; }
+    &__primary   { display: none; }
+  }
+
+  .subbar { display: none; }
+
+  // A este ancho ya no compiten los tabs ni el user-info por espacio,
+  // asi que el nombre del negocio puede usar el ancho disponible.
+  .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .brand__text strong {
+    max-width: 100%;
+  }
+
+  .user-menu {
+    margin-left: auto;
+    padding-left: 0;
+    border-left: none;
+    flex-shrink: 0;
+  }
+}

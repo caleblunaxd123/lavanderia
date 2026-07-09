@@ -1,0 +1,143 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Usuarios</h2>
+      <p>Agrega, actualiza o desactiva usuarios del sistema.</p>
+    </div>
+    <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo usuario</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (usuarios().length === 0) {
+    <app-empty-state icono="lista" titulo="Sin usuarios aún" mensaje="Crea el primer usuario del equipo.">
+      <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo usuario</button>
+    </app-empty-state>
+  } @else {
+    <!-- Desktop: tabla -->
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead>
+          <tr><th>Usuario</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (u of usuariosPaginados(); track u.id) {
+            <tr [class.inactivo]="!u.activo">
+              <td class="mono">{{ u.usuario }}</td>
+              <td class="nombre">{{ u.nombreCompleto }}</td>
+              <td>{{ u.email || '—' }}</td>
+              <td>{{ u.rolNombre || u.rolCodigo }}</td>
+              <td>
+                <span [class]="'badge ' + (u.activo ? 'badge--verde' : 'badge--gris')">
+                  {{ u.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="acciones-row">
+                <button class="btn-icon" (click)="abrirEditar(u)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button class="btn-icon" (click)="toggleActivo(u)" [disabled]="u.id === miPropioUsuarioId"
+                  [title]="u.id === miPropioUsuarioId ? 'No puedes desactivar tu propio usuario' : (u.activo ? 'Desactivar' : 'Reactivar')">
+                  @if (u.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div class="cards">
+      @for (u of usuariosPaginados(); track u.id) {
+        <div class="card usuario-card" [class.inactivo]="!u.activo">
+          <div class="usuario-card__head">
+            <strong>{{ u.nombreCompleto }}</strong>
+            <span [class]="'badge ' + (u.activo ? 'badge--verde' : 'badge--gris')">
+              {{ u.activo ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <div class="usuario-card__body">
+            <div><span>Usuario:</span> {{ u.usuario }}</div>
+            <div><span>Email:</span> {{ u.email || '—' }}</div>
+            <div><span>Rol:</span> {{ u.rolNombre || u.rolCodigo }}</div>
+          </div>
+          <div class="usuario-card__acciones">
+            <button class="btn btn--ghost btn--sm" (click)="abrirEditar(u)">Editar</button>
+            <button class="btn btn--ghost btn--sm" [disabled]="u.id === miPropioUsuarioId" (click)="toggleActivo(u)">
+              {{ u.activo ? 'Desactivar' : 'Reactivar' }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="card paginacion-wrap">
+      <app-paginacion
+        [pagina]="pagina()"
+        [tamanoPagina]="tamanoPagina()"
+        [total]="usuarios().length"
+        (paginaChange)="cambiarPagina($event)"
+        (tamanoPaginaChange)="cambiarTamanoPagina($event)">
+      </app-paginacion>
+    </div>
+  }
+</div>
+
+<!-- Modal Crear/Editar -->
+@if (modalAbierto()) {
+  <div class="modal-backdrop" (click)="cerrar()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>{{ editando() ? 'Editar usuario' : 'Nuevo usuario' }}</h3>
+      <button class="modal__close" (click)="cerrar()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <form (submit)="guardar(); $event.preventDefault()">
+      <div class="modal__body">
+        <label>Usuario (acceso) *</label>
+        <input type="text" [(ngModel)]="form.usuario" name="usuario" placeholder="Ej: jperez" />
+
+        <label>Nombre completo *</label>
+        <input type="text" [(ngModel)]="form.nombreCompleto" name="nombreCompleto" placeholder="Ej: Juan Pérez" />
+
+        <label>Email <small class="hint">(opcional)</small></label>
+        <input type="email" [(ngModel)]="form.email" name="email" placeholder="correo@ejemplo.com" />
+
+        <div class="row-2">
+          <div>
+            <label>Rol *</label>
+            <select [(ngModel)]="form.rolId" name="rolId">
+              @for (r of roles(); track r.id) {
+                <option [ngValue]="r.id">{{ r.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>{{ editando() ? 'Nueva contraseña' : 'Contraseña *' }}</label>
+            <input type="password" [(ngModel)]="form.password" name="password"
+              [placeholder]="editando() ? 'Dejar vacío para no cambiar' : ''" />
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="form.activo" name="activo" />
+          Usuario activo
+        </label>
+
+        @if (errorForm()) {
+          <div class="modal__error">{{ errorForm() }}</div>
+        }
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

@@ -1,0 +1,282 @@
+<div class="page">
+  <div class="page__header card">
+    <h2>Nuevo pedido @if (siguienteNumero()) { <small class="numero-preview">N° {{ siguienteNumero() }}</small> }</h2>
+    <div class="modalidad">
+      <button class="modalidad__btn" [class.is-active]="modalidad==='Tienda'" (click)="modalidad='Tienda'">Tienda</button>
+      <button class="modalidad__btn" [class.is-active]="modalidad==='Delivery'" (click)="modalidad='Delivery'">Delivery</button>
+    </div>
+    <button class="btn btn--primario" [disabled]="!puedeRegistrar" (click)="registrarOrden()">
+      {{ registrando() ? 'Registrando…' : 'Registrar' }}
+    </button>
+  </div>
+
+  @if (registrado()) {
+    <div class="card confirmacion">
+      <div class="confirmacion__ilus">
+        <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="cnfBg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#dcfce7"/><stop offset="1" stop-color="#a7f3d0"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="120" cy="180" rx="90" ry="8" fill="#000" opacity=".08"/>
+          <circle cx="120" cy="95" r="70" fill="url(#cnfBg)"/>
+          <!-- Caja/paquete regalo -->
+          <rect x="72" y="80" width="96" height="66" rx="4" fill="#f59e0b"/>
+          <rect x="72" y="80" width="96" height="18" fill="#d97706"/>
+          <rect x="112" y="60" width="16" height="86" fill="#dc2626"/>
+          <path d="M120 60c-14 0-22-14-10-22 6-4 12 4 10 12M120 60c14 0 22-14 10-22-6-4-12 4-10 12" fill="#dc2626"/>
+          <!-- Check en el centro (dentro círculo blanco) -->
+          <circle cx="120" cy="112" r="16" fill="#fff"/>
+          <path d="M112 112l6 6 10-12" stroke="#059669" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Confetti -->
+          <rect x="40" y="30" width="6" height="14" rx="2" fill="#fbbf24" transform="rotate(20 43 37)"/>
+          <rect x="190" y="35" width="6" height="14" rx="2" fill="#3b82f6" transform="rotate(-30 193 42)"/>
+          <rect x="30" y="120" width="6" height="14" rx="2" fill="#8b5cf6" transform="rotate(45 33 127)"/>
+          <rect x="200" y="120" width="6" height="14" rx="2" fill="#f43f5e" transform="rotate(-15 203 127)"/>
+          <circle cx="60" cy="20" r="4" fill="#fbbf24"/>
+          <circle cx="180" cy="15" r="4" fill="#f43f5e"/>
+          <circle cx="215" cy="70" r="4" fill="#8b5cf6"/>
+          <circle cx="25" cy="70" r="4" fill="#06b6d4"/>
+          <circle cx="215" cy="150" r="3" fill="#10b981"/>
+          <circle cx="25" cy="150" r="3" fill="#fbbf24"/>
+          <!-- Líneas de "celebración" -->
+          <path d="M50 60l6 8M190 60l-6 8M60 130l6-4M180 130l-6-4" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h3>¡Pedido #{{ pedidoCreado()?.numero }} registrado!</h3>
+      <p>Cliente: <strong>{{ pedidoCreado()?.clienteNombre }}</strong></p>
+      <p>Total: <strong>S/ {{ (pedidoCreado()?.total || 0) | number:'1.2-2' }}</strong></p>
+
+      <button class="btn btn--primario btn--grande" (click)="imprimirTicket()">
+        <app-icon name="printer" [size]="16"></app-icon> Imprimir ticket
+      </button>
+
+      @if (notificarWhatsapp && pedidoCreado()?.clienteCelular) {
+        <button class="btn btn--secundario btn--grande" (click)="enviarWhatsapp()">
+          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar por WhatsApp
+        </button>
+      }
+
+      <div class="confirmacion__acciones">
+        <button class="btn btn--ghost" (click)="nuevaOrden()">Registrar otro</button>
+        <button class="btn btn--secundario" (click)="irAPedidos()">Ver en lista</button>
+      </div>
+    </div>
+  } @else {
+    <div class="pasos">
+      <!-- PASO 1 -->
+      <div class="card paso">
+        <h4>PASO 1 <span>Información del cliente</span></h4>
+
+        @if (clienteExistente) {
+          <div class="cliente-seleccionado">
+            <div>
+              <strong><app-icon name="check" [size]="13"></app-icon> {{ clienteExistente.nombre }}</strong>
+              <span>{{ clienteExistente.celular || 'Sin celular' }}</span>
+            </div>
+            <button type="button" class="btn-quitar-cliente" (click)="quitarClienteSeleccionado()" title="Quitar selección"><app-icon name="close" [size]="12"></app-icon></button>
+          </div>
+        } @else {
+          <label>Buscar cliente frecuente</label>
+          <div class="buscador-cliente">
+            <select [(ngModel)]="campoBusquedaCliente">
+              <option>Nombre</option>
+              <option>Celular</option>
+              <option>DNI</option>
+            </select>
+            <input type="text" [placeholder]="'Buscar por ' + campoBusquedaCliente + '…'"
+              [ngModel]="textoBusquedaCliente" (ngModelChange)="onBuscarClienteInput($event)" />
+          </div>
+          @if (buscandoCliente()) { <p class="hint">Buscando…</p> }
+          @if (resultadosBusquedaCliente().length > 0) {
+            <ul class="resultados-cliente">
+              @for (c of resultadosBusquedaCliente(); track c.id) {
+                <li (click)="seleccionarClienteFrecuente(c)">
+                  <strong>{{ c.nombre }}</strong>
+                  <span>{{ c.celular || 'Sin celular' }}{{ c.dni ? ' · DNI ' + c.dni : '' }}</span>
+                </li>
+              }
+            </ul>
+          } @else if (textoBusquedaCliente.trim().length >= 2 && !buscandoCliente()) {
+            <p class="hint">Sin resultados. Se registrará como cliente nuevo.</p>
+          }
+        }
+
+        <label>Nombre *</label>
+        <input type="text" placeholder="Nombre completo" [(ngModel)]="nombre" />
+
+        <label>Celular</label>
+        <input type="text" placeholder="9XXXXXXXX" [(ngModel)]="celular" />
+
+        <label>Dirección</label>
+        <input type="text" placeholder="Dirección (para delivery)" [(ngModel)]="direccion" />
+
+        <label>DNI</label>
+        <input type="text" placeholder="DNI" [(ngModel)]="documentoIdentidad" />
+
+        <label>RUC <small class="hint">(opcional)</small></label>
+        <input type="text" placeholder="RUC" [(ngModel)]="documentoFiscal" />
+      </div>
+
+      <!-- PASO 2 -->
+      <div class="card paso paso--items">
+        <h4>PASO 2 <span>¿Qué trajo el cliente?</span></h4>
+
+        <label>Productos y servicios</label>
+        <div class="row-agregar">
+          <select [(ngModel)]="servicioSeleccionadoId">
+            <option [ngValue]="''" disabled>Escoge un servicio…</option>
+            @for (s of catalogo(); track s.id) {
+              <option [ngValue]="s.id">{{ s.nombre }} — S/ {{ s.precio }} / {{ s.unidad }}</option>
+            }
+          </select>
+          <button class="btn btn--secundario" (click)="agregarItem()" [disabled]="!servicioSeleccionadoId">Agregar</button>
+        </div>
+
+        <table class="tabla-items">
+          <thead>
+            <tr><th>Cant.</th><th>Item</th><th>Precio</th><th>Total</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (it of items(); track it.servicioId) {
+              <tr>
+                <td>
+                  <input type="number" step="0.01" min="0.01" [ngModel]="it.cantidad"
+                    (ngModelChange)="cambiarCantidad(it.servicioId, $event)" class="input-cantidad" />
+                </td>
+                <td>{{ it.nombre }} <small>({{ it.unidad }})</small></td>
+                <td>S/ {{ it.precio.toFixed(2) }}</td>
+                <td>S/ {{ (it.precio * it.cantidad).toFixed(2) }}</td>
+                <td><button class="btn-quitar" (click)="quitarItem(it.servicioId)"><app-icon name="close" [size]="11"></app-icon></button></td>
+              </tr>
+              <tr class="fila-nota">
+                <td></td>
+                <td colspan="4">
+                  <input type="text" class="input-nota" placeholder="Observación de la prenda (ej. mancha, botón suelto…)"
+                    [ngModel]="it.descripcion" (ngModelChange)="cambiarDescripcion(it.servicioId, $event)" />
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="vacio">Debe haber al menos un item</td></tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="totales">
+          <div><span>Subtotal:</span> S/ {{ subtotal().toFixed(2) }}</div>
+          @if (aplicaDescuento()) {
+            <div class="descuento"><span>Descuento ({{ descuentoPorcentaje() }}%):</span> - S/ {{ descuentoMonto().toFixed(2) }}</div>
+          }
+          @if (esUrgente()) {
+            <div class="recargo"><span><app-icon name="fire" [size]="11"></app-icon> Recargo urgente ({{ recargoUrgentePorcentaje() }}%):</span> + S/ {{ recargoUrgenteMonto().toFixed(2) }}</div>
+          }
+          @if (redondeo() !== 0) {
+            <div class="redondeo"><span>Redondeo:</span> {{ redondeo() > 0 ? '+' : '' }} S/ {{ redondeo().toFixed(2) }}</div>
+          }
+          <div class="total-neto"><span>Total:</span> S/ {{ totalFinal().toFixed(2) }}</div>
+        </div>
+      </div>
+
+      <div class="columna-derecha">
+        <!-- PASO 3 -->
+        <div class="card paso">
+          <h4>PASO 3 <span>{{ modalidad === 'Delivery' ? '¿Cuándo entregar?' : '¿Cuándo estará listo para recojo?' }}</span></h4>
+
+          <label>Área de lavado inicial</label>
+          <select [(ngModel)]="areaInicialId">
+            @for (a of areas(); track a.id) {
+              <option [ngValue]="a.id">{{ a.nombre }}</option>
+            }
+          </select>
+
+          <label>{{ modalidad === 'Delivery' ? 'Fecha y hora de entrega' : 'Fecha y hora de recojo' }}</label>
+          <input type="datetime-local" [ngModel]="fechaEntregaValor()"
+                 (ngModelChange)="fechaEntregaValor.set($event)" />
+
+          <div class="presets">
+            <button type="button" class="preset" (click)="presetEntrega(2)">En 2h</button>
+            <button type="button" class="preset" (click)="presetEntrega(4)">En 4h</button>
+            <button type="button" class="preset" (click)="presetEntrega(24)">En 24h</button>
+            <button type="button" class="preset" (click)="presetMananaHora(10)">Mañana 10am</button>
+            <button type="button" class="preset" (click)="presetMananaHora(18)">Mañana 6pm</button>
+          </div>
+
+          <p class="hint"><app-icon name="calendar" [size]="13"></app-icon> <strong>{{ fechaEntregaEstimada() | date:'EEEE d MMM, h:mm a' }}</strong></p>
+          <p class="hint hint--sub">Si hay demora (ej. falta agua), luego ajustas la fecha en el detalle del pedido y el cliente recibe el nuevo horario por WhatsApp.</p>
+        </div>
+
+        <!-- PASO 4 -->
+        <div class="card paso">
+          <h4>PASO 4 <span>¿Descuento?</span></h4>
+
+          <label>Código de promoción <small class="hint">(opcional)</small></label>
+          @if (promoAplicada(); as promo) {
+            <div class="promo-aplicada">
+              <div>
+                <strong><app-icon name="check" [size]="13"></app-icon> {{ codigoPromo }}</strong>
+                <span>{{ promo.descripcion }}</span>
+              </div>
+              <button type="button" class="btn-quitar-cliente" (click)="quitarPromo()" title="Quitar promoción"><app-icon name="close" [size]="12"></app-icon></button>
+            </div>
+          } @else {
+            <div class="row-agregar">
+              <input type="text" placeholder="Ej: VERANO10" [(ngModel)]="codigoPromo" style="text-transform: uppercase;" />
+              <button class="btn btn--secundario" (click)="validarPromo()" [disabled]="validandoPromo() || !codigoPromo.trim()">
+                {{ validandoPromo() ? '…' : 'Aplicar' }}
+              </button>
+            </div>
+            @if (errorPromo()) { <p class="hint hint--error">{{ errorPromo() }}</p> }
+          }
+
+          <div class="switch-row">
+            <button class="switch-btn" [class.is-active]="!aplicaDescuento()" (click)="aplicaDescuento.set(false)">NO</button>
+            <button class="switch-btn" [class.is-active]="aplicaDescuento()" (click)="aplicaDescuento.set(true)">SI</button>
+          </div>
+          @if (aplicaDescuento()) {
+            <label>Porcentaje</label>
+            <input type="number" min="0" max="100" [ngModel]="descuentoPorcentaje()" (ngModelChange)="descuentoPorcentaje.set($event)" />
+          }
+
+          <label class="label-urgente"><app-icon name="fire" [size]="14"></app-icon> ¿Servicio urgente?</label>
+          <div class="switch-row">
+            <button class="switch-btn" [class.is-active]="!esUrgente()" (click)="esUrgente.set(false)">NO</button>
+            <button class="switch-btn switch-btn--urgente" [class.is-active]="esUrgente()" (click)="esUrgente.set(true)">SI</button>
+          </div>
+          @if (esUrgente()) {
+            <label>Recargo (%)</label>
+            <input type="number" min="0" max="100" [ngModel]="recargoUrgentePorcentaje()" (ngModelChange)="recargoUrgentePorcentaje.set($event)" />
+          }
+        </div>
+
+        <!-- PASO 5 -->
+        <div class="card paso">
+          <h4>PASO 5 <span>Pago</span></h4>
+          <label>Monto pagado ahora</label>
+          <input type="number" step="0.01" min="0" [(ngModel)]="montoPagado" />
+          <p class="hint">
+            @if (montoPagado <= 0) { Pendiente }
+            @else if (montoPagado >= totalFinal()) { Pagado completo }
+            @else { Pago parcial · falta S/ {{ (totalFinal() - montoPagado).toFixed(2) }} }
+          </p>
+
+          @if (montoPagado > 0) {
+            <label>Método de pago</label>
+            <select [(ngModel)]="metodoPagoInicial">
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="YAPE">Yape</option>
+              <option value="PLIN">Plin</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+              <option value="POS">POS/Tarjeta</option>
+            </select>
+          }
+
+          <label class="checkbox-row">
+            <input type="checkbox" [(ngModel)]="notificarWhatsapp" />
+            Enviar ticket por WhatsApp
+          </label>
+        </div>
+      </div>
+    </div>
+  }
+</div>

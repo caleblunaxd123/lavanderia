@@ -1,0 +1,35 @@
+<div class="login">
+  <div class="login__card">
+    <div class="login__brand">
+      @if (logoUrl()) {
+        <img [src]="logoUrl()" [alt]="nombreNegocio()" />
+      } @else {
+        <div class="login__logo-fallback">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 2c3 4 6 7.5 6 11.5A6 6 0 1 1 6 13.5C6 9.5 9 6 12 2Z" />
+          </svg>
+        </div>
+      }
+      <h1>{{ nombreNegocio() }}</h1>
+      <p>Ingresa tus credenciales</p>
+    </div>
+
+    <form (submit)="submit(); $event.preventDefault()">
+      <label>Usuario</label>
+      <input type="text" [(ngModel)]="usuario" name="usuario" autocomplete="username" placeholder="admin" />
+
+      <label>Contraseña</label>
+      <input type="password" [(ngModel)]="password" name="password" autocomplete="current-password" placeholder="••••••••" />
+
+      @if (error()) {
+        <div class="login__error">{{ error() }}</div>
+      }
+
+      <button type="submit" class="login__btn" [disabled]="cargando()">
+        {{ cargando() ? 'Ingresando…' : 'Ingresar' }}
+      </button>
+    </form>
+
+    <p class="login__foot">Sistema de gestión de lavandería</p>
+  </div>
+</div>

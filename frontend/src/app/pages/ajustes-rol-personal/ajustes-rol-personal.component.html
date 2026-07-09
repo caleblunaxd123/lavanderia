@@ -1,0 +1,129 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Roles del personal</h2>
+      <p>Define los cargos o roles de tu personal (ej: Lavandero, Cajero, Supervisor).</p>
+    </div>
+    <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo rol</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (roles().length === 0) {
+    <app-empty-state icono="lista" titulo="Sin roles aún" mensaje="Crea el primero para empezar a clasificar a tu personal.">
+      <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo rol</button>
+    </app-empty-state>
+  } @else {
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          @for (r of rolesPaginados(); track r.id) {
+            <tr [class.inactivo]="!r.activo">
+              <td class="nombre">{{ r.nombre }}</td>
+              <td>
+                <span [class]="'badge ' + (r.activo ? 'badge--verde' : 'badge--gris')">
+                  {{ r.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="acciones-row">
+                <button class="btn-icon" (click)="abrirEditar(r)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button class="btn-icon" (click)="toggleActivo(r)" [title]="r.activo ? 'Desactivar' : 'Reactivar'">
+                  @if (r.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                </button>
+                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(r)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div class="cards">
+      @for (r of rolesPaginados(); track r.id) {
+        <div class="card rol-card" [class.inactivo]="!r.activo">
+          <div class="rol-card__head">
+            <strong>{{ r.nombre }}</strong>
+            <span [class]="'badge ' + (r.activo ? 'badge--verde' : 'badge--gris')">
+              {{ r.activo ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <div class="rol-card__acciones">
+            <button class="btn-icon" (click)="abrirEditar(r)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+            <button class="btn-icon" (click)="toggleActivo(r)" [title]="r.activo ? 'Desactivar' : 'Reactivar'">
+              @if (r.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+            </button>
+            <button class="btn-icon btn-icon--del" (click)="pedirEliminar(r)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="card paginacion-wrap">
+      <app-paginacion
+        [pagina]="pagina()"
+        [tamanoPagina]="tamanoPagina()"
+        [total]="roles().length"
+        (paginaChange)="cambiarPagina($event)"
+        (tamanoPaginaChange)="cambiarTamanoPagina($event)">
+      </app-paginacion>
+    </div>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <div class="modal-backdrop" (click)="cerrar()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>{{ editando() ? 'Editar rol' : 'Nuevo rol' }}</h3>
+      <button class="modal__close" (click)="cerrar()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <form (submit)="guardar(); $event.preventDefault()">
+      <div class="modal__body">
+        <label>Nombre *</label>
+        <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Lavandero" />
+
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="form.activo" name="activo" />
+          Rol activo
+        </label>
+
+        @if (errorForm()) {
+          <div class="modal__error">{{ errorForm() }}</div>
+        }
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+@if (confirmarEliminar(); as r) {
+  <div class="modal-backdrop" (click)="confirmarEliminar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Eliminar rol?</h3>
+      <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p>Vas a eliminar <strong>{{ r.nombre }}</strong>. Quedará desactivado y podrás reactivarlo luego.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">
+          {{ guardando() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

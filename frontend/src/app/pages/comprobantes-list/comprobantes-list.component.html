@@ -1,0 +1,63 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Comprobantes emitidos</h2>
+      <p>Boletas y facturas electrónicas emitidas ante SUNAT.</p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (comprobantes().length === 0) {
+    <app-empty-state icono="lista" titulo="Sin comprobantes aún" mensaje="Emite tu primer comprobante desde un pedido pagado."></app-empty-state>
+  } @else {
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>N° Comprobante</th><th>Pedido</th><th>Cliente</th><th>Documento</th>
+            <th>Total</th><th>Estado</th><th>Fecha</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of comprobantes(); track c.id) {
+            <tr>
+              <td class="nombre">{{ c.numeroCompleto }} <span class="tipo">{{ c.tipo }}</span></td>
+              <td>{{ c.pedidoNumero ? '#' + c.pedidoNumero : '—' }}</td>
+              <td>{{ c.clienteNombre }}</td>
+              <td>{{ c.clienteNumDoc || '—' }}</td>
+              <td>S/ {{ c.total.toFixed(2) }}</td>
+              <td><span [class]="'badge ' + claseEstado(c.estado)">{{ c.estado }}</span></td>
+              <td>{{ c.fechaEmision | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="acciones-row">
+                <button class="btn-icon" (click)="verPdf(c)" [disabled]="descargandoId() === c.id" title="Ver PDF">
+                  <app-icon name="printer" [size]="15"></app-icon>
+                </button>
+                @if (c.estado !== 'ANULADO') {
+                  <button class="btn-icon" (click)="anular(c)" title="Anular">
+                    <app-icon name="disable" [size]="15"></app-icon>
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card paginacion-wrap">
+      <app-paginacion
+        [pagina]="pagina()"
+        [tamanoPagina]="tamanoPagina()"
+        [total]="total()"
+        (paginaChange)="cambiarPagina($event)"
+        (tamanoPaginaChange)="cambiarTamanoPagina($event)">
+      </app-paginacion>
+    </div>
+  }
+</div>

@@ -1,0 +1,201 @@
+<div class="page">
+  <div class="page__toolbar">
+    <div class="page__title">
+      <h2>Promociones</h2>
+      <p>{{ promociones().length }} configurada{{ promociones().length === 1 ? '' : 's' }}</p>
+    </div>
+    <button class="btn btn--primario" (click)="abrirCrear()">+ Nueva promoción</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (promociones().length === 0) {
+    <app-empty-state icono="lista" titulo="Sin promociones aún"
+      mensaje="Crea descuentos por volumen, cliente frecuente o por temporada.">
+      <button class="btn btn--primario" (click)="abrirCrear()">+ Nueva promoción</button>
+    </app-empty-state>
+  } @else {
+    <!-- Desktop: tabla -->
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Tipo</th><th>Descripción</th><th>Código</th><th>Descuento</th>
+            <th>Aplica a</th><th>Cant. mín.</th><th>Vigencia</th><th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of promocionesPaginadas(); track p.id) {
+            <tr [class.inactivo]="!p.activa">
+              <td class="nombre">{{ p.tipo }}</td>
+              <td>{{ p.descripcion }}</td>
+              <td class="mono">{{ p.codigo || '—' }}</td>
+              <td class="mono">{{ descuentoTexto(p) }}</td>
+              <td>{{ p.servicioNombre || 'Todos' }}</td>
+              <td>{{ p.cantidadMinima }}</td>
+              <td>{{ vigenciaTexto(p) }}</td>
+              <td>
+                <span class="badge" [class.badge--verde]="p.activa" [class.badge--gris]="!p.activa">
+                  {{ p.activa ? 'ACTIVA' : 'INACTIVA' }}
+                </span>
+              </td>
+              <td class="acciones-row">
+                <button class="btn-icon" (click)="abrirEditar(p)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button class="btn-icon" (click)="toggleActiva(p)" [title]="p.activa ? 'Desactivar' : 'Activar'">
+                  @if (p.activa) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                </button>
+                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(p)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div class="cards">
+      @for (p of promocionesPaginadas(); track p.id) {
+        <div class="card promo-card" [class.inactivo]="!p.activa">
+          <div class="promo-card__head">
+            <strong>{{ p.tipo }}</strong>
+            <span class="badge" [class.badge--verde]="p.activa" [class.badge--gris]="!p.activa">
+              {{ p.activa ? 'ACTIVA' : 'INACTIVA' }}
+            </span>
+          </div>
+          <p class="promo-card__desc">{{ p.descripcion }}</p>
+          <div class="promo-card__grid">
+            @if (p.codigo) { <div><span>Código</span><strong>{{ p.codigo }}</strong></div> }
+            <div><span>Descuento</span><strong>{{ descuentoTexto(p) }}</strong></div>
+            <div><span>Aplica a</span><strong>{{ p.servicioNombre || 'Todos' }}</strong></div>
+            <div><span>Cant. mínima</span><strong>{{ p.cantidadMinima }}</strong></div>
+            <div><span>Vigencia</span><strong>{{ vigenciaTexto(p) }}</strong></div>
+          </div>
+          <div class="promo-card__acciones">
+            <button class="btn btn--ghost btn--sm" (click)="abrirEditar(p)">Editar</button>
+            <button class="btn btn--ghost btn--sm" (click)="toggleActiva(p)">
+              {{ p.activa ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button class="btn btn--danger btn--sm" (click)="pedirEliminar(p)">Eliminar</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="card paginacion-wrap">
+      <app-paginacion
+        [pagina]="pagina()"
+        [tamanoPagina]="tamanoPagina()"
+        [total]="promociones().length"
+        (paginaChange)="cambiarPagina($event)"
+        (tamanoPaginaChange)="cambiarTamanoPagina($event)">
+      </app-paginacion>
+    </div>
+  }
+</div>
+
+<!-- Modal Crear/Editar -->
+@if (modalAbierto()) {
+  <div class="modal-backdrop" (click)="cerrar()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>{{ editando() ? 'Editar promoción' : 'Nueva promoción' }}</h3>
+      <button class="modal__close" (click)="cerrar()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <form (submit)="guardar(); $event.preventDefault()">
+      <div class="modal__body">
+        <label>Tipo *</label>
+        <select [(ngModel)]="form.tipo" name="tipo">
+          @for (t of tipos; track t.valor) {
+            <option [value]="t.valor">{{ t.etiqueta }}</option>
+          }
+        </select>
+
+        <label>Descripción *</label>
+        <input type="text" [(ngModel)]="form.descripcion" name="descripcion" placeholder="Ej: 10% dcto. a partir de 8kg" />
+
+        <label>Código de cupón <small class="hint">(opcional)</small></label>
+        <input type="text" [(ngModel)]="form.codigo" name="codigo" placeholder="Ej: VERANO10" style="text-transform: uppercase;" />
+        <p class="hint">Si lo defines, el cliente puede indicar este código al registrar su pedido para que se aplique automáticamente.</p>
+
+        <div class="row-2">
+          <div>
+            <label>Descuento (%)</label>
+            <input type="number" min="0" max="100" [(ngModel)]="form.descuentoPct" name="descuentoPct" placeholder="Ej: 10" />
+          </div>
+          <div>
+            <label>Descuento (S/)</label>
+            <input type="number" min="0" step="0.01" [(ngModel)]="form.descuentoMonto" name="descuentoMonto" placeholder="Ej: 5.00" />
+          </div>
+        </div>
+        <p class="hint">Usa % o soles fijos (uno de los dos).</p>
+
+        <div class="row-2">
+          <div>
+            <label>Aplica a</label>
+            <select [(ngModel)]="form.servicioId" name="servicioId">
+              <option [ngValue]="null">Todos los servicios</option>
+              @for (s of servicios(); track s.id) {
+                <option [ngValue]="s.id">{{ s.nombre }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label>Cantidad mínima</label>
+            <input type="number" min="1" step="0.01" [(ngModel)]="form.cantidadMinima" name="cantidadMinima" />
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label>Vigencia desde <small class="hint">(opcional)</small></label>
+            <input type="date" [(ngModel)]="form.fechaInicio" name="fechaInicio" />
+          </div>
+          <div>
+            <label>Vigencia hasta <small class="hint">(opcional)</small></label>
+            <input type="date" [(ngModel)]="form.fechaFin" name="fechaFin" />
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="form.activa" name="activa" />
+          Promoción activa
+        </label>
+
+        @if (errorForm()) {
+          <div class="modal__error">{{ errorForm() }}</div>
+        }
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Modal confirmar eliminar -->
+@if (confirmarEliminar(); as p) {
+  <div class="modal-backdrop" (click)="confirmarEliminar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Eliminar promoción?</h3>
+      <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p>Vas a eliminar la promoción <strong>{{ p.descripcion }}</strong>. Esta acción no se puede deshacer.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">
+          {{ guardando() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

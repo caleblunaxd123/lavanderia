@@ -1,0 +1,210 @@
+<div class="page">
+  <div class="card page__header">
+    <div>
+      <h2>Cuadre Diario {{ usuarioSeleccionadoNombre() ? '"' + usuarioSeleccionadoNombre() + '"' : '' }}</h2>
+      <input type="date" [ngModel]="fecha" (ngModelChange)="cambiarFecha($event)" />
+    </div>
+    <span class="estado-pill" [class]="'estado-pill--' + guardado">
+      {{ guardado ? 'Cuadre guardado' : 'Cuadre no guardado' }}
+    </span>
+  </div>
+
+  <div class="usuarios-dia" [class.usuarios-dia--vacio]="usuariosDelDia().length === 0">
+    @if (cargandoUsuarios()) {
+      <p class="hint">Cargando colaboradores…</p>
+    } @else if (usuariosDelDia().length === 0) {
+      <p class="hint">Aún no hay movimientos ni cuadres registrados este día.</p>
+    } @else {
+      <span class="usuarios-dia__label">Colaborador:</span>
+      @for (u of usuariosDelDia(); track u.id) {
+        <button
+          type="button"
+          class="usuario-chip"
+          [class.is-active]="usuarioSeleccionadoId() === u.id"
+          [class.usuario-chip--cuadrado]="u.tieneCuadre"
+          (click)="seleccionarUsuario(u.id)">
+          <strong>{{ u.nombreCompleto }}</strong>
+          <span>{{ u.rolNombre }}{{ u.tieneCuadre ? ' · ✓ cuadrado' : (' · ' + u.movimientos + ' mov.') }}</span>
+        </button>
+      }
+    }
+  </div>
+
+  <div class="grid">
+    <div class="card bloque">
+      <h4>Contador de dinero</h4>
+      <table class="tabla-denominaciones">
+        <thead><tr><th>Monto</th><th>Cantidad</th><th>Total</th></tr></thead>
+        <tbody>
+          @for (d of denominaciones(); track d.valor) {
+            <tr>
+              <td>S/ {{ d.valor }}</td>
+              <td>
+                <input type="number" min="0" [ngModel]="d.cantidad"
+                  (ngModelChange)="actualizarCantidad(d.valor, $event)" />
+              </td>
+              <td>S/ {{ (d.valor * d.cantidad).toFixed(2) }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr><td colspan="2">TOTAL S/</td><td class="total">{{ totalContado().toFixed(2) }}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="card bloque">
+      <h4>Ingresos y gastos reales del día</h4>
+      <p class="hint hint--intro">Calculado automáticamente de los pedidos y gastos registrados en la fecha seleccionada (no editable).</p>
+
+      <div class="resumen-fila">
+        <span>Ingresos totales (todos los métodos)</span>
+        <strong class="txt-verde">S/ {{ ingresosTotal().toFixed(2) }}</strong>
+      </div>
+      @if (cargandoMovimientos()) {
+        <p class="hint">Cargando…</p>
+      } @else if (ingresosPorMetodo().length === 0) {
+        <p class="hint hint--aviso">
+          Sin ingresos registrados el <strong>{{ fecha }}</strong>.<br>
+          <small>Si esperabas ver pagos aquí, verifica que la fecha del cuadre coincida con la fecha en que se registraron los pagos (mira la fecha del pedido).</small>
+        </p>
+      } @else {
+        <ul class="gastos-lista">
+          @for (i of ingresosPorMetodo(); track i.metodo) {
+            <li>
+              <span>{{ etiquetasMetodo[i.metodo] || i.metodo }} <small>({{ i.cantidad }} {{ i.cantidad === 1 ? 'pago' : 'pagos' }})</small></span>
+              <strong>S/ {{ i.monto.toFixed(2) }}</strong>
+            </li>
+          }
+        </ul>
+        @if (pagosDigitalesTotal() > 0) {
+          <p class="hint hint--digital">
+            <app-icon name="smartphone" [size]="13"></app-icon>
+            {{ pagosDigitalesTotal() }} {{ pagosDigitalesTotal() === 1 ? 'pago digital' : 'pagos digitales' }} hoy (Yape/Plin/Transferencia/POS)
+          </p>
+        }
+      }
+
+      <div class="gastos-bloque">
+        <div class="gastos-bloque__head">
+          <label>Gastos del día</label>
+          <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalGasto()">+ Registrar gasto</button>
+        </div>
+        <div class="gastos-total">S/ {{ gastosTotal().toFixed(2) }}</div>
+        @if (cargandoMovimientos()) {
+          <p class="hint">Cargando…</p>
+        } @else if (gastosDelDia().length === 0) {
+          <p class="hint">Sin gastos registrados este día.</p>
+        } @else {
+          <ul class="gastos-lista">
+            @for (g of gastosDelDia(); track g.id) {
+              <li>
+                <span>{{ g.tipoGastoNombre || 'Otros' }} <small>({{ etiquetasMetodo[g.metodoPago] || g.metodoPago }})</small></span>
+                <strong>S/ {{ g.monto.toFixed(2) }}</strong>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="ganancia" [class.ganancia--negativa]="gananciaNeta() < 0">
+        <span>Utilidad neta del día (ingresos − gastos)</span>
+        <strong>S/ {{ gananciaNeta().toFixed(2) }}</strong>
+      </div>
+    </div>
+
+    <div class="card bloque">
+      <h4>Cuadre de efectivo físico</h4>
+      <p class="hint hint--intro">Esta sección solo verifica que el efectivo físico en caja coincida con lo esperado (no es tu ganancia: los pagos por Yape/Plin/Transferencia/POS no pasan por la caja física).</p>
+
+      @if (sugerenciaCajaInicial(); as s) {
+        <div class="sugerencia-caja">
+          El cuadre del {{ s.fecha | date:'dd/MM/yyyy' }} lo hizo <strong>{{ s.usuarioNombre || 'otro usuario' }}</strong>,
+          caja final: <strong>S/ {{ s.monto.toFixed(2) }}</strong>.
+          <button type="button" class="btn btn--outline-primary btn--sm" (click)="usarSugerenciaCajaInicial()">Usar este monto</button>
+        </div>
+      }
+
+      <label>Caja Inicial (con la que abriste)</label>
+      <input type="number" [(ngModel)]="cajaInicial" />
+
+      <label>Pedidos pagados en Efectivo <small class="hint">(automático)</small></label>
+      <input type="text" [value]="pedidosPagadosEfectivo().toFixed(2)" disabled />
+
+      <div class="deberia-haber">
+        En caja debería haber: <strong>S/ {{ enCajaDeberiaHaber().toFixed(2) }}</strong>
+      </div>
+
+      <div class="estados">
+        <div class="estado-fila" [class.activo]="estadoCaja()==='SOBRA'">
+          <span>SOBRA</span><span>{{ estadoCaja()==='SOBRA' ? ('S/ ' + diferencia().toFixed(2)) : 'NO' }}</span>
+        </div>
+        <div class="estado-fila" [class.activo]="estadoCaja()==='CUADRA'">
+          <span>CUADRA</span><span>{{ estadoCaja()==='CUADRA' ? 'SI' : 'NO' }}</span>
+        </div>
+        <div class="estado-fila estado-fila--falta" [class.activo]="estadoCaja()==='FALTA'">
+          <span>FALTA</span><span>{{ estadoCaja()==='FALTA' ? ('S/ ' + diferencia().toFixed(2)) : 'NO' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bloque">
+      <h4>Finaliza el cuadre con</h4>
+
+      <label>Monto en Caja (contado)</label>
+      <input type="text" [value]="totalContado().toFixed(2)" disabled />
+
+      <label>Caja Final (se entrega)</label>
+      <input type="text" [value]="enCajaDeberiaHaber().toFixed(2)" disabled />
+
+      <button class="btn btn--primario" (click)="guardarCuadre()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar y Generar PDF' }}
+      </button>
+
+      @if (guardado) {
+        <p class="ok-msg"><app-icon name="check" [size]="13"></app-icon> Cuadre del {{ fecha }} guardado. Si el PDF no abrió, permite las pestañas emergentes.</p>
+      }
+    </div>
+  </div>
+
+  @if (modalGasto()) {
+    <div class="modal-backdrop" (click)="modalGasto.set(false)"></div>
+    <div class="modal-simple">
+      <div class="modal-simple__head">
+        <h3>+ Registrar gasto</h3>
+        <button (click)="modalGasto.set(false)">×</button>
+      </div>
+      <div class="modal-simple__body">
+        <label>Monto</label>
+        <input type="number" step="0.01" min="0.01" [(ngModel)]="gastoMonto" />
+
+        <label>Tipo de gasto</label>
+        <select [(ngModel)]="gastoTipoId">
+          <option [ngValue]="''" disabled>Escoge…</option>
+          @for (t of tiposGasto(); track t.id) {
+            <option [ngValue]="t.id">{{ t.nombre }}</option>
+          }
+        </select>
+
+        <label>Método de pago</label>
+        <select [(ngModel)]="gastoMetodo">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="YAPE">Yape</option>
+          <option value="PLIN">Plin</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+          <option value="POS">POS</option>
+        </select>
+
+        <label>Descripción <small class="hint">(opcional)</small></label>
+        <input type="text" placeholder="Ej. bolsas de detergente" [(ngModel)]="gastoDescripcion" />
+
+        <div class="modal-simple__actions">
+          <button class="btn btn--ghost" (click)="modalGasto.set(false)">Cancelar</button>
+          <button class="btn btn--primario" [disabled]="guardandoGasto() || gastoMonto <= 0" (click)="confirmarGasto()">
+            {{ guardandoGasto() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,93 @@
+<header class="topbar">
+  <button class="topbar__hamburger" (click)="toggleMenu()" aria-label="Menú">
+    <span></span><span></span><span></span>
+  </button>
+
+  <div class="brand">
+    @if (negocio().logoUrl) {
+      <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" class="brand__logo" />
+    } @else {
+      <svg viewBox="0 0 24 24" class="brand__icon" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M12 2c3 4 6 7.5 6 11.5A6 6 0 1 1 6 13.5C6 9.5 9 6 12 2Z" />
+      </svg>
+    }
+    <div class="brand__text">
+      <strong>{{ negocio().nombreNegocio }}</strong>
+      <span>Sistema de gestión</span>
+    </div>
+  </div>
+
+  <nav class="topbar__primary">
+    @for (link of primaryLinks(); track link.path) {
+      <a [routerLink]="link.path" routerLinkActive="is-active" class="tab" (click)="cerrarMenu()">{{ link.label }}</a>
+    }
+  </nav>
+
+  <div class="user-menu">
+    <div class="user-info">
+      <strong>{{ usuario()?.nombreCompleto }}</strong>
+      <span>{{ usuario()?.rol }}</span>
+    </div>
+    <button class="user-menu__btn" (click)="logout()" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M4 12h12"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<nav class="subbar">
+  @for (link of secondaryLinks(); track link.path) {
+    <a [routerLink]="link.path" routerLinkActive="is-active" class="tab tab--sub" (click)="cerrarMenu()">{{ link.label }}</a>
+  }
+</nav>
+
+@if (mostrarBadgeSede()) {
+  <div class="sede-badge">
+    <button class="sede-badge__btn" (click)="puedeCambiarSede() && toggleSedeMenu()" [disabled]="cambiandoSede()" [class.is-fijo]="!puedeCambiarSede()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 21s7-6.5 7-11.5A7 7 0 1 0 5 9.5C5 14.5 12 21 12 21Z" />
+        <circle cx="12" cy="9.5" r="2.5" />
+      </svg>
+      <span>{{ usuario()?.sedeNombre }}</span>
+      @if (puedeCambiarSede()) {
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      }
+    </button>
+    @if (sedeMenuAbierto()) {
+      <div class="sede-badge__menu">
+        @for (s of sedes(); track s.id) {
+          <button
+            class="sede-badge__item"
+            [class.is-active]="s.id === usuario()?.sedeId"
+            (click)="elegirSede(s.id)">
+            {{ s.nombre }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+}
+
+@if (menuAbierto()) {
+  <div class="drawer-backdrop" (click)="cerrarMenu()"></div>
+  <aside class="drawer">
+    <div class="drawer__header">
+      <strong>{{ negocio().nombreNegocio }}</strong>
+      <span>{{ usuario()?.nombreCompleto }} · {{ usuario()?.rol }}</span>
+    </div>
+    <nav class="drawer__nav">
+      @for (link of primaryLinks(); track link.path) {
+        <a [routerLink]="link.path" routerLinkActive="is-active" (click)="cerrarMenu()">{{ link.label }}</a>
+      }
+      <div class="drawer__separator"></div>
+      @for (link of secondaryLinks(); track link.path) {
+        <a [routerLink]="link.path" routerLinkActive="is-active" (click)="cerrarMenu()">{{ link.label }}</a>
+      }
+      <div class="drawer__separator"></div>
+      <button class="drawer__logout" (click)="logout()">Cerrar sesión</button>
+    </nav>
+  </aside>
+}

@@ -1,0 +1,168 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Servicios y precios</h2>
+      <p>Gestiona el catálogo de servicios que ofreces al cliente.</p>
+    </div>
+    <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo servicio</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (error()) {
+    <app-empty-state icono="error" titulo="No se pudo cargar" [mensaje]="error()!">
+      <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
+    </app-empty-state>
+  } @else if (servicios().length === 0) {
+    <app-empty-state icono="lista" titulo="Sin servicios aún"
+      mensaje="Empieza creando los servicios que ofreces (lavado por kilo, doblado, etc.)">
+      <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo servicio</button>
+    </app-empty-state>
+  } @else {
+    <!-- Desktop: tabla -->
+    <div class="card tabla-wrap">
+      <table class="tabla">
+        <thead>
+          <tr><th>Nombre</th><th>Precio</th><th>Unidad</th><th>Categoría</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (s of serviciosPaginados(); track s.id) {
+            <tr [class.inactivo]="!s.activo">
+              <td class="nombre">{{ s.nombre }}</td>
+              <td class="mono">S/ {{ s.precio | number:'1.2-2' }}</td>
+              <td>{{ s.unidad }}</td>
+              <td>{{ s.categoriaNombre || '—' }}</td>
+              <td>
+                <span [class]="'badge ' + (s.activo ? 'badge--verde' : 'badge--gris')">
+                  {{ s.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="acciones-row">
+                <button class="btn-icon" (click)="abrirEditar(s)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button class="btn-icon" (click)="toggleActivo(s)" [title]="s.activo ? 'Desactivar' : 'Reactivar'">
+                  @if (s.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+                </button>
+                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(s)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: cards -->
+    <div class="cards">
+      @for (s of serviciosPaginados(); track s.id) {
+        <div class="card servicio-card" [class.inactivo]="!s.activo">
+          <div class="servicio-card__head">
+            <strong>{{ s.nombre }}</strong>
+            <span [class]="'badge ' + (s.activo ? 'badge--verde' : 'badge--gris')">
+              {{ s.activo ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <div class="servicio-card__body">
+            <div><span>Precio:</span> <strong>S/ {{ s.precio | number:'1.2-2' }}</strong></div>
+            <div><span>Unidad:</span> {{ s.unidad }}</div>
+            <div><span>Categoría:</span> {{ s.categoriaNombre || '—' }}</div>
+          </div>
+          <div class="servicio-card__acciones">
+            <button class="btn btn--ghost btn--sm" (click)="abrirEditar(s)">Editar</button>
+            <button class="btn btn--ghost btn--sm" (click)="toggleActivo(s)">
+              {{ s.activo ? 'Desactivar' : 'Reactivar' }}
+            </button>
+            <button class="btn btn--danger btn--sm" (click)="pedirEliminar(s)">Eliminar</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="card paginacion-wrap">
+      <app-paginacion
+        [pagina]="pagina()"
+        [tamanoPagina]="tamanoPagina()"
+        [total]="servicios().length"
+        (paginaChange)="cambiarPagina($event)"
+        (tamanoPaginaChange)="cambiarTamanoPagina($event)">
+      </app-paginacion>
+    </div>
+  }
+</div>
+
+<!-- Modal Crear/Editar -->
+@if (modalAbierto()) {
+  <div class="modal-backdrop" (click)="cerrar()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>{{ editando() ? 'Editar servicio' : 'Nuevo servicio' }}</h3>
+      <button class="modal__close" (click)="cerrar()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <form (submit)="guardar(); $event.preventDefault()">
+      <div class="modal__body">
+        <label>Nombre *</label>
+        <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Lavado al agua por kilo" />
+
+        <div class="row-2">
+          <div>
+            <label>Precio *</label>
+            <input type="number" step="0.01" min="0.01" [(ngModel)]="form.precio" name="precio" />
+          </div>
+          <div>
+            <label>Unidad *</label>
+            <select [(ngModel)]="form.unidad" name="unidad">
+              @for (u of unidades; track u) {
+                <option [value]="u">{{ u }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <label>Categoría <small class="hint">(opcional)</small></label>
+        <select [(ngModel)]="form.categoriaId" name="categoriaId">
+          <option [ngValue]="null">Sin categoría</option>
+          @for (c of categorias(); track c.id) {
+            @if (c.activa) {
+              <option [ngValue]="c.id">{{ c.nombre }}</option>
+            }
+          }
+        </select>
+
+        <label class="checkbox-row">
+          <input type="checkbox" [(ngModel)]="form.activo" name="activo" />
+          Servicio activo (visible en el wizard de registro)
+        </label>
+
+        @if (errorForm()) {
+          <div class="modal__error">{{ errorForm() }}</div>
+        }
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="btn btn--primario" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Modal confirmar eliminar -->
+@if (confirmarEliminar(); as s) {
+  <div class="modal-backdrop" (click)="confirmarEliminar.set(null)"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>¿Eliminar servicio?</h3>
+      <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p>Vas a eliminar <strong>{{ s.nombre }}</strong>. Si tiene pedidos históricos, quedará desactivado (no se borra para no romper los reportes).</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
+        <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">
+          {{ guardando() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

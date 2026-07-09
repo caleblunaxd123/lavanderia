@@ -1,0 +1,112 @@
+.page { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+.paginacion-wrap { margin-top: 12px; padding: 0; }
+
+.page__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+
+  h2 { margin: 0; font-size: 20px; }
+  p  { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+}
+
+.volver {
+  background: transparent;
+  border: 1px solid var(--gris-borde);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gris-texto);
+  cursor: pointer;
+
+  &:hover { background: #eef4ff; color: var(--azul-oscuro); border-color: var(--azul-oscuro); }
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--azul-oscuro);
+  color: #fff;
+}
+
+.estado { padding: 24px; text-align: center; color: #64748b; }
+
+.tabla-wrap { padding: 8px; overflow-x: auto; }
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    color: #718096;
+    font-size: 11px;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--gris-borde);
+  }
+
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gris-borde);
+  }
+}
+
+.nombre {
+  font-weight: 600;
+
+  .tipo {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    background: #eef0f3;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &--verde  { background: #e6f9ee; color: #147a45; }
+  &--gris   { background: #eef0f3; color: #64748b; }
+  &--rojo   { background: #fde8e8; color: #b91c1c; }
+  &--amarillo { background: #fff7e6; color: #92400e; }
+}
+
+.acciones-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--gris-borde);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover { background: #eaf1ff; border-color: var(--azul-oscuro); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+@media (max-width: 720px) {
+  .page { padding: 14px; }
+}

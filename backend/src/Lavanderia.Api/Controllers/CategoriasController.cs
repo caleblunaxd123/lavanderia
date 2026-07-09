@@ -1,0 +1,66 @@
+using Lavanderia.Api.Domain;
+using Lavanderia.Api.Dtos;
+using Lavanderia.Api.Repositories;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Lavanderia.Api.Controllers;
+
+[Route("api/categorias")]
+[Authorize(Roles = "ADMIN")]
+public class CategoriasController : TenantAwareControllerBase
+{
+    private readonly ICategoriaRepository _repo;
+    public CategoriasController(ICategoriaRepository repo) => _repo = repo;
+
+    [HttpGet]
+    public async Task<ActionResult<List<CategoriaDto>>> Listar(CancellationToken ct)
+        => Ok((await _repo.ListarTodasAsync(NegocioId, ct)).Select(Map).ToList());
+
+    [HttpPost]
+    public async Task<ActionResult<CategoriaDto>> Crear([FromBody] CategoriaDto dto, CancellationToken ct)
+    {
+        var id = await _repo.CrearAsync(new Categoria { NegocioId = NegocioId, Nombre = dto.Nombre.Trim(), Activa = dto.Activa }, ct);
+        var creada = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
+        return CreatedAtAction(nameof(Listar), Map(creada!));
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Actualizar(int id, [FromBody] CategoriaDto dto, CancellationToken ct)
+    {
+        var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
+        if (existente is null) return NotFound();
+
+        existente.Nombre = dto.Nombre.Trim();
+        existente.Activa = dto.Activa;
+        await _repo.ActualizarAsync(existente, NegocioId, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
+    {
+        var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
+        if (existente is null) return NotFound();
+
+        var usos = await _repo.ContarUsoAsync(id, NegocioId, ct);
+        await _repo.CambiarEstadoAsync(id, false, NegocioId, ct);
+        return Ok(new
+        {
+            mensaje = usos > 0
+                ? $"Categoría desactivada (usada en {usos} servicios)."
+                : "Categoría eliminada."
+        });
+    }
+
+    [HttpPatch("{id:int}/estado")]
+    public async Task<IActionResult> Reactivar(int id, [FromBody] CambiarEstadoUsuarioRequest req, CancellationToken ct)
+    {
+        var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
+        if (existente is null) return NotFound();
+        await _repo.CambiarEstadoAsync(id, req.Activo, NegocioId, ct);
+        return NoContent();
+    }
+
+    private static CategoriaDto Map(Categoria c) => new() { Id = c.Id, Nombre = c.Nombre, Activa = c.Activa };
+}

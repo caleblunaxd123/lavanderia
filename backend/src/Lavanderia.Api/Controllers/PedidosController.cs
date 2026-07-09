@@ -1,0 +1,192 @@
+using Lavanderia.Api.Dtos;
+using Lavanderia.Api.Repositories;
+using Lavanderia.Api.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Lavanderia.Api.Controllers;
+
+[Route("api/[controller]")]
+public class PedidosController : TenantAwareControllerBase
+{
+    private readonly IPedidoService _service;
+    private readonly IPromocionRepository _promociones;
+    public PedidosController(IPedidoService service, IPromocionRepository promociones)
+    {
+        _service = service;
+        _promociones = promociones;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<PagedResultDto<PedidoDto>>> Listar(
+        [FromQuery] string? filtro,
+        [FromQuery] string? busqueda,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 15,
+        CancellationToken ct = default)
+        => Ok(await _service.ListarPaginadoAsync(filtro, busqueda, Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
+
+    [HttpGet("por-cliente/{clienteId:int}")]
+    public async Task<ActionResult<PagedResultDto<PedidoDto>>> ListarPorCliente(
+        int clienteId,
+        [FromQuery] string? filtro,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanoPagina = 10,
+        CancellationToken ct = default)
+        => Ok(await _service.ListarPorClienteAsync(clienteId, filtro, Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<PedidoDto>> Obtener(int id, CancellationToken ct)
+    {
+        var p = await _service.ObtenerAsync(id, SedeId!.Value, ct);
+        if (p is null) return NotFound();
+        return Ok(p);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<PedidoDto>> Crear([FromBody] CrearPedidoRequest req, CancellationToken ct)
+    {
+        try
+        {
+            var pedido = await _service.CrearAsync(req, UsuarioId, NegocioId, SedeId!.Value, ct);
+            return CreatedAtAction(nameof(Obtener), new { id = pedido.Id }, pedido);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:int}/avanzar")]
+    public async Task<IActionResult> Avanzar(int id, [FromBody] AvanzarAreaRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.AvanzarAreaAsync(id, req, UsuarioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Un click: mueve el pedido a la siguiente area del flujo (o LISTO si termino).
+    /// Es la operacion mas usada por el trabajador.
+    /// </summary>
+    [HttpPost("{id:int}/siguiente-area")]
+    public async Task<IActionResult> SiguienteArea(int id, [FromBody] SiguienteAreaRequest? req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.AvanzarSiguienteAreaAsync(id, UsuarioId, SedeId!.Value, req?.RecibidoPor, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpGet("{id:int}/historial")]
+    public async Task<ActionResult<List<PedidoHistorialDto>>> Historial(int id, CancellationToken ct)
+        => Ok(await _service.ObtenerHistorialAsync(id, SedeId!.Value, ct));
+
+    [HttpGet("dashboard")]
+    public async Task<ActionResult<DashboardDto>> Dashboard(CancellationToken ct)
+        => Ok(await _service.DashboardAsync(SedeId!.Value, ct));
+
+    [HttpGet("siguiente-numero")]
+    public async Task<ActionResult<int>> SiguienteNumero(CancellationToken ct)
+        => Ok(await _service.SiguienteNumeroAsync(SedeId!.Value, ct));
+
+    /// <summary>
+    /// Valida un código de promoción para usarlo en Registrar. Cualquier usuario autenticado puede
+    /// consultarlo (no solo ADMIN), a diferencia del CRUD de promociones.
+    /// </summary>
+    [HttpGet("promocion/validar")]
+    public async Task<ActionResult<PromocionValidaDto>> ValidarCodigoPromocion([FromQuery] string codigo, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(codigo)) return BadRequest(new { mensaje = "Indica un código." });
+
+        var promo = await _promociones.BuscarPorCodigoAsync(codigo, NegocioId, ct);
+        if (promo is null) return NotFound(new { mensaje = "Código no encontrado." });
+        if (!promo.Activa) return BadRequest(new { mensaje = "Esta promoción ya no está activa." });
+
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        if (promo.FechaInicio.HasValue && hoy < promo.FechaInicio.Value)
+            return BadRequest(new { mensaje = "Esta promoción todavía no empieza." });
+        if (promo.FechaFin.HasValue && hoy > promo.FechaFin.Value)
+            return BadRequest(new { mensaje = "Esta promoción ya venció." });
+
+        return Ok(new PromocionValidaDto
+        {
+            Id = promo.Id,
+            Descripcion = promo.Descripcion,
+            DescuentoPct = promo.DescuentoPct,
+            DescuentoMonto = promo.DescuentoMonto,
+            ServicioId = promo.ServicioId,
+            CantidadMinima = promo.CantidadMinima
+        });
+    }
+
+    [HttpGet("abandonados")]
+    public async Task<ActionResult<List<PedidoAbandonadoDto>>> Abandonados([FromQuery] int dias = 3, CancellationToken ct = default)
+        => Ok(await _service.ListarAbandonadosAsync(Math.Max(1, dias), SedeId!.Value, ct));
+
+    [HttpPost("{id:int}/pagos")]
+    public async Task<IActionResult> RegistrarPago(int id, [FromBody] RegistrarPagoRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.RegistrarPagoAsync(id, req, UsuarioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:int}/items")]
+    public async Task<IActionResult> AgregarItem(int id, [FromBody] AgregarItemRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.AgregarItemAsync(id, req, NegocioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPut("{id:int}/fecha-entrega")]
+    public async Task<IActionResult> CambiarFechaEntrega(int id, [FromBody] CambiarFechaEntregaRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.CambiarFechaEntregaAsync(id, req, UsuarioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:int}/anular")]
+    public async Task<IActionResult> Anular(int id, [FromBody] AnularPedidoRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.AnularAsync(id, req.Motivo, UsuarioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+}

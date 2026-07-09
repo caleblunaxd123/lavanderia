@@ -1,0 +1,206 @@
+<!-- Barra de acciones (solo pantalla, se oculta al imprimir) -->
+<div class="acciones-print">
+  <div class="acciones-print__inner">
+    <button class="btn btn--primario" (click)="imprimir()"><app-icon name="printer" [size]="16"></app-icon> Imprimir ticket</button>
+    <button class="btn btn--ghost" (click)="cerrar()">Cerrar</button>
+
+    <div class="toggle-grupo">
+      <span class="toggle-grupo__label">Tipo Ticket:</span>
+      <div class="toggle-grupo__botones">
+        <button type="button" [class.is-active]="tipoTicket()==='CLIENTE'" (click)="tipoTicket.set('CLIENTE')">Cliente</button>
+        <button type="button" [class.is-active]="tipoTicket()==='PRODUCCION'" (click)="tipoTicket.set('PRODUCCION')">Producción</button>
+      </div>
+    </div>
+
+    <div class="toggle-grupo">
+      <span class="toggle-grupo__label">Descripción:</span>
+      <div class="toggle-grupo__botones">
+        <button type="button" [class.is-active]="!mostrarDescripcion()" (click)="mostrarDescripcion.set(false)">Ocultar</button>
+        <button type="button" [class.is-active]="mostrarDescripcion()" (click)="mostrarDescripcion.set(true)">Mostrar</button>
+      </div>
+    </div>
+
+    <p class="acciones-print__hint">
+      Si tu ticketera está lista, elige "{{ negocio().nombreNegocio }}" o tu impresora térmica en el diálogo.
+      Ancho configurado: <strong>{{ negocio().anchoTicketMm }}mm</strong>.
+    </p>
+  </div>
+</div>
+
+<!-- El ticket en si -->
+<div class="ticket-wrap">
+  @if (cargando()) {
+    <p class="msg">Cargando pedido…</p>
+  } @else if (error()) {
+    <p class="msg error">{{ error() }}</p>
+  } @else if (pedido()) {
+    @if (pedido(); as p) {
+    <div class="ticket" [attr.data-ancho]="negocio().anchoTicketMm">
+      @if (tipoTicket() === 'CLIENTE') {
+        <!-- Encabezado del negocio -->
+        <header class="ticket__header">
+          @if (negocio().logoUrl) {
+            <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" class="ticket__logo" />
+          }
+          <h1>{{ negocio().nombreNegocio }}</h1>
+          @if (negocio().direccion) { <p>{{ negocio().direccion }}</p> }
+          @if (negocio().telefono) { <p>Tel: {{ negocio().telefono }}</p> }
+          @if (negocio().ruc) { <p>RUC: {{ negocio().ruc }}</p> }
+          @if (negocio().horarioAtencion) { <p>{{ negocio().horarioAtencion }}</p> }
+        </header>
+
+        <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+      }
+
+      <!-- Número de orden gigante -->
+      <div class="ticket__numero">
+        <span class="ticket__label">ORDEN DE SERVICIO</span>
+        <span class="ticket__numero-valor">N° {{ p.numero }}</span>
+      </div>
+
+      <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
+      <!-- Fechas -->
+      <div class="ticket__rows">
+        <div class="ticket__row">
+          <span>Ingreso:</span>
+          <strong>{{ p.fechaIngreso | date:'dd/MM/yy HH:mm' }}</strong>
+        </div>
+        @if (p.fechaEntregaEst) {
+          <div class="ticket__row">
+            <span>{{ p.modalidad === 'Delivery' ? 'Entrega:' : 'Recojo:' }}</span>
+            <strong>{{ p.fechaEntregaEst | date:'dd/MM/yy HH:mm' }}</strong>
+          </div>
+        }
+        <div class="ticket__row">
+          <span>Modalidad:</span>
+          <strong>{{ p.modalidad }}</strong>
+        </div>
+      </div>
+
+      <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
+      <!-- Cliente -->
+      <div class="ticket__cliente">
+        <strong>CLIENTE</strong>
+        <p>{{ p.clienteNombre }}</p>
+        @if (p.clienteCelular) { <p>Tel: {{ p.clienteCelular }}</p> }
+      </div>
+
+      <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
+      <!-- Items -->
+      <div class="ticket__items">
+        <strong>ÍTEMS</strong>
+        @for (it of p.items; track it.id) {
+          <div class="ticket__item">
+            <div class="ticket__item-nombre">{{ it.servicioNombre }}</div>
+            <div class="ticket__item-linea">
+              <span>{{ it.cantidad | number:'1.0-2' }} × S/ {{ it.precioUnit | number:'1.2-2' }}</span>
+              <strong>S/ {{ it.total | number:'1.2-2' }}</strong>
+            </div>
+            @if (it.descripcion && (mostrarDescripcion() || tipoTicket() === 'PRODUCCION')) {
+              <div class="ticket__item-desc"><app-icon name="check" [size]="11"></app-icon> {{ it.descripcion }}</div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
+      <!-- Totales -->
+      <div class="ticket__rows">
+        <div class="ticket__row">
+          <span>Subtotal:</span>
+          <strong>S/ {{ p.subtotal | number:'1.2-2' }}</strong>
+        </div>
+        @if (p.descuento > 0) {
+          <div class="ticket__row">
+            <span>Descuento:</span>
+            <strong>- S/ {{ p.descuento | number:'1.2-2' }}</strong>
+          </div>
+        }
+        @if (p.redondeo && p.redondeo !== 0) {
+          <div class="ticket__row">
+            <span>Redondeo:</span>
+            <strong>{{ p.redondeo > 0 ? '+' : '' }} S/ {{ p.redondeo | number:'1.2-2' }}</strong>
+          </div>
+        }
+        <div class="ticket__row ticket__row--total">
+          <span>TOTAL:</span>
+          <strong>S/ {{ p.total | number:'1.2-2' }}</strong>
+        </div>
+        <div class="ticket__row">
+          <span>Pagado:</span>
+          <strong>S/ {{ p.montoPagado | number:'1.2-2' }}</strong>
+        </div>
+        @if (saldo() > 0) {
+          <div class="ticket__row ticket__row--saldo">
+            <span>SALDO:</span>
+            <strong>S/ {{ saldo() | number:'1.2-2' }}</strong>
+          </div>
+        }
+      </div>
+
+      <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
+      <!-- Estado -->
+      <div class="ticket__estado">
+        <strong>Estado:</strong> {{ p.estadoProceso === 'PENDIENTE' ? 'INGRESADO' : p.estadoProceso.replace('_', ' ') }}
+        @if (p.areaActualNombre) {
+          <br /><small>Área actual: {{ p.areaActualNombre }}</small>
+        }
+      </div>
+
+      @if (tipoTicket() === 'CLIENTE') {
+        <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
+        <!-- Observaciones del pedido (nota al operario/cliente si existen) -->
+        @if (p.observaciones) {
+          <div class="ticket__observaciones">
+            <strong>OBSERVACIONES</strong>
+            <p>{{ p.observaciones }}</p>
+          </div>
+          <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+        }
+
+        <!-- Mensaje pie -->
+        @if (negocio().mensajePieTicket) {
+          <p class="ticket__pie">{{ negocio().mensajePieTicket }}</p>
+        }
+
+        <p class="ticket__aviso">Presente este ticket al recoger su pedido.</p>
+        <p class="ticket__aviso-recojo">Este ticket físico autoriza el recojo. Puede recogerlo cualquier persona que lo presente.</p>
+
+        @if (condicionesLista().length > 0) {
+          <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+          <div class="ticket__condiciones">
+            <strong>CONDICIONES DEL SERVICIO</strong>
+            <ol>
+              @for (c of condicionesLista(); track $index) {
+                <li>{{ c }}</li>
+              }
+            </ol>
+          </div>
+        }
+      } @else {
+        <!-- Producción: notas al operario -->
+        @if (p.observaciones || negocio().notasProduccion) {
+          <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+          <div class="ticket__notas-produccion">
+            <strong>NOTAS PARA PRODUCCIÓN</strong>
+            @if (p.observaciones) {
+              <p><em>Observaciones de este pedido:</em> {{ p.observaciones }}</p>
+            }
+            @if (negocio().notasProduccion) {
+              <p>{{ negocio().notasProduccion }}</p>
+            }
+          </div>
+        }
+      }
+
+      <div class="ticket__espacio-final"></div>
+    </div>
+    }
+  }
+</div>

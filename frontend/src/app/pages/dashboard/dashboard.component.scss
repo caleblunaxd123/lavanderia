@@ -1,0 +1,221 @@
+.page { padding: 20px 24px; max-width: 1280px; margin: 0 auto; }
+
+.hola {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+
+  h2 { margin: 0; font-size: 22px; color: #1a202c; }
+  p  { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+}
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+
+  &--primario {
+    background: var(--azul-oscuro);
+    color: #fff;
+  }
+}
+
+.estado-simple { padding: 40px; text-align: center; color: #64748b; }
+
+// ---------- KPIs ----------
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  border-left: 4px solid var(--gris-borde);
+  transition: transform .15s, box-shadow .15s;
+  display: block;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,.08);
+  }
+
+  &--azul   { border-left-color: var(--azul-oscuro); }
+  &--verde  { border-left-color: var(--verde); }
+  &--naranja { border-left-color: var(--naranja); }
+
+  &__valor {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    color: #1a202c;
+    margin-bottom: 6px;
+  }
+
+  &--azul .kpi__valor   { color: var(--azul-oscuro); }
+  &--verde .kpi__valor  { color: #147a45; }
+  &--naranja .kpi__valor { color: #b7791f; }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  &__hint {
+    font-size: 11.5px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+}
+
+// ---------- Sección ropa por área ----------
+.seccion {
+  padding: 20px;
+  margin-bottom: 20px;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+
+    h3 { margin: 0; font-size: 15px; color: var(--azul-oscuro); }
+  }
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #147a45;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--verde);
+    animation: pulse-live 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .3; }
+}
+
+.empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 20px;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.areas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.area-kpi {
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  transition: transform .15s;
+
+  &:hover { transform: scale(1.03); }
+
+  &__num {
+    font-size: 30px;
+    font-weight: 800;
+    color: #1a202c;
+    line-height: 1;
+  }
+
+  &__nombre {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+  }
+}
+
+// ---------- Atajos ----------
+.atajos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.atajo {
+  background: #fff;
+  padding: 18px 16px 20px;
+  border-radius: 14px;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  transition: transform .2s, box-shadow .2s;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0,0,0,.1);
+
+    .atajo__ilus { transform: scale(1.05); }
+  }
+
+  &__ilus {
+    width: 110px;
+    height: 110px;
+    margin: 0 auto 10px;
+    transition: transform .25s;
+
+    svg { width: 100%; height: 100%; display: block; }
+  }
+
+  &__icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+    color: var(--azul-oscuro);
+  }
+
+  strong {
+    display: block;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 2px;
+  }
+
+  span {
+    font-size: 11.5px;
+    color: #94a3b8;
+  }
+}
+
+@media (max-width: 720px) {
+  .page { padding: 14px; }
+  .hola h2 { font-size: 18px; }
+  .btn { width: 100%; }
+  .kpi__valor { font-size: 26px; }
+}

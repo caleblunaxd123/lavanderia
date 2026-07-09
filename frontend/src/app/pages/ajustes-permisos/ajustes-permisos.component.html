@@ -1,0 +1,42 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Permisos y accesos</h2>
+      <p>Define qué módulos puede ver cada rol. El Administrador siempre tiene acceso total.</p>
+    </div>
+    <button class="btn btn--primario" [disabled]="cargando() || guardando()" (click)="guardar()">
+      {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else {
+    <div class="card tabla-wrap">
+      <table class="tabla-permisos">
+        <thead>
+          <tr>
+            <th>Módulo</th>
+            @for (r of rolesEditables(); track r.id) {
+              <th class="centro">{{ r.nombre }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of modulos(); track m) {
+            <tr>
+              <td class="nombre">{{ etiquetas[m] || m }}</td>
+              @for (r of rolesEditables(); track r.id) {
+                <td class="centro">
+                  <input type="checkbox" [checked]="tienePermiso(r.id, m)" (change)="toggle(r.id, m)" />
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">Los cambios se aplican la próxima vez que ese usuario inicie sesión.</p>
+  }
+</div>

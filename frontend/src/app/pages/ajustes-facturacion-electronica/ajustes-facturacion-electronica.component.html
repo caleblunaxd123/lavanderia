@@ -1,0 +1,114 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Facturación Electrónica</h2>
+      <p>Emite boletas y facturas electrónicas ante SUNAT directamente desde el sistema.</p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else {
+    <div class="aviso" [class.aviso--produccion]="form().ambiente === 'PRODUCCION'">
+      @if (form().ambiente === 'PRODUCCION') {
+        <strong>Ambiente de PRODUCCIÓN.</strong> Los comprobantes que emitas serán válidos y reales ante SUNAT.
+      } @else {
+        <strong>Ambiente de pruebas (BETA).</strong> Los comprobantes emitidos aquí no tienen validez legal — úsalo para probar antes de pasar a producción.
+      }
+    </div>
+
+    <div class="secciones">
+      <div class="card seccion">
+        <h3>Datos del emisor</h3>
+
+        <label>Razón social *</label>
+        <input type="text" [ngModel]="form().razonSocial"
+               (ngModelChange)="actualizarCampo('razonSocial', $event)"
+               placeholder="Mi Lavandería SAC" />
+
+        <label>RUC *</label>
+        <input type="text" [ngModel]="form().rucEmisor"
+               (ngModelChange)="actualizarCampo('rucEmisor', $event)"
+               maxlength="11" placeholder="20123456789" />
+
+        <label>Ambiente</label>
+        <div class="switch-ambiente">
+          <button type="button" [class.is-active]="form().ambiente === 'BETA'" (click)="actualizarCampo('ambiente', 'BETA')">
+            Pruebas (Beta)
+          </button>
+          <button type="button" [class.is-active]="form().ambiente === 'PRODUCCION'" (click)="actualizarCampo('ambiente', 'PRODUCCION')">
+            Producción
+          </button>
+        </div>
+      </div>
+
+      <div class="card seccion">
+        <h3>Series de numeración</h3>
+
+        <label>Serie de Boleta</label>
+        <input type="text" [ngModel]="form().serieBoleta"
+               (ngModelChange)="actualizarCampo('serieBoleta', $event)"
+               maxlength="4" placeholder="B001" />
+
+        <label>Serie de Factura</label>
+        <input type="text" [ngModel]="form().serieFactura"
+               (ngModelChange)="actualizarCampo('serieFactura', $event)"
+               maxlength="4" placeholder="F001" />
+        <p class="hint">El correlativo de cada serie avanza automáticamente con cada comprobante emitido.</p>
+      </div>
+
+      <div class="card seccion">
+        <h3>Certificado digital</h3>
+
+        @if (form().tieneCertificado) {
+          <p class="ok-badge">✓ Ya tienes un certificado cargado. Sube uno nuevo solo si necesitas reemplazarlo.</p>
+        }
+
+        <label>Archivo .pfx</label>
+        <input type="file" accept=".pfx,.p12" (change)="onCertificadoSeleccionado($event)" />
+        @if (nombreCertificadoSeleccionado()) {
+          <p class="hint">Seleccionado: {{ nombreCertificadoSeleccionado() }}</p>
+        }
+
+        <label>Contraseña del certificado</label>
+        <input type="password" [ngModel]="form().certificadoPasswordNueva"
+               (ngModelChange)="actualizarCampo('certificadoPasswordNueva', $event)"
+               placeholder="Solo si subes un certificado nuevo" />
+      </div>
+
+      <div class="card seccion">
+        <h3>Credenciales SOL</h3>
+
+        @if (form().tieneCredencialesSol) {
+          <p class="ok-badge">✓ Ya tienes credenciales SOL guardadas. Ingresa una clave nueva solo si necesitas cambiarla.</p>
+        }
+
+        <label>Usuario SOL secundario</label>
+        <input type="text" [ngModel]="form().solUsuario"
+               (ngModelChange)="actualizarCampo('solUsuario', $event)"
+               placeholder="MODDATOS" />
+
+        <label>Clave SOL</label>
+        <input type="password" [ngModel]="form().solClaveNueva"
+               (ngModelChange)="actualizarCampo('solClaveNueva', $event)"
+               placeholder="Solo si cambias la clave" />
+        <p class="hint">Para probar en Beta, SUNAT publica credenciales fijas: usuario MODDATOS, clave moddatos, RUC 20000000001.</p>
+      </div>
+    </div>
+
+    <div class="card seccion activar">
+      <label class="checkbox-row">
+        <input type="checkbox" [ngModel]="form().activo" (ngModelChange)="actualizarCampo('activo', $event)" />
+        Activar facturación electrónica (habilita el botón "Emitir comprobante" en los pedidos)
+      </label>
+    </div>
+
+    <div class="acciones">
+      <button type="button" class="btn btn--ghost" (click)="volver()">Cancelar</button>
+      <button type="button" class="btn btn--primario" [disabled]="guardando()" (click)="guardar()">
+        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+      </button>
+    </div>
+  }
+</div>

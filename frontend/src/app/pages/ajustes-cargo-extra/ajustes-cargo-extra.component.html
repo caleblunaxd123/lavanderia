@@ -1,0 +1,25 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Ajuste de Cargo Extra (Impuesto)</h2>
+      <p>Actualiza el porcentaje de IGV que se aplica a los pedidos.</p>
+    </div>
+  </div>
+
+  <div class="card seccion">
+    <label>IGV</label>
+    <div class="fila-input">
+      <input type="number" min="0" max="100" step="0.01" [(ngModel)]="igv" />
+      <span>%</span>
+    </div>
+    <p class="hint">Porcentaje de impuesto general a las ventas aplicado en los cálculos del negocio.</p>
+  </div>
+
+  <div class="acciones">
+    <button class="btn btn--ghost" (click)="volver()">Cancelar</button>
+    <button class="btn btn--primario" (click)="guardar()" [disabled]="guardando() || igv < 0 || igv > 100">
+      {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+    </button>
+  </div>
+</div>
