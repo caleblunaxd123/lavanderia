@@ -23,7 +23,7 @@
     <div class="card tabla-wrap">
       <table class="tabla">
         <thead>
-          <tr><th>Usuario</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
+          <tr><th>Usuario</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Sede</th><th>Estado</th><th></th></tr>
         </thead>
         <tbody>
           @for (u of usuariosPaginados(); track u.id) {
@@ -32,6 +32,7 @@
               <td class="nombre">{{ u.nombreCompleto }}</td>
               <td>{{ u.email || '—' }}</td>
               <td>{{ u.rolNombre || u.rolCodigo }}</td>
+              <td>{{ u.sedeNombre || 'Todas' }}</td>
               <td>
                 <span [class]="'badge ' + (u.activo ? 'badge--verde' : 'badge--gris')">
                   {{ u.activo ? 'Activo' : 'Inactivo' }}
@@ -64,6 +65,7 @@
             <div><span>Usuario:</span> {{ u.usuario }}</div>
             <div><span>Email:</span> {{ u.email || '—' }}</div>
             <div><span>Rol:</span> {{ u.rolNombre || u.rolCodigo }}</div>
+            <div><span>Sede:</span> {{ u.sedeNombre || 'Todas' }}</div>
           </div>
           <div class="usuario-card__acciones">
             <button class="btn btn--ghost btn--sm" (click)="abrirEditar(u)">Editar</button>
@@ -121,6 +123,16 @@
               [placeholder]="editando() ? 'Dejar vacío para no cambiar' : ''" />
           </div>
         </div>
+
+        <label>Sede asignada</label>
+        <select [(ngModel)]="form.sedeId" name="sedeId">
+          @if (rolSeleccionadoEsAdmin()) {
+            <option [ngValue]="null">Todas las sedes</option>
+          }
+          @for (s of sedes(); track s.id) {
+            <option [ngValue]="s.id">{{ s.nombre }}</option>
+          }
+        </select>
 
         <label class="checkbox-row">
           <input type="checkbox" [(ngModel)]="form.activo" name="activo" />

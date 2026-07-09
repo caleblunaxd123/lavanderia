@@ -3,7 +3,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Sede } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
+import { SedesService } from '../../core/services/sedes.service';
 import { Rol, UsuarioAdmin, UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
@@ -21,9 +23,11 @@ export class AjustesUsuariosComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly sedesSvc = inject(SedesService);
 
   readonly usuarios = signal<UsuarioAdmin[]>([]);
   readonly roles = signal<Rol[]>([]);
+  readonly sedes = signal<Sede[]>([]);
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -47,6 +51,7 @@ export class AjustesUsuariosComponent implements OnInit {
   ngOnInit() {
     this.cargar();
     this.svc.roles().subscribe(r => this.roles.set(r));
+    this.sedesSvc.listar().subscribe(s => this.sedes.set(s.filter(x => x.activo)));
   }
 
   cargar() {
@@ -85,6 +90,10 @@ export class AjustesUsuariosComponent implements OnInit {
       this.errorForm.set('Usuario, nombre completo y rol son obligatorios.');
       return;
     }
+    if (!this.rolSeleccionadoEsAdmin() && !this.form.sedeId) {
+      this.errorForm.set('Los usuarios no administradores deben estar asignados a una sede.');
+      return;
+    }
     const edit = this.editando();
     if (!edit && !this.form.password?.trim()) {
       this.errorForm.set('Debes definir una contraseña para el nuevo usuario.');
@@ -93,7 +102,7 @@ export class AjustesUsuariosComponent implements OnInit {
     this.guardando.set(true);
     this.errorForm.set(null);
 
-    const payload = { ...this.form, email: this.form.email?.trim() || null };
+    const payload = { ...this.form, email: this.form.email?.trim() || null, sedeId: this.form.sedeId ?? null };
     const obs$: import('rxjs').Observable<any> = edit
       ? this.svc.actualizar(edit.id, payload)
       : this.svc.crear(payload);
@@ -126,7 +135,12 @@ export class AjustesUsuariosComponent implements OnInit {
 
   volver() { this.router.navigate(['/ajustes']); }
 
+  rolSeleccionadoEsAdmin(): boolean {
+    const rol = this.roles().find(r => r.id === this.form.rolId);
+    return rol?.codigo === 'ADMIN';
+  }
+
   private formVacio(): Partial<UsuarioAdmin> {
-    return { usuario: '', nombreCompleto: '', email: '', password: '', rolId: this.roles()[0]?.id, activo: true };
+    return { usuario: '', nombreCompleto: '', email: '', password: '', rolId: this.roles()[0]?.id, sedeId: null, activo: true };
   }
 }

@@ -507,6 +507,23 @@
   &--rojo { background: #fde8e8; color: #c0392b; }
 }
 
+.pago-resumen {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+
+  &__saldo,
+  &__ok {
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  &__saldo { color: var(--rojo); }
+  &__ok { color: #147a45; }
+}
+
 .area {
   display: inline-flex;
   align-items: center;
@@ -679,6 +696,15 @@
   }
 
   &__total { font-size: 15px; color: var(--azul-oscuro); }
+
+  &__saldo,
+  &__pagado {
+    font-size: 11.5px;
+    font-weight: 800;
+  }
+
+  &__saldo { color: var(--rojo); }
+  &__pagado { color: #147a45; }
 
   &__acciones {
     display: flex;
@@ -1312,11 +1338,24 @@
   .page__toolbar {
     flex-direction: column;
     align-items: stretch;
-
-    .btn { width: 100%; }
   }
 
-  .page__acciones .btn { flex: 1; }
+  .page__acciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+
+    .btn {
+      width: auto;
+      min-height: 40px;
+      padding: 9px 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: normal;
+      line-height: 1.15;
+    }
+  }
 }
 
 @media (max-width: 720px) {

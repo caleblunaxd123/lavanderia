@@ -192,11 +192,18 @@
                 <span [class]="claseEstado(p.estadoProceso)">{{ etiquetaEstado(p.estadoProceso) }}</span>
               </td>
               <td>
-                <span class="badge"
-                      [class.badge--verde]="p.estadoPago === 'PAGADO'"
-                      [class.badge--gris]="p.estadoPago !== 'PAGADO'">
-                  {{ p.estadoPago }}
-                </span>
+                <div class="pago-resumen">
+                  <span class="badge"
+                        [class.badge--verde]="p.estadoPago === 'PAGADO'"
+                        [class.badge--gris]="p.estadoPago !== 'PAGADO'">
+                    {{ p.estadoPago }}
+                  </span>
+                  @if (saldoPedido(p) > 0) {
+                    <span class="pago-resumen__saldo">Saldo S/ {{ saldoPedido(p) | number:'1.2-2' }}</span>
+                  } @else {
+                    <span class="pago-resumen__ok">Sin deuda</span>
+                  }
+                </div>
               </td>
               <td>
                 <span class="badge" [class.badge--rojo]="diasEnProceso(p) >= 3" [class.badge--gris]="diasEnProceso(p) < 3">
@@ -264,6 +271,11 @@
             <div class="pedido-card__precio">
               <span class="pedido-card__label">Total</span>
               <strong class="pedido-card__total">S/ {{ p.total | number:'1.2-2' }}</strong>
+              @if (saldoPedido(p) > 0) {
+                <span class="pedido-card__saldo">Saldo S/ {{ saldoPedido(p) | number:'1.2-2' }}</span>
+              } @else {
+                <span class="pedido-card__pagado">Sin deuda</span>
+              }
             </div>
             <div class="pedido-card__acciones">
               @if (puedeAvanzar(p)) {

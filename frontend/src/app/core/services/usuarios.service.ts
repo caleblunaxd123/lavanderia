@@ -9,6 +9,8 @@ export interface UsuarioAdmin {
   email?: string | null;
   password?: string | null;
   rolId: number;
+  sedeId?: number | null;
+  sedeNombre?: string | null;
   rolCodigo?: string;
   rolNombre?: string;
   activo: boolean;

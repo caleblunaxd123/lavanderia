@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Pedido } from '../../core/models/models';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { PedidosService } from '../../core/services/pedidos.service';
+import { WhatsappService } from '../../core/services/whatsapp.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
@@ -16,6 +17,7 @@ export class TicketComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly service = inject(PedidosService);
   private readonly config = inject(ConfiguracionService);
+  private readonly whatsapp = inject(WhatsappService);
 
   readonly pedido = signal<Pedido | null>(null);
   readonly error = signal<string | null>(null);
@@ -42,6 +44,7 @@ export class TicketComponent implements OnInit {
     // Ancho de pagina segun configuracion (58 o 80mm)
     const ancho = this.negocio().anchoTicketMm || 80;
     this.aplicarAncho(ancho);
+    this.whatsapp.cargar();
 
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) {
@@ -65,6 +68,36 @@ export class TicketComponent implements OnInit {
   }
 
   imprimir() { window.print(); }
+
+  enviarWhatsapp() {
+    const p = this.pedido();
+    if (!p) return;
+    if (!p.clienteCelular) {
+      this.error.set('Este cliente no tiene celular registrado.');
+      return;
+    }
+
+    const cliente = p.clienteNombre ?? 'cliente';
+    const numero = String(p.numero);
+    const entrega = p.fechaEntregaEst
+      ? new Date(p.fechaEntregaEst).toLocaleString('es-PE')
+      : 'por confirmar';
+    const saldoTexto = this.saldo() > 0
+      ? `Saldo pendiente: S/ ${this.saldo().toFixed(2)}`
+      : 'Pago completo';
+    const fallback = `Hola ${cliente}, te compartimos el resumen de tu pedido #${numero} en ${this.negocio().nombreNegocio}. Total: S/ ${p.total.toFixed(2)}. ${saldoTexto}. Entrega: ${entrega}.`;
+
+    const mensaje = this.whatsapp.mensaje('INGRESO', {
+      cliente,
+      numero,
+      negocio: this.negocio().nombreNegocio,
+      total: p.total.toFixed(2),
+      saldo: this.saldo().toFixed(2),
+      entrega
+    }, fallback);
+
+    this.whatsapp.enviar(p.clienteCelular, mensaje);
+  }
 
   cerrar() { window.close(); }
 

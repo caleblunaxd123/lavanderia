@@ -35,6 +35,8 @@ public class UsuarioAdminDto
     [EmailAddress, StringLength(120)] public string? Email { get; set; }
     [StringLength(200)] public string? Password { get; set; }
     [Required] public int RolId { get; set; }
+    public int? SedeId { get; set; }
+    public string? SedeNombre { get; set; }
     public string? RolCodigo { get; set; }
     public string? RolNombre { get; set; }
     public bool Activo { get; set; } = true;

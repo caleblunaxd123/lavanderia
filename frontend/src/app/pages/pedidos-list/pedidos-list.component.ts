@@ -606,6 +606,10 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     return Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000)));
   }
 
+  saldoPedido(p: Pedido): number {
+    return Math.max(0, p.total - p.montoPagado);
+  }
+
   puedeAvanzar(p: Pedido): boolean {
     return p.estadoProceso !== 'ENTREGADO' && p.estadoProceso !== 'ANULADO';
   }
