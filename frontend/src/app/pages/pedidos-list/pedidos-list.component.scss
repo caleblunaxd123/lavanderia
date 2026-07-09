@@ -281,6 +281,29 @@
   margin-bottom: 16px;
 }
 
+@media (max-width: 480px) {
+  .filtros-row {
+    align-items: flex-start;
+  }
+
+  .filtros {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+
+    &__item {
+      flex: 1 1 calc(50% - 6px);
+      min-height: 38px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+  }
+}
+
 .btn-leyenda {
   width: 34px;
   height: 34px;
