@@ -254,7 +254,7 @@ export class ClientesComponent implements OnInit {
 
   readonly ordenesCliente = signal<Pedido[]>([]);
   readonly cargandoOrdenes = signal(false);
-  readonly ordenesFiltro = signal<'pendientes' | 'entregados' | 'todos'>('pendientes');
+  readonly ordenesFiltro = signal<'en-proceso' | 'con-deuda' | 'entregados' | 'todos'>('en-proceso');
   readonly ordenesPagina = signal(1);
   readonly ordenesTotal = signal(0);
   readonly ordenesTamanoPagina = 10;
@@ -312,7 +312,7 @@ export class ClientesComponent implements OnInit {
     });
   }
 
-  cambiarOrdenesFiltro(f: 'pendientes' | 'entregados' | 'todos') {
+  cambiarOrdenesFiltro(f: 'en-proceso' | 'con-deuda' | 'entregados' | 'todos') {
     this.ordenesFiltro.set(f);
     this.ordenesPagina.set(1);
     this.cargarOrdenes();
@@ -339,5 +339,9 @@ export class ClientesComponent implements OnInit {
 
   saldoPendiente(p: Pedido): number {
     return Math.max(0, p.total - p.montoPagado);
+  }
+
+  etiquetaEstadoPago(p: Pedido): string {
+    return p.estadoPago === 'PAGADO' ? 'Pagado' : p.estadoPago === 'PARCIAL' ? 'Parcial' : 'Pendiente';
   }
 }

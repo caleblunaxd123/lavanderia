@@ -9,7 +9,7 @@ public interface IPedidoRepository
 {
     Task<int> CrearAsync(Pedido pedido, CancellationToken ct = default);
     Task<Pedido?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
-    Task<(List<Pedido> Items, int Total)> ListarPaginadoAsync(string? filtro, string? busqueda, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
+    Task<(List<Pedido> Items, int Total)> ListarPaginadoAsync(string? filtro, string? busqueda, DateTime? desde, DateTime? hasta, string? campoFecha, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task<(List<Pedido> Items, int Total)> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task<int> SiguienteNumeroAsync(int sedeId, CancellationToken ct = default);
     Task RegistrarHistorialAsync(PedidoHistorial h, SqlConnection conn, SqlTransaction tx, CancellationToken ct = default);
@@ -198,7 +198,7 @@ public class PedidoRepository : IPedidoRepository
     }
 
     public async Task<(List<Pedido> Items, int Total)> ListarPaginadoAsync(
-        string? filtro, string? busqueda, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default)
+        string? filtro, string? busqueda, DateTime? desde, DateTime? hasta, string? campoFecha, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
@@ -230,6 +230,20 @@ public class PedidoRepository : IPedidoRepository
                 "ultimos"    => " WHERE p.SedeId = @SedeId ",
                 _            => " WHERE p.SedeId = @SedeId AND p.Anulado = 0 "
             };
+
+            if (string.Equals(filtro, "fecha", StringComparison.OrdinalIgnoreCase))
+            {
+                var desdeFiltro = (desde ?? DateTime.Today.AddDays(-30)).Date;
+                var hastaExclusivo = (hasta ?? DateTime.Today).Date.AddDays(1);
+                var columnaFecha = campoFecha == "entrega" ? "p.FechaEntregaEst" : "p.FechaIngreso";
+                where = $@" WHERE p.SedeId = @SedeId
+                    AND p.Anulado = 0
+                    AND {columnaFecha} IS NOT NULL
+                    AND {columnaFecha} >= @DesdeFecha
+                    AND {columnaFecha} < @HastaFecha ";
+                cmd.AddParam("@DesdeFecha", desdeFiltro);
+                cmd.AddParam("@HastaFecha", hastaExclusivo);
+            }
         }
         cmd.AddParam("@SedeId", sedeId);
 
@@ -271,6 +285,8 @@ public class PedidoRepository : IPedidoRepository
         var where = filtro?.ToLowerInvariant() switch
         {
             "pendientes" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
+            "en-proceso" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
+            "con-deuda"  => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.Anulado = 0 AND p.MontoPagado + 0.01 < p.Total ",
             "entregados" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso = 'ENTREGADO' ",
             _            => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId "
         };

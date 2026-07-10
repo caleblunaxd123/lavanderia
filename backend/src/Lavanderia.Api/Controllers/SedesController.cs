@@ -11,6 +11,7 @@ namespace Lavanderia.Api.Controllers;
 /// listar las sedes de su negocio (para el selector del header); crear/editar es solo ADMIN.
 /// </summary>
 [Route("api/[controller]")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class SedesController : TenantAwareControllerBase
 {
     private readonly ISedeRepository _repo;

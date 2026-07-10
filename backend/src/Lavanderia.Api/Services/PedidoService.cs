@@ -8,7 +8,7 @@ public interface IPedidoService
 {
     Task<PedidoDto> CrearAsync(CrearPedidoRequest req, int usuarioId, int negocioId, int sedeId, CancellationToken ct = default);
     Task<PedidoDto?> ObtenerAsync(int id, int sedeId, CancellationToken ct = default);
-    Task<PagedResultDto<PedidoDto>> ListarPaginadoAsync(string? filtro, string? busqueda, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
+    Task<PagedResultDto<PedidoDto>> ListarPaginadoAsync(string? filtro, string? busqueda, DateTime? desde, DateTime? hasta, string? campoFecha, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task<PagedResultDto<PedidoDto>> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task AvanzarAreaAsync(int pedidoId, AvanzarAreaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
@@ -27,6 +27,7 @@ public interface IPedidoService
 public class PedidoService : IPedidoService
 {
     private static readonly string[] ModalidadesValidas = ["Tienda", "Recojo", "Delivery"];
+    private static readonly string[] FiltrosClienteValidos = ["pendientes", "en-proceso", "con-deuda", "entregados", "todos"];
     private readonly IPedidoRepository _pedidos;
     private readonly IClienteRepository _clientes;
     private readonly IServicioRepository _servicios;
@@ -204,6 +205,7 @@ public class PedidoService : IPedidoService
     {
         if (pedido.Anulado || !EsPedidoDomicilio(pedido.Modalidad)) return null;
         var saldo = Math.Max(0m, pedido.Total - pedido.MontoPagado);
+        if (saldo <= 0.01m) return null;
 
         var vigente = await _pagos.ObtenerVigentePorPedidoAsync(pedidoId, ct);
         if (vigente is not null) return vigente.Token;
@@ -218,9 +220,25 @@ public class PedidoService : IPedidoService
         return p == null ? null : Map(p);
     }
 
-    public async Task<PagedResultDto<PedidoDto>> ListarPaginadoAsync(string? filtro, string? busqueda, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default)
+    public async Task<PagedResultDto<PedidoDto>> ListarPaginadoAsync(
+        string? filtro,
+        string? busqueda,
+        DateTime? desde,
+        DateTime? hasta,
+        string? campoFecha,
+        int pagina,
+        int tamanoPagina,
+        int sedeId,
+        CancellationToken ct = default)
     {
-        var (items, total) = await _pedidos.ListarPaginadoAsync(filtro, busqueda, pagina, tamanoPagina, sedeId, ct);
+        var rangoDesde = desde?.Date;
+        var rangoHasta = hasta?.Date;
+        var filtroFecha = string.Equals(filtro, "fecha", StringComparison.OrdinalIgnoreCase)
+            ? NormalizarCampoFecha(campoFecha)
+            : null;
+
+        var (items, total) = await _pedidos.ListarPaginadoAsync(
+            filtro, busqueda, rangoDesde, rangoHasta, filtroFecha, pagina, tamanoPagina, sedeId, ct);
         return new PagedResultDto<PedidoDto>
         {
             Items = items.Select(Map).ToList(),
@@ -232,7 +250,11 @@ public class PedidoService : IPedidoService
 
     public async Task<PagedResultDto<PedidoDto>> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default)
     {
-        var (items, total) = await _pedidos.ListarPorClienteAsync(clienteId, filtro, pagina, tamanoPagina, sedeId, ct);
+        var filtroNormalizado = string.IsNullOrWhiteSpace(filtro) ? "en-proceso" : filtro.Trim().ToLowerInvariant();
+        if (!FiltrosClienteValidos.Contains(filtroNormalizado))
+            filtroNormalizado = "en-proceso";
+
+        var (items, total) = await _pedidos.ListarPorClienteAsync(clienteId, filtroNormalizado, pagina, tamanoPagina, sedeId, ct);
         return new PagedResultDto<PedidoDto>
         {
             Items = items.Select(Map).ToList(),
@@ -420,8 +442,8 @@ public class PedidoService : IPedidoService
         var totPendientes = estados.GetValueOrDefault("PENDIENTE", 0)
                           + estados.GetValueOrDefault("EN_PROCESO", 0)
                           + estados.GetValueOrDefault("LISTO", 0);
-        var (_, totOtros) = await _pedidos.ListarPaginadoAsync("otros", null, 1, 1, sedeId, ct);
-        var (_, totUltimos) = await _pedidos.ListarPaginadoAsync("ultimos", null, 1, 1, sedeId, ct);
+        var (_, totOtros) = await _pedidos.ListarPaginadoAsync("otros", null, null, null, null, 1, 1, sedeId, ct);
+        var (_, totUltimos) = await _pedidos.ListarPaginadoAsync("ultimos", null, null, null, null, 1, 1, sedeId, ct);
 
         return new DashboardDto
         {
@@ -509,4 +531,13 @@ public class PedidoService : IPedidoService
 
     private static string? LimpiarTexto(string? valor)
         => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+
+    private static string? NormalizarCampoFecha(string? campoFecha)
+    {
+        return (campoFecha ?? "").Trim().ToLowerInvariant() switch
+        {
+            "entrega" => "entrega",
+            _ => "ingreso"
+        };
+    }
 }

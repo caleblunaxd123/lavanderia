@@ -4,14 +4,20 @@ using Lavanderia.Api.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace Lavanderia.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class UsuariosController : ControllerBase
 {
+    private static readonly Regex UsuarioValido = new("^[a-z0-9._-]{3,50}$", RegexOptions.IgnoreCase);
+    private static readonly Regex PasswordSegura = new("^(?=.*[A-Za-z])(?=.*\\d).{8,}$", RegexOptions.Compiled);
+    private static readonly Regex EmailBasicoValido = new("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", RegexOptions.IgnoreCase);
+
     private readonly IUsuarioRepository _usuarios;
     private readonly IRolRepository _roles;
     private readonly ISedeRepository _sedes;
@@ -38,10 +44,20 @@ public class UsuariosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UsuarioAdminDto>> Crear([FromBody] UsuarioAdminDto dto, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 4)
-            return BadRequest(new { mensaje = "La contraseña debe tener al menos 4 caracteres." });
+        if (!PasswordValida(dto.Password))
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres e incluir letras y numeros." });
 
-        var existente = await _usuarios.BuscarPorUsuarioAsync(dto.Usuario.Trim(), ct);
+        var usuario = dto.Usuario?.Trim() ?? string.Empty;
+        if (!UsuarioValido.IsMatch(usuario))
+            return BadRequest(new { mensaje = "El usuario solo puede usar letras, numeros, punto, guion y guion bajo (3 a 50 caracteres)." });
+
+        if (string.IsNullOrWhiteSpace(dto.NombreCompleto))
+            return BadRequest(new { mensaje = "El nombre completo es obligatorio." });
+
+        if (!EmailValido(dto.Email))
+            return BadRequest(new { mensaje = "El email ingresado no tiene un formato valido." });
+
+        var existente = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
         if (existente is not null)
             return Conflict(new { mensaje = "Ya existe un usuario con ese nombre de acceso." });
 
@@ -53,9 +69,9 @@ public class UsuariosController : ControllerBase
 
         var id = await _usuarios.CrearAsync(new Usuario
         {
-            UsuarioLogin = dto.Usuario.Trim(),
-            NombreCompleto = dto.NombreCompleto.Trim(),
-            Email = dto.Email,
+            UsuarioLogin = usuario,
+            NombreCompleto = dto.NombreCompleto?.Trim() ?? string.Empty,
+            Email = NormalizarOpcional(dto.Email),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             RolId = dto.RolId,
             Activo = dto.Activo,
@@ -73,15 +89,32 @@ public class UsuariosController : ControllerBase
         var existente = await _usuarios.ObtenerPorIdAsync(id, NegocioIdActual, ct);
         if (existente is null) return NotFound();
 
+        var usuario = dto.Usuario?.Trim() ?? string.Empty;
+        if (!UsuarioValido.IsMatch(usuario))
+            return BadRequest(new { mensaje = "El usuario solo puede usar letras, numeros, punto, guion y guion bajo (3 a 50 caracteres)." });
+
+        if (string.IsNullOrWhiteSpace(dto.NombreCompleto))
+            return BadRequest(new { mensaje = "El nombre completo es obligatorio." });
+
+        if (!EmailValido(dto.Email))
+            return BadRequest(new { mensaje = "El email ingresado no tiene un formato valido." });
+
+        if (!string.Equals(existente.UsuarioLogin, usuario, StringComparison.OrdinalIgnoreCase))
+        {
+            var tomado = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
+            if (tomado is not null && tomado.Id != id)
+                return Conflict(new { mensaje = "Ya existe un usuario con ese nombre de acceso." });
+        }
+
         if (!await RolSedeValidaAsync(dto.RolId, dto.SedeId, ct))
             return BadRequest(new { mensaje = "Los usuarios no administradores deben estar asignados a una sede." });
 
         if (!await SedeValidaAsync(dto.SedeId, ct))
             return BadRequest(new { mensaje = "La sede seleccionada no existe o no esta activa." });
 
-        existente.UsuarioLogin = dto.Usuario.Trim();
-        existente.NombreCompleto = dto.NombreCompleto.Trim();
-        existente.Email = dto.Email;
+        existente.UsuarioLogin = usuario;
+        existente.NombreCompleto = dto.NombreCompleto?.Trim() ?? string.Empty;
+        existente.Email = NormalizarOpcional(dto.Email);
         existente.RolId = dto.RolId;
         existente.Activo = dto.Activo;
         existente.SedeId = dto.SedeId;
@@ -89,8 +122,8 @@ public class UsuariosController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(dto.Password))
         {
-            if (dto.Password.Length < 4)
-                return BadRequest(new { mensaje = "La contraseña debe tener al menos 4 caracteres." });
+            if (!PasswordValida(dto.Password))
+                return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres e incluir letras y numeros." });
             await _usuarios.ActualizarPasswordAsync(id, BCrypt.Net.BCrypt.HashPassword(dto.Password), NegocioIdActual, ct);
         }
 
@@ -135,4 +168,16 @@ public class UsuariosController : ControllerBase
         var admin = await _roles.BuscarPorCodigoAsync("ADMIN", ct);
         return admin is not null && admin.Id == rolId;
     }
+
+    private static bool PasswordValida(string? password)
+        => !string.IsNullOrWhiteSpace(password) && PasswordSegura.IsMatch(password);
+
+    private static string? NormalizarOpcional(string? valor)
+    {
+        var limpio = valor?.Trim();
+        return string.IsNullOrWhiteSpace(limpio) ? null : limpio;
+    }
+
+    private static bool EmailValido(string? valor)
+        => string.IsNullOrWhiteSpace(valor) || EmailBasicoValido.IsMatch(valor.Trim());
 }

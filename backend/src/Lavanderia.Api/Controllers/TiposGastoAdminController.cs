@@ -12,6 +12,7 @@ namespace Lavanderia.Api.Controllers;
 /// </summary>
 [Route("api/tipos-gasto-admin")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class TiposGastoAdminController : TenantAwareControllerBase
 {
     private readonly ICajaRepository _repo;

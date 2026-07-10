@@ -39,10 +39,21 @@ export class PedidosService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/pedidos`;
 
-  listar(filtro?: string, pagina = 1, tamanoPagina = 15, busqueda?: string) {
+  listar(
+    filtro?: string,
+    pagina = 1,
+    tamanoPagina = 15,
+    busqueda?: string,
+    desde?: string,
+    hasta?: string,
+    campoFecha?: 'ingreso' | 'entrega'
+  ) {
     let params = new HttpParams().set('pagina', pagina).set('tamanoPagina', tamanoPagina);
     if (busqueda) params = params.set('busqueda', busqueda);
     else if (filtro) params = params.set('filtro', filtro);
+    if (desde) params = params.set('desde', desde);
+    if (hasta) params = params.set('hasta', hasta);
+    if (campoFecha) params = params.set('campoFecha', campoFecha);
     return this.http.get<PagedResult<Pedido>>(this.base, { params });
   }
 

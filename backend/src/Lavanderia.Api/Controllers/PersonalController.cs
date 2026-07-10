@@ -8,6 +8,7 @@ namespace Lavanderia.Api.Controllers;
 
 [Route("api/personal")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class PersonalController : TenantAwareControllerBase
 {
     private readonly IEmpleadoRepository _repo;

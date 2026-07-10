@@ -1,11 +1,13 @@
 using Lavanderia.Api.Domain;
 using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lavanderia.Api.Controllers;
 
 [Route("api/[controller]")]
+[Authorize(Policy = "Modulo:CAJA")]
 public class CajaController : TenantAwareControllerBase
 {
     private readonly ICajaRepository _repo;

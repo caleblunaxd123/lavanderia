@@ -9,6 +9,7 @@ public interface IClienteRepository
     Task<List<Cliente>> BuscarAsync(string? texto, string? campo, int limite, int negocioId, CancellationToken ct = default);
     Task<Cliente?> ObtenerPorIdAsync(int id, int negocioId, CancellationToken ct = default);
     Task<Cliente?> BuscarPorCelularOrDniAsync(string valor, int negocioId, CancellationToken ct = default);
+    Task<Cliente?> BuscarDuplicadoAsync(string? celular, string? dni, string? documentoFiscal, int negocioId, int? excluirClienteId = null, CancellationToken ct = default);
     Task<int> CrearAsync(Cliente c, CancellationToken ct = default);
     Task ActualizarAsync(Cliente c, int negocioId, CancellationToken ct = default);
     Task DesactivarAsync(int id, int negocioId, CancellationToken ct = default);
@@ -83,6 +84,29 @@ public class ClienteRepository : IClienteRepository
         cmd.CommandText = BaseSelect + " WHERE (Celular = @Valor OR Dni = @Valor) AND NegocioId = @NegocioId";
         cmd.AddParam("@Valor", valor);
         cmd.AddParam("@NegocioId", negocioId);
+        return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<Cliente?> BuscarDuplicadoAsync(string? celular, string? dni, string? documentoFiscal, int negocioId, int? excluirClienteId = null, CancellationToken ct = default)
+    {
+        var condiciones = new List<string>();
+        if (!string.IsNullOrWhiteSpace(celular)) condiciones.Add("Celular = @Celular");
+        if (!string.IsNullOrWhiteSpace(dni)) condiciones.Add("Dni = @Dni");
+        if (!string.IsNullOrWhiteSpace(documentoFiscal)) condiciones.Add("DocumentoFiscal = @DocumentoFiscal");
+        if (condiciones.Count == 0) return null;
+
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = BaseSelect + $@"
+            WHERE NegocioId = @NegocioId
+              AND ({string.Join(" OR ", condiciones)})
+              AND (@ExcluirId IS NULL OR Id <> @ExcluirId)";
+        cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@Celular", string.IsNullOrWhiteSpace(celular) ? null : celular);
+        cmd.AddParam("@Dni", string.IsNullOrWhiteSpace(dni) ? null : dni);
+        cmd.AddParam("@DocumentoFiscal", string.IsNullOrWhiteSpace(documentoFiscal) ? null : documentoFiscal);
+        cmd.AddParam("@ExcluirId", excluirClienteId);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
     }
 

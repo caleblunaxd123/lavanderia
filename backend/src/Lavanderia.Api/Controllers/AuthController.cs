@@ -51,8 +51,8 @@ public class AuthController : ControllerBase
                 return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
         }
 
-        var (token, expira) = _tokens.GenerarAccessToken(usuario);
         var modulos = await ObtenerModulosAsync(usuario, ct);
+        var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
 
         return Ok(new LoginResponse(
             token,
@@ -95,8 +95,8 @@ public class AuthController : ControllerBase
 
         usuario.SedeId = sede.Id;
         usuario.SedeNombre = sede.Nombre;
-        var (token, expira) = _tokens.GenerarAccessToken(usuario);
         var modulos = await ObtenerModulosAsync(usuario, ct);
+        var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
 
         return Ok(new LoginResponse(
             token,

@@ -5,6 +5,7 @@ using Lavanderia.Api.Services;
 using Lavanderia.Api.Services.Facturacion;
 using Lavanderia.Api.Services.Pagos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -92,7 +93,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ModuloAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var modulo in Lavanderia.Api.Domain.Modulos.Todos)
+    {
+        options.AddPolicy(ModuloPolicies.For(modulo), policy =>
+        {
+            policy.RequireAuthenticatedUser();
+            policy.Requirements.Add(new ModuloRequirement(modulo));
+        });
+    }
+});
 
 // CORS
 // En Development se permite cualquier puerto de localhost/127.0.0.1 (el dev server
@@ -129,6 +141,28 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        if (context.Response.HasStarted) return;
+
+        var (status, mensaje) = exception switch
+        {
+            InvalidOperationException ex => (StatusCodes.Status400BadRequest, ex.Message),
+            ArgumentException ex => (StatusCodes.Status400BadRequest, ex.Message),
+            UnauthorizedAccessException ex => (StatusCodes.Status403Forbidden, ex.Message),
+            _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado. Intenta nuevamente.")
+        };
+
+        context.Response.Clear();
+        context.Response.StatusCode = status;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new { mensaje });
+    });
+});
 
 app.UseCors();
 app.UseAuthentication();

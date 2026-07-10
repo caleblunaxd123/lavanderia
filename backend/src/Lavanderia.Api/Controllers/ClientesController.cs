@@ -1,11 +1,13 @@
 using Lavanderia.Api.Domain;
 using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lavanderia.Api.Controllers;
 
 [Route("api/[controller]")]
+[Authorize(Policy = "Modulo:CLIENTES")]
 public class ClientesController : TenantAwareControllerBase
 {
     private readonly IClienteRepository _repo;
@@ -65,21 +67,27 @@ public class ClientesController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<ClienteDto>> Crear([FromBody] ClienteDto dto, CancellationToken ct)
     {
-        if (!string.IsNullOrWhiteSpace(dto.Celular))
-        {
-            var existe = await _repo.BuscarPorCelularOrDniAsync(dto.Celular, NegocioId, ct);
-            if (existe is not null)
-                return Conflict(new { mensaje = "Ya existe un cliente con ese celular.", clienteId = existe.Id });
-        }
+        var nombre = dto.Nombre?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(nombre))
+            return BadRequest(new { mensaje = "El nombre del cliente es obligatorio." });
+
+        var celular = LimpiarTexto(dto.Celular);
+        var dni = LimpiarTexto(dto.Dni);
+        var documentoFiscal = LimpiarTexto(dto.DocumentoFiscal);
+        var direccion = LimpiarTexto(dto.Direccion);
+
+        var duplicado = await _repo.BuscarDuplicadoAsync(celular, dni, documentoFiscal, NegocioId, null, ct);
+        if (duplicado is not null)
+            return Conflict(new { mensaje = MensajeDuplicado(duplicado, celular, dni, documentoFiscal), clienteId = duplicado.Id });
 
         var id = await _repo.CrearAsync(new Cliente
         {
             NegocioId = NegocioId,
-            Nombre = dto.Nombre.Trim(),
-            Celular = dto.Celular,
-            Dni = dto.Dni,
-            DocumentoFiscal = dto.DocumentoFiscal,
-            Direccion = dto.Direccion,
+            Nombre = nombre,
+            Celular = celular,
+            Dni = dni,
+            DocumentoFiscal = documentoFiscal,
+            Direccion = direccion,
             Puntos = dto.Puntos
         }, ct);
 
@@ -93,11 +101,22 @@ public class ClientesController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
-        existente.Celular = dto.Celular;
-        existente.Dni = dto.Dni;
-        existente.DocumentoFiscal = dto.DocumentoFiscal;
-        existente.Direccion = dto.Direccion;
+        var nombre = dto.Nombre?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(nombre))
+            return BadRequest(new { mensaje = "El nombre del cliente es obligatorio." });
+
+        var celular = LimpiarTexto(dto.Celular);
+        var dni = LimpiarTexto(dto.Dni);
+        var documentoFiscal = LimpiarTexto(dto.DocumentoFiscal);
+        var duplicado = await _repo.BuscarDuplicadoAsync(celular, dni, documentoFiscal, NegocioId, id, ct);
+        if (duplicado is not null)
+            return Conflict(new { mensaje = MensajeDuplicado(duplicado, celular, dni, documentoFiscal), clienteId = duplicado.Id });
+
+        existente.Nombre = nombre;
+        existente.Celular = celular;
+        existente.Dni = dni;
+        existente.DocumentoFiscal = documentoFiscal;
+        existente.Direccion = LimpiarTexto(dto.Direccion);
         existente.Puntos = dto.Puntos;
 
         await _repo.ActualizarAsync(existente, NegocioId, ct);
@@ -171,4 +190,18 @@ public class ClientesController : TenantAwareControllerBase
         Puntos = c.Puntos,
         FechaCreacion = c.FechaCreacion
     };
+
+    private static string? LimpiarTexto(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+
+    private static string MensajeDuplicado(Cliente duplicado, string? celular, string? dni, string? documentoFiscal)
+    {
+        if (!string.IsNullOrWhiteSpace(celular) && string.Equals(duplicado.Celular, celular, StringComparison.Ordinal))
+            return "Ya existe un cliente con ese celular.";
+        if (!string.IsNullOrWhiteSpace(dni) && string.Equals(duplicado.Dni, dni, StringComparison.Ordinal))
+            return "Ya existe un cliente con ese DNI.";
+        if (!string.IsNullOrWhiteSpace(documentoFiscal) && string.Equals(duplicado.DocumentoFiscal, documentoFiscal, StringComparison.Ordinal))
+            return "Ya existe un cliente con ese documento fiscal.";
+        return "Ya existe un cliente con esos datos.";
+    }
 }

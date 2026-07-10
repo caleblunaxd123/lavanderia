@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Lavanderia.Api.Controllers;
 
 [Route("api/reportes")]
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "Modulo:REPORTES")]
 public class ReportesController : TenantAwareControllerBase
 {
     private readonly IReporteRepository _repo;

@@ -7,6 +7,7 @@ namespace Lavanderia.Api.Controllers;
 
 [Route("api/plantillas-whatsapp-admin")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class PlantillasWhatsappAdminController : TenantAwareControllerBase
 {
     private readonly IPlantillaWhatsappRepository _repo;

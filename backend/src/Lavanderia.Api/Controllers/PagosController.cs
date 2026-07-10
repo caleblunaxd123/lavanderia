@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Lavanderia.Api.Controllers;
 
 [Route("api/pagos")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class PagosController : TenantAwareControllerBase
 {
     private static readonly Regex PublicKeyRegex = new("^pk_(test|live)_[A-Za-z0-9]+$", RegexOptions.Compiled);

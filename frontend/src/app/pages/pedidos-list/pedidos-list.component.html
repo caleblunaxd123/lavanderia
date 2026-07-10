@@ -100,6 +100,13 @@
     }
   </div>
 
+  @if (resumenFiltroFecha(); as resumenFecha) {
+    <div class="filtro-fecha card">
+      <span>{{ resumenFecha }}</span>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="limpiarFiltroFecha()">Quitar filtro</button>
+    </div>
+  }
+
   @if (cargando()) {
     <div class="card"><app-skeleton variant="table" [rows]="6" [columns]="8"></app-skeleton></div>
   } @else if (error()) {

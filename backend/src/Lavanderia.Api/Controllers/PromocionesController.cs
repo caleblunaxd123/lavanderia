@@ -8,6 +8,7 @@ namespace Lavanderia.Api.Controllers;
 
 [Route("api/[controller]")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:PROMOCIONES")]
 public class PromocionesController : TenantAwareControllerBase
 {
     private readonly IPromocionRepository _repo;

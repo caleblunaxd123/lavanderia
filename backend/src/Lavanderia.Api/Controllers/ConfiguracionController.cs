@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Lavanderia.Api.Controllers;
 
 [Route("api/configuracion")]
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "Modulo:AJUSTES")]
 public class ConfiguracionController : TenantAwareControllerBase
 {
     private readonly IConfiguracionNegocioRepository _repo;

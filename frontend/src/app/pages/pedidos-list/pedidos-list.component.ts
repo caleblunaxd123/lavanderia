@@ -70,6 +70,14 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   fechaFiltroDesde = '';
   fechaFiltroHasta = '';
 
+  readonly resumenFiltroFecha = computed(() => {
+    if (this.filtro() !== 'fecha') return null;
+    const etiquetaCampo = this.tipoFechaConsulta() === 'entrega' ? 'entrega' : 'ingreso';
+    const desde = this.fechaFiltroDesde || 'inicio';
+    const hasta = this.fechaFiltroHasta || 'hoy';
+    return `Filtrando por fecha de ${etiquetaCampo}: ${desde} a ${hasta}`;
+  });
+
   claseFila(p: Pedido): string {
     if (p.anulado) return 'fila--anulado';
     if (p.estadoProceso === 'ENTREGADO') return 'fila--entregado';
@@ -252,7 +260,16 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!silencioso) this.cargando.set(true);
     this.error.set(null);
     const texto = this.busqueda().trim();
-    this.service.listar(texto ? undefined : this.filtro(), this.pagina(), this.tamanoPagina(), texto || undefined).subscribe({
+    const usandoFiltroFecha = !texto && this.filtro() === 'fecha';
+    this.service.listar(
+      texto ? undefined : this.filtro(),
+      this.pagina(),
+      this.tamanoPagina(),
+      texto || undefined,
+      usandoFiltroFecha && this.fechaFiltroDesde ? this.fechaFiltroDesde : undefined,
+      usandoFiltroFecha && this.fechaFiltroHasta ? this.fechaFiltroHasta : undefined,
+      usandoFiltroFecha ? this.tipoFechaConsulta() : undefined
+    ).subscribe({
       next: res => { this.pedidos.set(res.items); this.total.set(res.total); this.cargando.set(false); },
       error: (err: HttpErrorResponse) => {
         this.cargando.set(false);
@@ -263,6 +280,13 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       }
     });
+  }
+
+  limpiarFiltroFecha() {
+    this.fechaFiltroDesde = '';
+    this.fechaFiltroHasta = '';
+    this.tipoFechaConsulta.set('ingreso');
+    this.cambiarFiltro('pendientes');
   }
 
   abrirDetalle(p: Pedido) {

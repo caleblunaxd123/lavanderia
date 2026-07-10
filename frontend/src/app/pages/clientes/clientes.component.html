@@ -283,7 +283,8 @@
         }
       } @else {
         <div class="detalle-ordenes__filtros">
-          <button [class.is-active]="ordenesFiltro()==='pendientes'" (click)="cambiarOrdenesFiltro('pendientes')">Pendientes</button>
+          <button [class.is-active]="ordenesFiltro()==='en-proceso'" (click)="cambiarOrdenesFiltro('en-proceso')">En proceso</button>
+          <button [class.is-active]="ordenesFiltro()==='con-deuda'" (click)="cambiarOrdenesFiltro('con-deuda')">Con deuda</button>
           <button [class.is-active]="ordenesFiltro()==='entregados'" (click)="cambiarOrdenesFiltro('entregados')">Entregados</button>
           <button [class.is-active]="ordenesFiltro()==='todos'" (click)="cambiarOrdenesFiltro('todos')">Todos</button>
         </div>
@@ -294,13 +295,14 @@
           <p class="sin-datos">No hay órdenes para mostrar.</p>
         } @else {
           <table class="tabla-mini">
-            <thead><tr><th>N°</th><th>Fecha</th><th>Total</th><th>Pago Faltante</th><th>Estado</th></tr></thead>
+            <thead><tr><th>N°</th><th>Fecha</th><th>Total</th><th>Pago</th><th>Saldo</th><th>Estado</th></tr></thead>
             <tbody>
               @for (p of ordenesCliente(); track p.id) {
                 <tr>
                   <td>{{ p.numero }}</td>
                   <td>{{ p.fechaIngreso | date:'dd/MM/yy' }}</td>
                   <td>S/ {{ p.total.toFixed(2) }}</td>
+                  <td>{{ etiquetaEstadoPago(p) }}</td>
                   <td [class.txt-rojo]="saldoPendiente(p) > 0">S/ {{ saldoPendiente(p).toFixed(2) }}</td>
                   <td>{{ p.estadoProceso }}</td>
                 </tr>
@@ -350,4 +352,3 @@
     </form>
   </div>
 }
-

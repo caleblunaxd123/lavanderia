@@ -8,6 +8,7 @@ namespace Lavanderia.Api.Controllers;
 
 [Route("api/[controller]")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class PermisosController : TenantAwareControllerBase
 {
     private readonly IRolPermisoRepository _repo;

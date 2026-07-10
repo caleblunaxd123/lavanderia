@@ -12,6 +12,7 @@ namespace Lavanderia.Api.Controllers;
 /// </summary>
 [Route("api/servicios-admin")]
 [Authorize(Roles = "ADMIN")]
+[Authorize(Policy = "Modulo:AJUSTES")]
 public class ServiciosAdminController : TenantAwareControllerBase
 {
     private readonly IServicioRepository _repo;

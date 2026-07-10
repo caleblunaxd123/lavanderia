@@ -9,7 +9,7 @@ namespace Lavanderia.Api.Auth;
 
 public interface ITokenService
 {
-    (string token, DateTime expira) GenerarAccessToken(Usuario usuario);
+    (string token, DateTime expira) GenerarAccessToken(Usuario usuario, IEnumerable<string>? modulos = null);
 }
 
 public class TokenService : ITokenService
@@ -18,7 +18,7 @@ public class TokenService : ITokenService
 
     public TokenService(IOptions<JwtOptions> opts) => _opts = opts.Value;
 
-    public (string token, DateTime expira) GenerarAccessToken(Usuario u)
+    public (string token, DateTime expira) GenerarAccessToken(Usuario u, IEnumerable<string>? modulos = null)
     {
         var claims = new List<Claim>
         {
@@ -30,6 +30,9 @@ public class TokenService : ITokenService
             new("negocioId", u.NegocioId.ToString()),
             new("sedeId", u.SedeId?.ToString() ?? "")
         };
+
+        foreach (var modulo in (modulos ?? Array.Empty<string>()).Distinct(StringComparer.OrdinalIgnoreCase))
+            claims.Add(new Claim("mod", modulo));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opts.SecretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

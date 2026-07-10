@@ -1,6 +1,7 @@
 using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
 using Lavanderia.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Lavanderia.Api.Controllers;
@@ -17,15 +18,22 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<PagedResultDto<PedidoDto>>> Listar(
         [FromQuery] string? filtro,
         [FromQuery] string? busqueda,
+        [FromQuery] DateTime? desde,
+        [FromQuery] DateTime? hasta,
+        [FromQuery] string? campoFecha,
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanoPagina = 15,
         CancellationToken ct = default)
-        => Ok(await _service.ListarPaginadoAsync(filtro, busqueda, Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
+        => Ok(await _service.ListarPaginadoAsync(
+            filtro, busqueda, desde, hasta, campoFecha,
+            Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
 
     [HttpGet("por-cliente/{clienteId:int}")]
+    [Authorize(Policy = "Modulo:CLIENTES")]
     public async Task<ActionResult<PagedResultDto<PedidoDto>>> ListarPorCliente(
         int clienteId,
         [FromQuery] string? filtro,
@@ -35,6 +43,7 @@ public class PedidosController : TenantAwareControllerBase
         => Ok(await _service.ListarPorClienteAsync(clienteId, filtro, Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<PedidoDto>> Obtener(int id, CancellationToken ct)
     {
         var p = await _service.ObtenerAsync(id, SedeId!.Value, ct);
@@ -43,6 +52,7 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "Modulo:REGISTRAR")]
     public async Task<ActionResult<PedidoDto>> Crear([FromBody] CrearPedidoRequest req, CancellationToken ct)
     {
         try
@@ -57,6 +67,7 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpPost("{id:int}/avanzar")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> Avanzar(int id, [FromBody] AvanzarAreaRequest req, CancellationToken ct)
     {
         try
@@ -75,6 +86,7 @@ public class PedidosController : TenantAwareControllerBase
     /// Es la operacion mas usada por el trabajador.
     /// </summary>
     [HttpPost("{id:int}/siguiente-area")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> SiguienteArea(int id, [FromBody] SiguienteAreaRequest? req, CancellationToken ct)
     {
         try
@@ -89,14 +101,17 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpGet("{id:int}/historial")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<List<PedidoHistorialDto>>> Historial(int id, CancellationToken ct)
         => Ok(await _service.ObtenerHistorialAsync(id, SedeId!.Value, ct));
 
     [HttpGet("dashboard")]
+    [Authorize(Policy = "Modulo:INICIO")]
     public async Task<ActionResult<DashboardDto>> Dashboard(CancellationToken ct)
         => Ok(await _service.DashboardAsync(SedeId!.Value, ct));
 
     [HttpGet("siguiente-numero")]
+    [Authorize(Policy = "Modulo:REGISTRAR")]
     public async Task<ActionResult<int>> SiguienteNumero(CancellationToken ct)
         => Ok(await _service.SiguienteNumeroAsync(SedeId!.Value, ct));
 
@@ -105,6 +120,7 @@ public class PedidosController : TenantAwareControllerBase
     /// consultarlo (no solo ADMIN), a diferencia del CRUD de promociones.
     /// </summary>
     [HttpGet("promocion/validar")]
+    [Authorize(Policy = "Modulo:REGISTRAR")]
     public async Task<ActionResult<PromocionValidaDto>> ValidarCodigoPromocion([FromQuery] string codigo, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(codigo)) return BadRequest(new { mensaje = "Indica un código." });
@@ -131,10 +147,12 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpGet("abandonados")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<List<PedidoAbandonadoDto>>> Abandonados([FromQuery] int dias = 3, CancellationToken ct = default)
         => Ok(await _service.ListarAbandonadosAsync(Math.Max(1, dias), SedeId!.Value, ct));
 
     [HttpPost("{id:int}/pagos")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> RegistrarPago(int id, [FromBody] RegistrarPagoRequest req, CancellationToken ct)
     {
         try
@@ -149,6 +167,7 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpPost("{id:int}/items")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> AgregarItem(int id, [FromBody] AgregarItemRequest req, CancellationToken ct)
     {
         try
@@ -163,6 +182,7 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpPut("{id:int}/fecha-entrega")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> CambiarFechaEntrega(int id, [FromBody] CambiarFechaEntregaRequest req, CancellationToken ct)
     {
         try
@@ -179,6 +199,7 @@ public class PedidosController : TenantAwareControllerBase
     /// <summary>Convierte un pedido de Tienda a Delivery y, si le queda saldo, genera de una
     /// vez su link de seguimiento/pago (ver <see cref="LinkSeguimiento"/>).</summary>
     [HttpPost("{id:int}/convertir-delivery")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> ConvertirDelivery(int id, CancellationToken ct)
     {
         try
@@ -195,6 +216,7 @@ public class PedidosController : TenantAwareControllerBase
     /// <summary>Devuelve el token del link público de seguimiento/pago de este pedido,
     /// generándolo si todavía no existe uno vigente. Solo aplica a pedidos Delivery.</summary>
     [HttpGet("{id:int}/link-seguimiento")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<LinkSeguimientoDto>> LinkSeguimiento(int id, CancellationToken ct)
     {
         try
@@ -210,6 +232,7 @@ public class PedidosController : TenantAwareControllerBase
     }
 
     [HttpPost("{id:int}/anular")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> Anular(int id, [FromBody] AnularPedidoRequest req, CancellationToken ct)
     {
         try

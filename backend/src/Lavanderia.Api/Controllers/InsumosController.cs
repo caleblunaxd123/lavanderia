@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Lavanderia.Api.Controllers;
 
 [Route("api/insumos")]
+[Microsoft.AspNetCore.Authorization.Authorize(Policy = "Modulo:INVENTARIO")]
 public class InsumosController : TenantAwareControllerBase
 {
     private readonly IInsumoRepository _repo;
