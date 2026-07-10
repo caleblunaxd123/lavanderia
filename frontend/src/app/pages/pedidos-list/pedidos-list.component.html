@@ -366,6 +366,22 @@
         </div>
       }
 
+      <!-- Delivery / link de pago online -->
+      @if (!p.anulado) {
+        <div class="detalle-seccion">
+          @if (p.modalidad === 'Tienda') {
+            <button class="btn btn--outline-primary btn--block" [disabled]="convirtiendoDelivery()" (click)="convertirADelivery(p)">
+              {{ convirtiendoDelivery() ? 'Convirtiendo…' : 'Convertir a Delivery' }}
+            </button>
+          } @else if (saldoPendiente() > 0) {
+            <button class="btn btn--outline-primary btn--block" [disabled]="enviandoLinkPago()" (click)="enviarLinkPago(p)">
+              {{ enviandoLinkPago() ? 'Generando link…' : 'Enviar link de pago por WhatsApp' }}
+            </button>
+            <p class="hint">Así el cliente paga online (tarjeta/Yape) en vez de pagarle al repartidor.</p>
+          }
+        </div>
+      }
+
       <!-- Cobros -->
       <div class="detalle-seccion cobros">
         <div class="cobros__title">

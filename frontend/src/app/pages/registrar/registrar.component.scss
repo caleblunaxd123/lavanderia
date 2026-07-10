@@ -57,14 +57,17 @@
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--gris-borde);
+  min-width: min(100%, 330px);
 
   &__btn {
+    flex: 1 1 0;
     border: none;
     background: #fff;
-    padding: 8px 18px;
+    padding: 8px 14px;
     font-size: 12px;
     font-weight: 700;
     color: #64748b;
+    min-width: 0;
 
     &.is-active {
       background: var(--verde);
@@ -486,8 +489,8 @@
     gap: 10px;
 
     h2 { flex: 1 1 100%; font-size: 14px; }
-    .modalidad { margin-left: 0; }
-    .btn { margin-left: auto; }
+    .modalidad { margin-left: 0; width: 100%; }
+    .btn { margin-left: auto; width: 100%; }
   }
 
   .pasos {

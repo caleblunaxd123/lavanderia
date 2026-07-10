@@ -221,7 +221,7 @@ public record PedidoAbandonadoDto(
 public class RegistrarPagoRequest
 {
     [Range(0.01, 100000)] public decimal Monto { get; set; }
-    [Required] public string Metodo { get; set; } = "EFECTIVO";  // EFECTIVO | YAPE | PLIN | TRANSFERENCIA | POS
+    [Required] public string Metodo { get; set; } = "EFECTIVO";  // EFECTIVO | YAPE | PLIN | TRANSFERENCIA | POS | TARJETA
     public string? Descripcion { get; set; }
 }
 
@@ -500,7 +500,61 @@ public class CrearNegocioRequest
     [Required, StringLength(50, MinimumLength = 3)] public string AdminUsuario { get; set; } = "";
     [Required, StringLength(120, MinimumLength = 2)] public string AdminNombreCompleto { get; set; } = "";
     public string? AdminEmail { get; set; }
-    [Required, StringLength(100, MinimumLength = 4)] public string AdminPassword { get; set; } = "";
+    [Required, StringLength(100, MinimumLength = 8)] public string AdminPassword { get; set; } = "";
 }
 
 public record CambiarEstadoNegocioRequest(bool Activo);
+
+// ---------- Pagos online (Culqi) ----------
+public class ConfiguracionPagosDto
+{
+    public string Proveedor { get; set; } = "CULQI";
+    [StringLength(200)] public string? PublicKey { get; set; }
+    /// <summary>Solo se envía al guardar una clave nueva; nunca se devuelve la clave real.</summary>
+    public string? SecretKeyNueva { get; set; }
+    public bool Activo { get; set; }
+    public bool TieneSecretKey { get; set; }
+}
+
+public record ConvertirDeliveryRequest();
+
+public record LinkSeguimientoDto(Guid Token);
+
+public record PasoSeguimientoDto(string Codigo, string Nombre, bool Alcanzado, bool Actual);
+
+public class SeguimientoPedidoDto
+{
+    public string NombreNegocio { get; set; } = "";
+    public string? LogoUrl { get; set; }
+    public string ColorPrimario { get; set; } = "#0b57d0";
+    public string? TelefonoNegocio { get; set; }
+    public string? DireccionNegocio { get; set; }
+    public int NumeroPedido { get; set; }
+    public string Modalidad { get; set; } = "";
+    public string ResumenEstado { get; set; } = "";
+    public DateTime? FechaCompromiso { get; set; }
+    public string EtiquetaFechaCompromiso { get; set; } = "";
+    public List<PasoSeguimientoDto> Pasos { get; set; } = new();
+    public List<SeguimientoPedidoItemDto> Items { get; set; } = new();
+    public bool Anulado { get; set; }
+    public decimal Total { get; set; }
+    public decimal MontoPagado { get; set; }
+    public decimal Saldo { get; set; }
+    public bool RequierePago { get; set; }
+    public string? PublicKeyCulqi { get; set; }
+}
+
+public record SeguimientoPedidoItemDto(string Nombre, decimal Cantidad);
+
+public class CobrarSolicitudPagoRequest
+{
+    [Required] public string CulqiTokenId { get; set; } = "";
+    [Required, EmailAddress] public string Email { get; set; } = "";
+}
+
+public class CobrarSolicitudPagoResultDto
+{
+    public bool Exito { get; set; }
+    public string? Mensaje { get; set; }
+    public decimal SaldoPendiente { get; set; }
+}

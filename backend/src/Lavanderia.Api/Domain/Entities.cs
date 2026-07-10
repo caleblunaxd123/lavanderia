@@ -236,7 +236,7 @@ public class MovimientoCaja
     public int SedeId { get; set; }
     public DateTime Fecha { get; set; }
     public string Tipo { get; set; } = "";       // INGRESO | GASTO
-    public string MetodoPago { get; set; } = ""; // EFECTIVO | YAPE | PLIN | TRANSFERENCIA | POS
+    public string MetodoPago { get; set; } = ""; // EFECTIVO | YAPE | PLIN | TRANSFERENCIA | POS | TARJETA
     public decimal Monto { get; set; }
     public string? Descripcion { get; set; }
     public int? PedidoId { get; set; }
@@ -337,6 +337,31 @@ public class ConfiguracionFacturacion
     public int CorrelativoBoleta { get; set; }
     public int CorrelativoFactura { get; set; }
     public bool Activo { get; set; }
+}
+
+public class ConfiguracionPagos
+{
+    public int Id { get; set; }
+    public int NegocioId { get; set; }
+    public string Proveedor { get; set; } = "CULQI";
+    public string? PublicKey { get; set; }
+    public string? SecretKeyCifrada { get; set; }
+    public bool Activo { get; set; }
+}
+
+public class SolicitudPago
+{
+    public int Id { get; set; }
+    public int NegocioId { get; set; }
+    public int SedeId { get; set; }
+    public int PedidoId { get; set; }
+    public Guid Token { get; set; }
+    public decimal Monto { get; set; }
+    public string Estado { get; set; } = "PENDIENTE"; // PENDIENTE | PAGADO | EXPIRADO | CANCELADO
+    public string? CulqiChargeId { get; set; }
+    public DateTime FechaCreacion { get; set; }
+    public DateTime FechaExpiracion { get; set; }
+    public DateTime? FechaPago { get; set; }
 }
 
 public class ComprobanteElectronico

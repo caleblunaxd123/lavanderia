@@ -103,4 +103,12 @@ export class PedidosService {
   cambiarFechaEntrega(id: number, fecha: string, motivo?: string) {
     return this.http.put<void>(`${this.base}/${id}/fecha-entrega`, { fecha, motivo });
   }
+
+  convertirDelivery(id: number) {
+    return this.http.post<void>(`${this.base}/${id}/convertir-delivery`, {});
+  }
+
+  linkSeguimiento(id: number) {
+    return this.http.get<{ token: string }>(`${this.base}/${id}/link-seguimiento`);
+  }
 }

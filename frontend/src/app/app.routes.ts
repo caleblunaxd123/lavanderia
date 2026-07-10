@@ -36,6 +36,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/seleccionar-sede/seleccionar-sede.component').then(m => m.SeleccionarSedeComponent)
   },
   {
+    // Publica a proposito: el cliente la abre desde un link de WhatsApp, sin sesion de empleado.
+    path: 'seguimiento/:token',
+    loadComponent: () => import('./pages/seguimiento-pago/seguimiento-pago.component').then(m => m.SeguimientoPagoComponent)
+  },
+  {
     path: '',
     canActivate: [authGuard],
     children: [
@@ -169,6 +174,11 @@ export const routes: Routes = [
         path: 'ajustes/facturacion-electronica',
         canActivate: [moduloGuard('AJUSTES')],
         loadComponent: () => import('./pages/ajustes-facturacion-electronica/ajustes-facturacion-electronica.component').then(m => m.AjustesFacturacionElectronicaComponent)
+      },
+      {
+        path: 'ajustes/pagos',
+        canActivate: [moduloGuard('AJUSTES')],
+        loadComponent: () => import('./pages/ajustes-pagos/ajustes-pagos.component').then(m => m.AjustesPagosComponent)
       },
       {
         path: 'facturacion/comprobantes',

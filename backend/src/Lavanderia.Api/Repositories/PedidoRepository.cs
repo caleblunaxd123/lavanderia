@@ -24,6 +24,7 @@ public interface IPedidoRepository
     Task AnularAsync(int pedidoId, int usuarioId, string motivo, int sedeId, CancellationToken ct = default);
     Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int usuarioId, string? motivo, int sedeId, CancellationToken ct = default);
     Task<List<PedidoAbandonado>> ListarListosAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
+    Task<bool> CambiarModalidadAsync(int pedidoId, string modalidad, int sedeId, CancellationToken ct = default);
 }
 
 public class PedidoRepository : IPedidoRepository
@@ -527,6 +528,9 @@ public class PedidoRepository : IPedidoRepository
             // 1) Sumar monto pagado y recalcular estado
             await using var cmdPed = conn.CreateCommand();
             cmdPed.Transaction = tx;
+            // El tope contra Total va en el propio WHERE (chequeo atomico): evita que dos pagos
+            // concurrentes para el mismo pedido, cada uno validado por separado antes de llegar
+            // aqui, sumen mas del total (TOCTOU si solo se valida afuera de la transaccion).
             cmdPed.CommandText = @"
                 UPDATE dbo.Pedido
                    SET MontoPagado = MontoPagado + @Monto,
@@ -535,12 +539,24 @@ public class PedidoRepository : IPedidoRepository
                                       WHEN (MontoPagado + @Monto) > 0 THEN 'PARCIAL'
                                       ELSE 'PENDIENTE'
                                     END
-                 WHERE Id = @PedidoId AND SedeId = @SedeId";
+                 WHERE Id = @PedidoId AND SedeId = @SedeId
+                   AND MontoPagado + @Monto <= Total + 0.01";
             cmdPed.AddParam("@Monto", monto);
             cmdPed.AddParam("@PedidoId", pedidoId);
             cmdPed.AddParam("@SedeId", sedeId);
             var filas = await cmdPed.ExecuteNonQueryAsync(ct);
-            if (filas == 0) throw new InvalidOperationException("Pedido no encontrado.");
+            if (filas == 0)
+            {
+                await using var cmdExiste = conn.CreateCommand();
+                cmdExiste.Transaction = tx;
+                cmdExiste.CommandText = "SELECT COUNT(1) FROM dbo.Pedido WHERE Id = @PedidoId AND SedeId = @SedeId";
+                cmdExiste.AddParam("@PedidoId", pedidoId);
+                cmdExiste.AddParam("@SedeId", sedeId);
+                var existe = await cmdExiste.ReadScalarAsync<int>(ct) > 0;
+                throw new InvalidOperationException(existe
+                    ? "El monto excede el saldo pendiente del pedido."
+                    : "Pedido no encontrado.");
+            }
 
             // 2) Registrar en MovimientoCaja
             await using var cmdMov = conn.CreateCommand();
@@ -596,21 +612,31 @@ public class PedidoRepository : IPedidoRepository
 
             await using var cmdRecalc = conn.CreateCommand();
             cmdRecalc.Transaction = tx;
+            // Preserva Descuento y RecargoUrgente (ya fijados al crear el pedido) y vuelve a
+            // aplicar el redondeo a 10 centimos sobre el nuevo total, igual que PedidoService.CrearAsync.
+            // La version anterior perdia el recargo urgente y el redondeo al recalcular (bug).
             cmdRecalc.CommandText = @"
+                ;WITH Calc AS (
+                    SELECT p.Id, t.SumaTotal,
+                           (t.SumaTotal - p.Descuento + p.RecargoUrgente) AS TotalSinRedondear
+                    FROM dbo.Pedido p
+                    JOIN (SELECT PedidoId, SUM(Total) AS SumaTotal
+                            FROM dbo.PedidoItem
+                           WHERE PedidoId = @PedidoId
+                          GROUP BY PedidoId) t ON t.PedidoId = p.Id
+                    WHERE p.Id = @PedidoId AND p.SedeId = @SedeId
+                )
                 UPDATE p
-                   SET Subtotal = t.SumaTotal,
-                       Total = t.SumaTotal - p.Descuento,
+                   SET Subtotal = c.SumaTotal,
+                       Total = ROUND(c.TotalSinRedondear * 10, 0) / 10.0,
+                       Redondeo = ROUND(c.TotalSinRedondear * 10, 0) / 10.0 - c.TotalSinRedondear,
                        EstadoPago = CASE
-                                      WHEN p.MontoPagado >= (t.SumaTotal - p.Descuento) THEN 'PAGADO'
+                                      WHEN p.MontoPagado >= ROUND(c.TotalSinRedondear * 10, 0) / 10.0 THEN 'PAGADO'
                                       WHEN p.MontoPagado > 0 THEN 'PARCIAL'
                                       ELSE 'PENDIENTE'
                                     END
                   FROM dbo.Pedido p
-                  JOIN (SELECT PedidoId, SUM(Total) AS SumaTotal
-                          FROM dbo.PedidoItem
-                         WHERE PedidoId = @PedidoId
-                        GROUP BY PedidoId) t ON t.PedidoId = p.Id
-                 WHERE p.Id = @PedidoId AND p.SedeId = @SedeId";
+                  JOIN Calc c ON c.Id = p.Id";
             cmdRecalc.AddParam("@PedidoId", pedidoId);
             cmdRecalc.AddParam("@SedeId", sedeId);
             await cmdRecalc.ExecuteNonQueryAsync(ct);
@@ -678,6 +704,18 @@ public class PedidoRepository : IPedidoRepository
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+
+    public async Task<bool> CambiarModalidadAsync(int pedidoId, string modalidad, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Pedido SET Modalidad = @Modalidad WHERE Id = @Id AND SedeId = @SedeId";
+        cmd.AddParam("@Modalidad", modalidad);
+        cmd.AddParam("@Id", pedidoId);
+        cmd.AddParam("@SedeId", sedeId);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
     public async Task AnularAsync(int pedidoId, int usuarioId, string motivo, int sedeId, CancellationToken ct = default)

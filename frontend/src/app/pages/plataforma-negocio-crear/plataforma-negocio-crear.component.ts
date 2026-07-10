@@ -82,8 +82,8 @@ export class PlataformaNegocioCrearComponent {
       this.errorForm.set('El email ingresado no tiene un formato valido.');
       return;
     }
-    if (!this.form.adminPassword || this.form.adminPassword.length < 4) {
-      this.errorForm.set('La contraseña del administrador debe tener al menos 4 caracteres.');
+    if (!this.form.adminPassword || this.form.adminPassword.length < 8) {
+      this.errorForm.set('La contraseña del administrador debe tener al menos 8 caracteres.');
       return;
     }
 

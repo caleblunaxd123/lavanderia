@@ -3,6 +3,7 @@ using Lavanderia.Api.Infrastructure;
 using Lavanderia.Api.Repositories;
 using Lavanderia.Api.Services;
 using Lavanderia.Api.Services.Facturacion;
+using Lavanderia.Api.Services.Pagos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -55,6 +56,7 @@ builder.Services.AddTransient<IInsumoRepository, InsumoRepository>();
 builder.Services.AddTransient<INegocioRepository, NegocioRepository>();
 builder.Services.AddTransient<ISedeRepository, SedeRepository>();
 builder.Services.AddTransient<IFacturacionRepository, FacturacionRepository>();
+builder.Services.AddTransient<IPagosRepository, PagosRepository>();
 
 // Facturacion electronica (SUNAT directo)
 builder.Services.AddDataProtection();
@@ -62,6 +64,9 @@ builder.Services.AddTransient<SecretProtector>();
 builder.Services.AddHttpClient<SunatSoapClient>();
 builder.Services.AddTransient<IFacturacionElectronicaProvider, SunatDirectoProvider>();
 builder.Services.AddTransient<ComprobantePdfGenerator>();
+
+// Pagos online (Culqi)
+builder.Services.AddHttpClient<CulqiService>();
 
 // Contexto de tenant (negocio/sede) leido de los claims del JWT actual
 builder.Services.AddHttpContextAccessor();

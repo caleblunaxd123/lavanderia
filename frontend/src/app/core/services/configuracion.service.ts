@@ -36,7 +36,7 @@ export class ConfiguracionService {
 
   /** Marca de la empresa identificada por el slug de su URL (antes de iniciar sesión). */
   cargarPorSlug(slug: string) {
-    return this.http.get<ConfiguracionNegocio>(`${environment.apiUrl}/configuracion/publico/${slug}`).pipe(
+    return this.http.get<ConfiguracionNegocio>(`${environment.apiUrl}/configuracion/publico/${encodeURIComponent(slug)}`).pipe(
       tap(c => {
         this.configuracion.set(c);
         this.aplicarTema(c);

@@ -26,7 +26,7 @@ public class NegociosController : ControllerBase
     {
         "login", "ticket", "cuadre-caja", "seleccionar-sede", "inicio", "pedidos", "registrar",
         "registro-antiguo", "clientes", "promociones", "reportes", "inventario", "ajustes",
-        "facturacion", "assets", "plataforma",
+        "facturacion", "assets", "plataforma", "seguimiento",
     };
     private static readonly Regex SlugValido = new("^[a-z0-9][a-z0-9-]{1,49}$", RegexOptions.IgnoreCase);
     private static readonly Regex UsuarioValido = new("^[a-z0-9._-]{3,50}$", RegexOptions.IgnoreCase);

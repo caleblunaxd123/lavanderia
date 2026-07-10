@@ -20,57 +20,81 @@ public interface IPedidoService
     Task CambiarFechaEntregaAsync(int pedidoId, CambiarFechaEntregaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoAbandonadoDto>> ListarAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
     Task<int> SiguienteNumeroAsync(int sedeId, CancellationToken ct = default);
+    Task ConvertirADeliveryAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default);
+    Task<Guid?> ObtenerOCrearLinkPagoAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default);
 }
 
 public class PedidoService : IPedidoService
 {
+    private static readonly string[] ModalidadesValidas = ["Tienda", "Recojo", "Delivery"];
     private readonly IPedidoRepository _pedidos;
     private readonly IClienteRepository _clientes;
     private readonly IServicioRepository _servicios;
     private readonly IAreaLavadoRepository _areas;
+    private readonly IPagosRepository _pagos;
 
     public PedidoService(
         IPedidoRepository pedidos,
         IClienteRepository clientes,
         IServicioRepository servicios,
-        IAreaLavadoRepository areas)
+        IAreaLavadoRepository areas,
+        IPagosRepository pagos)
     {
         _pedidos = pedidos;
         _clientes = clientes;
         _servicios = servicios;
         _areas = areas;
+        _pagos = pagos;
     }
 
     public async Task<PedidoDto> CrearAsync(CrearPedidoRequest req, int usuarioId, int negocioId, int sedeId, CancellationToken ct = default)
     {
-        var metodosValidos = new[] { "EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "POS" };
+        var metodosValidos = new[] { "EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "POS", "TARJETA" };
         if (req.MontoPagado > 0 && !metodosValidos.Contains(req.MetodoPagoInicial.ToUpperInvariant()))
             throw new InvalidOperationException("Método de pago inválido.");
 
-        // Resolver cliente
+        var modalidad = NormalizarModalidad(req.Modalidad);
+        if (!ModalidadesValidas.Contains(modalidad))
+            throw new InvalidOperationException("Modalidad inválida.");
+
         int clienteId;
         if (req.ClienteId is int id && id > 0)
         {
             var cliente = await _clientes.ObtenerPorIdAsync(id, negocioId, ct)
                 ?? throw new InvalidOperationException("El cliente no existe en este negocio.");
+
+            var snapshot = req.ClienteNuevo;
+            if (snapshot is not null)
+            {
+                cliente.Nombre = string.IsNullOrWhiteSpace(snapshot.Nombre) ? cliente.Nombre : snapshot.Nombre.Trim();
+                cliente.Celular = LimpiarTexto(snapshot.Celular) ?? cliente.Celular;
+                cliente.Dni = LimpiarTexto(snapshot.Dni) ?? cliente.Dni;
+                cliente.DocumentoFiscal = LimpiarTexto(snapshot.DocumentoFiscal) ?? cliente.DocumentoFiscal;
+                cliente.Direccion = LimpiarTexto(snapshot.Direccion) ?? cliente.Direccion;
+                await _clientes.ActualizarAsync(cliente, negocioId, ct);
+            }
+
+            ValidarDatosDomicilio(cliente.Celular, cliente.Direccion, modalidad);
             clienteId = cliente.Id;
         }
         else if (req.ClienteNuevo is { } nuevo && !string.IsNullOrWhiteSpace(nuevo.Nombre))
         {
+            ValidarDatosDomicilio(nuevo.Celular, nuevo.Direccion, modalidad);
             clienteId = await _clientes.CrearAsync(new Cliente
             {
                 NegocioId = negocioId,
                 Nombre = nuevo.Nombre.Trim(),
-                Celular = nuevo.Celular,
-                Dni = nuevo.Dni,
-                DocumentoFiscal = nuevo.DocumentoFiscal,
-                Direccion = nuevo.Direccion
+                Celular = LimpiarTexto(nuevo.Celular),
+                Dni = LimpiarTexto(nuevo.Dni),
+                DocumentoFiscal = LimpiarTexto(nuevo.DocumentoFiscal),
+                Direccion = LimpiarTexto(nuevo.Direccion)
             }, ct);
         }
         else
+        {
             throw new InvalidOperationException("Debe indicar un cliente existente o los datos del cliente nuevo.");
+        }
 
-        // Validar y recalcular totales en el servidor (nunca confiar del cliente)
         var itemsPersistir = new List<PedidoItem>();
         decimal subtotal = 0m;
         foreach (var it in req.Items)
@@ -92,7 +116,6 @@ public class PedidoService : IPedidoService
         var descuento = Math.Round(subtotal * (req.DescuentoPct / 100m), 2);
         var recargoUrgente = req.EsUrgente ? Math.Round(subtotal * (req.RecargoUrgentePct / 100m), 2) : 0m;
         var totalSinRedondear = Math.Max(0m, subtotal - descuento + recargoUrgente);
-        // Redondeo a los 10 centimos mas cercanos (no circulan monedas de 1, 2 y 5 centimos en Peru)
         var total = Math.Round(totalSinRedondear * 10m, MidpointRounding.AwayFromZero) / 10m;
         var redondeo = total - totalSinRedondear;
         if (req.MontoPagado < 0)
@@ -101,14 +124,13 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException($"El monto pagado excede el total del pedido (S/ {total:F2}).");
         var estadoPago = req.MontoPagado <= 0 ? "PENDIENTE" : req.MontoPagado >= total ? "PAGADO" : "PARCIAL";
 
-        // Area inicial (si no la mandaron, usar la primera activa)
         int? areaId = req.AreaInicialId;
         if (areaId is int areaInicialId)
         {
             var area = await _areas.ObtenerPorIdAsync(areaInicialId, sedeId, ct)
-                ?? throw new InvalidOperationException("El area inicial no pertenece a esta sede.");
+                ?? throw new InvalidOperationException("El área inicial no pertenece a esta sede.");
             if (!area.Activa)
-                throw new InvalidOperationException("El area inicial no esta activa.");
+                throw new InvalidOperationException("El área inicial no está activa.");
         }
         else
         {
@@ -126,7 +148,7 @@ public class PedidoService : IPedidoService
             UsuarioId = usuarioId,
             FechaIngreso = req.FechaIngreso ?? DateTime.Now,
             FechaEntregaEst = req.FechaEntregaEst,
-            Modalidad = req.Modalidad,
+            Modalidad = modalidad,
             Subtotal = subtotal,
             Descuento = descuento,
             EsUrgente = req.EsUrgente,
@@ -144,7 +166,50 @@ public class PedidoService : IPedidoService
         };
 
         var pedidoId = await _pedidos.CrearAsync(pedido, ct);
+
+        if (EsPedidoDomicilio(pedido.Modalidad))
+            await AsegurarLinkPagoAsync(pedidoId, pedido, negocioId, sedeId, ct);
+
         return (await ObtenerAsync(pedidoId, sedeId, ct))!;
+    }
+
+    public async Task ConvertirADeliveryAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default)
+    {
+        var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
+            ?? throw new InvalidOperationException("Pedido no encontrado.");
+        if (pedido.Anulado)
+            throw new InvalidOperationException("El pedido está anulado.");
+
+        if (pedido.Modalidad != "Delivery")
+        {
+            var actualizado = await _pedidos.CambiarModalidadAsync(pedidoId, "Delivery", sedeId, ct);
+            if (!actualizado) throw new InvalidOperationException("Pedido no encontrado.");
+            pedido.Modalidad = "Delivery";
+        }
+
+        await AsegurarLinkPagoAsync(pedidoId, pedido, negocioId, sedeId, ct);
+    }
+
+    public async Task<Guid?> ObtenerOCrearLinkPagoAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default)
+    {
+        var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
+            ?? throw new InvalidOperationException("Pedido no encontrado.");
+        if (!EsPedidoDomicilio(pedido.Modalidad))
+            throw new InvalidOperationException("Este pedido no tiene seguimiento público porque se entrega en tienda.");
+
+        return await AsegurarLinkPagoAsync(pedidoId, pedido, negocioId, sedeId, ct);
+    }
+
+    private async Task<Guid?> AsegurarLinkPagoAsync(int pedidoId, Pedido pedido, int negocioId, int sedeId, CancellationToken ct)
+    {
+        if (pedido.Anulado || !EsPedidoDomicilio(pedido.Modalidad)) return null;
+        var saldo = Math.Max(0m, pedido.Total - pedido.MontoPagado);
+
+        var vigente = await _pagos.ObtenerVigentePorPedidoAsync(pedidoId, ct);
+        if (vigente is not null) return vigente.Token;
+
+        var nueva = await _pagos.CrearSolicitudAsync(negocioId, sedeId, pedidoId, saldo, ct);
+        return nueva.Token;
     }
 
     public async Task<PedidoDto?> ObtenerAsync(int id, int sedeId, CancellationToken ct = default)
@@ -185,9 +250,9 @@ public class PedidoService : IPedidoService
         if (req.NuevaAreaId is int areaId)
         {
             var area = await _areas.ObtenerPorIdAsync(areaId, sedeId, ct)
-                ?? throw new InvalidOperationException("El area no pertenece a esta sede.");
+                ?? throw new InvalidOperationException("El área no pertenece a esta sede.");
             if (!area.Activa)
-                throw new InvalidOperationException("El area no esta activa.");
+                throw new InvalidOperationException("El área no está activa.");
         }
         await _pedidos.AvanzarAreaAsync(pedidoId, req.NuevaAreaId, req.NuevoEstado, usuarioId, req.Nota, sedeId, ct);
     }
@@ -207,13 +272,6 @@ public class PedidoService : IPedidoService
         }).ToList();
     }
 
-    /// <summary>
-    /// Máquina de estados del pedido — un click avanza al siguiente paso:
-    /// (sin área) → primera área [EN_PROCESO]
-    /// área intermedia → siguiente área [EN_PROCESO]
-    /// última área en EN_PROCESO → última área en LISTO
-    /// LISTO → ENTREGADO (queda en la misma última área)
-    /// </summary>
     public async Task AvanzarSiguienteAreaAsync(int pedidoId, int usuarioId, int sedeId, string? recibidoPor = null, CancellationToken ct = default)
     {
         var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
@@ -232,10 +290,8 @@ public class PedidoService : IPedidoService
         string proximoEstado;
         string nota;
 
-        // Caso 1: pedido en LISTO → pasa a ENTREGADO
         if (pedido.EstadoProceso == "LISTO")
         {
-            // Antes de entregar, exigir que esté 100% pagado
             if (pedido.MontoPagado + 0.01m < pedido.Total)
                 throw new InvalidOperationException(
                     $"El pedido tiene saldo pendiente de S/ {pedido.Total - pedido.MontoPagado:F2}. Registra el pago antes de entregar.");
@@ -246,7 +302,6 @@ public class PedidoService : IPedidoService
                 ? $"Entregado a {recibidoPor.Trim()} (recogido por tercero, no el titular)"
                 : "Entregado al cliente";
         }
-        // Caso 2: sin área asignada → primera área
         else if (pedido.AreaActualId is null)
         {
             proximaAreaId = areas[0].Id;
@@ -257,14 +312,12 @@ public class PedidoService : IPedidoService
         {
             var idxActual = areas.FindIndex(a => a.Id == pedido.AreaActualId);
 
-            // Caso 3: última área en EN_PROCESO/PENDIENTE → LISTO (misma área)
             if (idxActual == -1 || idxActual == areas.Count - 1)
             {
                 proximaAreaId = pedido.AreaActualId;
                 proximoEstado = "LISTO";
-                nota = "Listo para recojo";
+                nota = RequiereEntregaDomicilio(pedido.Modalidad) ? "Listo para salir a ruta" : "Listo para recojo";
             }
-            // Caso 4: área intermedia → siguiente área
             else
             {
                 var siguiente = areas[idxActual + 1];
@@ -291,7 +344,7 @@ public class PedidoService : IPedidoService
         if (req.Monto > saldo + 0.01m)
             throw new InvalidOperationException($"El monto excede el saldo pendiente (S/ {saldo:F2}).");
 
-        var metodosValidos = new[] { "EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "POS" };
+        var metodosValidos = new[] { "EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "POS", "TARJETA" };
         if (!metodosValidos.Contains(req.Metodo.ToUpperInvariant()))
             throw new InvalidOperationException("Método de pago inválido.");
 
@@ -312,7 +365,7 @@ public class PedidoService : IPedidoService
 
         var totalItem = Math.Round(servicio.Precio * req.Cantidad, 2);
 
-        await _pedidos.AgregarItemAsync(pedidoId, new Domain.PedidoItem
+        await _pedidos.AgregarItemAsync(pedidoId, new PedidoItem
         {
             ServicioId = servicio.Id,
             Cantidad = req.Cantidad,
@@ -345,10 +398,6 @@ public class PedidoService : IPedidoService
         if (pedido.EstadoProceso == "ENTREGADO")
             throw new InvalidOperationException("No se puede anular un pedido ya entregado.");
 
-        // Aviso al frontend: si tiene pagos registrados debe gestionar reembolso manualmente.
-        // No lo bloqueamos porque en la realidad puede ser necesario anular con reembolso
-        // (el saldo pagado quedará como "deuda del negocio con el cliente").
-
         await _pedidos.AnularAsync(pedidoId, usuarioId, motivo, sedeId, ct);
     }
 
@@ -371,8 +420,6 @@ public class PedidoService : IPedidoService
         var totPendientes = estados.GetValueOrDefault("PENDIENTE", 0)
                           + estados.GetValueOrDefault("EN_PROCESO", 0)
                           + estados.GetValueOrDefault("LISTO", 0);
-        var totEntregados = estados.GetValueOrDefault("ENTREGADO", 0);
-        // Otros = entregados + anulados (usamos el conteo por tab del repo)
         var (_, totOtros) = await _pedidos.ListarPaginadoAsync("otros", null, 1, 1, sedeId, ct);
         var (_, totUltimos) = await _pedidos.ListarPaginadoAsync("ultimos", null, 1, 1, sedeId, ct);
 
@@ -433,4 +480,33 @@ public class PedidoService : IPedidoService
             Descripcion = i.Descripcion
         }).ToList()
     };
+
+    private static string NormalizarModalidad(string? modalidad)
+    {
+        return (modalidad ?? "").Trim().ToLowerInvariant() switch
+        {
+            "tienda" => "Tienda",
+            "recojo" => "Recojo",
+            "delivery" => "Delivery",
+            _ => modalidad?.Trim() ?? "Tienda"
+        };
+    }
+
+    private static bool EsPedidoDomicilio(string? modalidad)
+        => modalidad is "Recojo" or "Delivery";
+
+    private static bool RequiereEntregaDomicilio(string? modalidad)
+        => string.Equals(modalidad, "Delivery", StringComparison.OrdinalIgnoreCase);
+
+    private static void ValidarDatosDomicilio(string? celular, string? direccion, string modalidad)
+    {
+        if (!EsPedidoDomicilio(modalidad)) return;
+        if (string.IsNullOrWhiteSpace(celular))
+            throw new InvalidOperationException("Para pedidos a domicilio el cliente debe tener celular.");
+        if (string.IsNullOrWhiteSpace(direccion))
+            throw new InvalidOperationException("Para pedidos a domicilio debes registrar la dirección del cliente.");
+    }
+
+    private static string? LimpiarTexto(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 }

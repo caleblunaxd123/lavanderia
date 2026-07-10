@@ -220,9 +220,25 @@ export class CuadreCajaComponent implements OnInit {
   });
 
   guardando = signal(false);
+  confirmarRegrabar = signal(false);
 
   guardarCuadre() {
     if (this.guardando()) return;
+    // Ya existe un cuadre guardado para esta fecha/usuario: confirmar antes de sobrescribirlo
+    // en vez de reemplazarlo en silencio (el conteo anterior se pierde sin aviso).
+    if (this.guardado) {
+      this.confirmarRegrabar.set(true);
+      return;
+    }
+    this.procederGuardado();
+  }
+
+  confirmarRegrabarCuadre() {
+    this.confirmarRegrabar.set(false);
+    this.procederGuardado();
+  }
+
+  private procederGuardado() {
     this.guardando.set(true);
 
     this.cajaSvc.guardarCuadre({

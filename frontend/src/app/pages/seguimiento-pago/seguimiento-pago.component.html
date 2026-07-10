@@ -1,0 +1,96 @@
+<div class="pagina">
+  @if (cargando()) {
+    <div class="estado">Cargando tu pedido...</div>
+  } @else if (error()) {
+    <div class="tarjeta">
+      <p class="estado estado--error">{{ error() }}</p>
+    </div>
+  } @else if (data()) {
+    @let d = data()!;
+    <div class="tarjeta">
+      <div class="cabecera">
+        @if (d.logoUrl) {
+          <img [src]="d.logoUrl" alt="" class="logo" />
+        }
+        <h1>{{ d.nombreNegocio }}</h1>
+        <p class="numero">Pedido #{{ d.numeroPedido }}</p>
+        <p class="resumen">{{ d.resumenEstado }}</p>
+      </div>
+
+      @if (d.anulado) {
+        <p class="aviso aviso--anulado">Este pedido fue anulado.</p>
+      } @else {
+        <div class="pasos">
+          @for (paso of d.pasos; track paso.codigo) {
+            <div class="paso" [class.paso--alcanzado]="paso.alcanzado" [class.paso--actual]="paso.actual">
+              <span class="paso__punto"></span>
+              <span class="paso__nombre">{{ paso.nombre }}</span>
+            </div>
+          }
+        </div>
+
+        @if (d.fechaCompromiso) {
+          <div class="fecha">
+            <span>{{ d.etiquetaFechaCompromiso }}</span>
+            <strong>{{ d.fechaCompromiso | date:'EEE d MMM, h:mm a' }}</strong>
+          </div>
+        }
+
+        @if (d.items.length > 0) {
+          <div class="items">
+            @for (item of d.items; track item.nombre + item.cantidad) {
+              <span class="item-chip">{{ item.nombre }} · {{ item.cantidad }}</span>
+            }
+          </div>
+        }
+
+        <div class="montos">
+          <div class="montos__fila">
+            <span>Total del pedido</span>
+            <strong>S/ {{ d.total.toFixed(2) }}</strong>
+          </div>
+          <div class="montos__fila">
+            <span>Pagado</span>
+            <strong>S/ {{ d.montoPagado.toFixed(2) }}</strong>
+          </div>
+          @if (d.saldo > 0.01) {
+            <div class="montos__fila montos__fila--saldo">
+              <span>Saldo pendiente</span>
+              <strong>S/ {{ d.saldo.toFixed(2) }}</strong>
+            </div>
+          }
+        </div>
+
+        @if (d.saldo <= 0.01) {
+          <p class="aviso aviso--ok">Tu pedido ya está pagado. Gracias.</p>
+        } @else if (d.requierePago) {
+          <button class="btn-pagar" [disabled]="procesando()" (click)="abrirPago()">
+            {{ procesando() ? 'Procesando...' : 'Pagar S/ ' + d.saldo.toFixed(2) }}
+          </button>
+          <p class="hint">Pago seguro con tarjeta. El estado se actualizará aquí mismo al confirmarse.</p>
+        } @else {
+          <p class="aviso">Los pagos online no están disponibles en este momento. Coordina el pago directamente con la lavandería.</p>
+        }
+
+        @if (mensajeCobro()) {
+          <p class="mensaje-cobro">{{ mensajeCobro() }}</p>
+        }
+
+        @if (d.telefonoNegocio || d.direccionNegocio) {
+          <div class="contacto">
+            <h2>Contacto</h2>
+            @if (d.telefonoNegocio) {
+              <p><strong>Teléfono:</strong> {{ d.telefonoNegocio }}</p>
+            }
+            @if (d.direccionNegocio) {
+              <p><strong>Dirección:</strong> {{ d.direccionNegocio }}</p>
+            }
+            @if (telefonoWhatsapp()) {
+              <button class="btn-secundario" (click)="abrirWhatsappNegocio()">Escribir por WhatsApp</button>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+</div>

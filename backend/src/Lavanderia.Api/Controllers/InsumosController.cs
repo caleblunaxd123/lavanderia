@@ -107,8 +107,15 @@ public class InsumosController : TenantAwareControllerBase
             Descripcion = req.Descripcion
         };
 
-        var movimientoId = await _repo.RegistrarMovimientoAsync(movimiento, req.MetodoPago, req.TipoGastoId, ct);
-        return Ok(new { id = movimientoId, mensaje = "Movimiento registrado." });
+        try
+        {
+            var movimientoId = await _repo.RegistrarMovimientoAsync(movimiento, req.MetodoPago, req.TipoGastoId, ct);
+            return Ok(new { id = movimientoId, mensaje = "Movimiento registrado." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
     }
 
     [HttpGet("movimientos")]

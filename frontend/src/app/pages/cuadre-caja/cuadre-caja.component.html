@@ -207,4 +207,21 @@
       </div>
     </div>
   }
+
+  @if (confirmarRegrabar()) {
+    <div class="modal-backdrop" (click)="confirmarRegrabar.set(false)"></div>
+    <div class="modal-simple">
+      <div class="modal-simple__head">
+        <h3>Ya existe un cuadre guardado</h3>
+        <button (click)="confirmarRegrabar.set(false)">×</button>
+      </div>
+      <div class="modal-simple__body">
+        <p>Ya se guardó un cuadre para el {{ fecha }}. Si continúas, se reemplazará con el conteo actual.</p>
+        <div class="modal-simple__actions">
+          <button class="btn btn--ghost" (click)="confirmarRegrabar.set(false)">Cancelar</button>
+          <button class="btn btn--primario" (click)="confirmarRegrabarCuadre()">Reemplazar cuadre</button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

@@ -19,7 +19,7 @@ export const rolGuard = (rolesPermitidos: string[]): CanActivateFn => () => {
   }
   const rol = auth.usuario()?.rol;
   if (rol && rolesPermitidos.includes(rol)) return true;
-  router.navigate(['/pedidos']);
+  router.navigate(['/inicio']);
   return false;
 };
 

@@ -164,14 +164,31 @@ public class InsumoRepository : IInsumoRepository
                 _ => m.Cantidad // AJUSTE: la cantidad ya viene con el signo deseado
             };
 
+            // El tope de stock >= 0 va en el propio WHERE (chequeo atomico): evita que dos
+            // consumos concurrentes, cada uno validado por separado antes de llegar aqui, dejen
+            // el stock negativo (TOCTOU si solo se valida afuera de la transaccion).
             await using var cmdStock = conn.CreateCommand();
             cmdStock.Transaction = tx;
-            cmdStock.CommandText = "UPDATE dbo.Insumo SET StockActual = StockActual + @Delta WHERE Id = @InsumoId AND SedeId = @SedeId";
+            cmdStock.CommandText = @"
+                UPDATE dbo.Insumo
+                   SET StockActual = StockActual + @Delta
+                 WHERE Id = @InsumoId AND SedeId = @SedeId AND StockActual + @Delta >= 0";
             cmdStock.AddParam("@Delta", delta);
             cmdStock.AddParam("@InsumoId", m.InsumoId);
             cmdStock.AddParam("@SedeId", m.SedeId);
             var stockRows = await cmdStock.ExecuteNonQueryAsync(ct);
-            if (stockRows == 0) throw new InvalidOperationException("Insumo no encontrado en esta sede.");
+            if (stockRows == 0)
+            {
+                await using var cmdExiste = conn.CreateCommand();
+                cmdExiste.Transaction = tx;
+                cmdExiste.CommandText = "SELECT COUNT(1) FROM dbo.Insumo WHERE Id = @InsumoId AND SedeId = @SedeId";
+                cmdExiste.AddParam("@InsumoId", m.InsumoId);
+                cmdExiste.AddParam("@SedeId", m.SedeId);
+                var existe = await cmdExiste.ReadScalarAsync<int>(ct) > 0;
+                throw new InvalidOperationException(existe
+                    ? "Stock insuficiente para este movimiento."
+                    : "Insumo no encontrado en esta sede.");
+            }
 
             await tx.CommitAsync(ct);
             return id;

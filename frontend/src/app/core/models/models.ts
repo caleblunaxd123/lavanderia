@@ -2,7 +2,7 @@ export interface UsuarioSesion {
   id: number;
   usuario: string;
   nombreCompleto: string;
-  rol: 'ADMIN' | 'COORDINADOR' | 'TRABAJADOR' | string;
+  rol: 'ADMIN' | 'COORDINADOR' | 'TRABAJADOR' | 'PROPIETARIO' | string;
   modulosPermitidos: string[];
   negocioId: number;
   sedeId: number | null;
@@ -89,6 +89,7 @@ export interface PedidoItem {
 
 export type EstadoPago = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
 export type EstadoProceso = 'PENDIENTE' | 'EN_PROCESO' | 'LISTO' | 'ENTREGADO' | 'ANULADO';
+export type ModalidadPedido = 'Tienda' | 'Recojo' | 'Delivery';
 
 export interface Pedido {
   id: number;
@@ -100,7 +101,7 @@ export interface Pedido {
   usuarioNombre?: string | null;
   fechaIngreso: string;
   fechaEntregaEst?: string | null;
-  modalidad: 'Tienda' | 'Delivery';
+  modalidad: ModalidadPedido;
   subtotal: number;
   descuento: number;
   esUrgente: boolean;
@@ -173,7 +174,7 @@ export interface CrearNegocioRequest {
 export interface CrearPedidoRequest {
   clienteId?: number;
   clienteNuevo?: Partial<Cliente>;
-  modalidad: 'Tienda' | 'Delivery';
+  modalidad: ModalidadPedido;
   items: Array<{
     servicioId: number;
     cantidad: number;

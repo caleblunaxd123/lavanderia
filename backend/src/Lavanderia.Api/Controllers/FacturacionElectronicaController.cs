@@ -83,6 +83,10 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         if (pedido.EstadoPago != "PAGADO")
             return BadRequest(new { mensaje = "El pedido debe estar pagado por completo para emitir el comprobante." });
 
+        var vigente = await _facturacion.ObtenerVigentePorPedidoAsync(pedidoId, ct);
+        if (vigente is not null)
+            return Conflict(new { mensaje = $"Este pedido ya tiene un comprobante {vigente.Tipo} {vigente.Serie}-{vigente.Correlativo} vigente." });
+
         var config = await _facturacion.ObtenerConfigAsync(NegocioId, ct);
         if (config is null || !config.Activo || config.CertificadoPfx is null
             || string.IsNullOrEmpty(config.SolClaveCifrada) || string.IsNullOrEmpty(config.CertificadoPasswordCifrada)
@@ -117,7 +121,9 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
             clienteNombre = pedido.ClienteNombre ?? cliente?.Nombre ?? "Cliente";
         }
 
-        var opGravada = Math.Round(pedido.Total / 1.18m, 2, MidpointRounding.AwayFromZero);
+        var configNegocio = await _configNegocio.ObtenerAsync(NegocioId, ct);
+        var factorIgv = 1 + (configNegocio?.Igv ?? 18.00m) / 100m;
+        var opGravada = Math.Round(pedido.Total / factorIgv, 2, MidpointRounding.AwayFromZero);
         var igv = pedido.Total - opGravada;
         var correlativo = await _facturacion.SiguienteCorrelativoAsync(NegocioId, tipo, ct);
         var serie = tipo == "FACTURA" ? config.SerieFactura : config.SerieBoleta;

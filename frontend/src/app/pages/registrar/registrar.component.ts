@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AreaLavado, Cliente, Pedido, Servicio } from '../../core/models/models';
+import { AreaLavado, Cliente, ModalidadPedido, Pedido, Servicio } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
@@ -42,61 +42,37 @@ export class RegistrarComponent implements OnInit {
   readonly cargando = signal(false);
   readonly siguienteNumero = signal<number | null>(null);
 
-  // Paso 1 - Cliente
   clienteExistente: Cliente | null = null;
   nombre = '';
   direccion = '';
   celular = '';
   documentoIdentidad = '';
   documentoFiscal = '';
-  modalidad: 'Tienda' | 'Delivery' = 'Tienda';
+  modalidad: ModalidadPedido = 'Tienda';
   buscandoCliente = signal(false);
 
-  // Buscar cliente frecuente (por nombre, celular o DNI)
   campoBusquedaCliente: 'Nombre' | 'Celular' | 'DNI' = 'Nombre';
   textoBusquedaCliente = '';
   readonly resultadosBusquedaCliente = signal<Cliente[]>([]);
   private busquedaClienteTimerId?: ReturnType<typeof setTimeout>;
 
-  // Paso 2 - Items
   servicioSeleccionadoId: number | '' = '';
   items = signal<ItemAgregado[]>([]);
 
-  // Paso 3 - Entrega
   areaInicialId: number | null = null;
   fechaEntregaValor = signal<string>(this.formatoLocal(new Date(Date.now() + 2.5 * 60 * 60 * 1000)));
   fechaEntregaEstimada = computed(() => new Date(this.fechaEntregaValor()));
 
-  private formatoLocal(d: Date): string {
-    // yyyy-MM-ddTHH:mm para <input type="datetime-local">
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  presetEntrega(horas: number) {
-    this.fechaEntregaValor.set(this.formatoLocal(new Date(Date.now() + horas * 60 * 60 * 1000)));
-  }
-
-  presetMananaHora(hora: number) {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(hora, 0, 0, 0);
-    this.fechaEntregaValor.set(this.formatoLocal(d));
-  }
-
-  // Paso 4 - Descuento / Urgente
   aplicaDescuento = signal(false);
   descuentoPorcentaje = signal(10);
   esUrgente = signal(false);
   recargoUrgentePorcentaje = signal(20);
 
-  // Código de promoción
   codigoPromo = '';
   readonly validandoPromo = signal(false);
   readonly promoAplicada = signal<PromocionValida | null>(null);
   readonly errorPromo = signal<string | null>(null);
 
-  // Paso 5 - Pago
   montoPagado = 0;
   metodoPagoInicial: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS' = 'EFECTIVO';
   notificarWhatsapp = true;
@@ -114,8 +90,6 @@ export class RegistrarComponent implements OnInit {
   );
 
   totalNeto = computed(() => this.subtotal() - this.descuentoMonto() + this.recargoUrgenteMonto());
-
-  // Redondeo a los 10 centimos mas cercanos (no circulan monedas de 1, 2 y 5 centimos en Peru)
   totalFinal = computed(() => Math.round(this.totalNeto() * 10) / 10);
   redondeo = computed(() => Math.round((this.totalFinal() - this.totalNeto()) * 100) / 100);
 
@@ -144,6 +118,22 @@ export class RegistrarComponent implements OnInit {
     });
   }
 
+  private formatoLocal(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  presetEntrega(horas: number) {
+    this.fechaEntregaValor.set(this.formatoLocal(new Date(Date.now() + horas * 60 * 60 * 1000)));
+  }
+
+  presetMananaHora(hora: number) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(hora, 0, 0, 0);
+    this.fechaEntregaValor.set(this.formatoLocal(d));
+  }
+
   onBuscarClienteInput(texto: string) {
     this.textoBusquedaCliente = texto;
     if (this.busquedaClienteTimerId) clearTimeout(this.busquedaClienteTimerId);
@@ -164,22 +154,19 @@ export class RegistrarComponent implements OnInit {
     });
   }
 
-  // Al cambiar a Delivery se agrega automaticamente el cargo configurado en Ajustes > Negocio
-  // (ver ConfiguracionNegocio.costoDelivery / servicioDeliveryId), igual que el editable con
-  // el que ya cuentan los demas items del carrito. Al volver a Tienda se retira esa linea.
-  cambiarModalidad(m: 'Tienda' | 'Delivery') {
+  cambiarModalidad(m: ModalidadPedido) {
     this.modalidad = m;
     const idDelivery = this.config.configuracion().servicioDeliveryId;
     if (!idDelivery) return;
 
-    if (m === 'Delivery') {
+    if (this.esDomicilio()) {
       const costo = this.config.configuracion().costoDelivery;
       if (costo <= 0) return;
       const yaEsta = this.items().some(i => i.servicioId === idDelivery);
       if (!yaEsta) {
         this.items.update(list => [...list, {
           servicioId: idDelivery,
-          nombre: 'Servicio a Domicilio',
+          nombre: 'Servicio a domicilio',
           precio: costo,
           unidad: 'Unidad',
           cantidad: 1,
@@ -189,6 +176,22 @@ export class RegistrarComponent implements OnInit {
     } else {
       this.items.update(list => list.filter(i => i.servicioId !== idDelivery));
     }
+  }
+
+  esDomicilio() {
+    return this.modalidad === 'Recojo' || this.modalidad === 'Delivery';
+  }
+
+  descripcionPaso3() {
+    return this.modalidad === 'Delivery' ? '¿Cuándo entregar?'
+      : this.modalidad === 'Recojo' ? '¿Cuándo estará listo?'
+      : '¿Cuándo estará listo para recojo?';
+  }
+
+  etiquetaFechaProgramada() {
+    return this.modalidad === 'Delivery' ? 'Fecha y hora de entrega'
+      : this.esDomicilio() ? 'Fecha y hora estimada'
+      : 'Fecha y hora de recojo';
   }
 
   seleccionarClienteFrecuente(c: Cliente) {
@@ -297,6 +300,7 @@ export class RegistrarComponent implements OnInit {
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
       && this.celular.trim().length > 0
+      && (!this.esDomicilio() || this.direccion.trim().length > 0)
       && this.items().length > 0
       && this.totalFinal() > 0
       && !this.registrando();
@@ -309,7 +313,7 @@ export class RegistrarComponent implements OnInit {
 
     const payload = {
       clienteId: this.clienteExistente?.id,
-      clienteNuevo: this.clienteExistente ? undefined : {
+      clienteNuevo: {
         nombre: this.nombre.trim(),
         celular: this.celular || null,
         dni: this.documentoIdentidad || null,
@@ -355,25 +359,39 @@ export class RegistrarComponent implements OnInit {
   imprimirTicket() {
     const p = this.pedidoCreado();
     if (!p) return;
-    // Abre en nueva pestaña para no perder el estado del wizard
     window.open(`/ticket/${p.id}`, '_blank');
   }
 
   enviarWhatsapp() {
     const p = this.pedidoCreado();
     if (!p || !p.clienteCelular) return;
+
     const cliente = p.clienteNombre ?? '';
     const entrega = p.fechaEntregaEst
       ? new Date(p.fechaEntregaEst).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
       : 'por confirmar';
-    const mensaje = this.whatsapp.mensaje('INGRESO', {
-      cliente,
-      numero: String(p.numero),
-      negocio: this.config.configuracion().nombreNegocio,
-      total: p.total.toFixed(2),
-      entrega,
-    }, `Hola ${cliente}, registramos tu pedido #${p.numero} por un total de S/ ${p.total.toFixed(2)}. ¡Gracias por tu preferencia!`);
-    this.whatsapp.enviar(p.clienteCelular, mensaje);
+
+    const enviar = (link?: string) => {
+      const extra = link ? `\nSigue tu pedido aquí: ${link}` : '';
+      const mensaje = this.whatsapp.mensaje('INGRESO', {
+        cliente,
+        numero: String(p.numero),
+        negocio: this.config.configuracion().nombreNegocio,
+        total: p.total.toFixed(2),
+        entrega,
+      }, `Hola ${cliente}, registramos tu pedido #${p.numero} por un total de S/ ${p.total.toFixed(2)}.${extra}`);
+      this.whatsapp.enviar(p.clienteCelular!, mensaje);
+    };
+
+    if (this.esPedidoDomicilio(p)) {
+      this.pedidosSvc.linkSeguimiento(p.id).subscribe({
+        next: ({ token }) => enviar(`${window.location.origin}/seguimiento/${token}`),
+        error: () => enviar()
+      });
+      return;
+    }
+
+    enviar();
   }
 
   nuevaOrden() {
@@ -392,5 +410,10 @@ export class RegistrarComponent implements OnInit {
     this.esUrgente.set(false);
     this.montoPagado = 0;
     this.metodoPagoInicial = 'EFECTIVO';
+    this.modalidad = 'Tienda';
+  }
+
+  private esPedidoDomicilio(p: Pedido) {
+    return p.modalidad === 'Recojo' || p.modalidad === 'Delivery';
   }
 }

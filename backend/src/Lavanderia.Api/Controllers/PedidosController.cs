@@ -176,6 +176,39 @@ public class PedidosController : TenantAwareControllerBase
         }
     }
 
+    /// <summary>Convierte un pedido de Tienda a Delivery y, si le queda saldo, genera de una
+    /// vez su link de seguimiento/pago (ver <see cref="LinkSeguimiento"/>).</summary>
+    [HttpPost("{id:int}/convertir-delivery")]
+    public async Task<IActionResult> ConvertirDelivery(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _service.ConvertirADeliveryAsync(id, NegocioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    /// <summary>Devuelve el token del link público de seguimiento/pago de este pedido,
+    /// generándolo si todavía no existe uno vigente. Solo aplica a pedidos Delivery.</summary>
+    [HttpGet("{id:int}/link-seguimiento")]
+    public async Task<ActionResult<LinkSeguimientoDto>> LinkSeguimiento(int id, CancellationToken ct)
+    {
+        try
+        {
+            var token = await _service.ObtenerOCrearLinkPagoAsync(id, NegocioId, SedeId!.Value, ct);
+            if (token is null) return NotFound(new { mensaje = "Este pedido ya está pagado, no necesita link de pago." });
+            return Ok(new LinkSeguimientoDto(token.Value));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
     [HttpPost("{id:int}/anular")]
     public async Task<IActionResult> Anular(int id, [FromBody] AnularPedidoRequest req, CancellationToken ct)
     {

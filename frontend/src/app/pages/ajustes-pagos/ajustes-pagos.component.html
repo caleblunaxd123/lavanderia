@@ -1,0 +1,50 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
+    <div>
+      <h2>Pagos online</h2>
+      <p>Permite que tus clientes hagan seguimiento y paguen online los pedidos a domicilio desde una página pública segura.</p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando...</div>
+  } @else {
+    <div class="aviso">
+      Necesitas una cuenta de comercio en <strong>Culqi</strong> para conseguir tus llaves. Puedes empezar con llaves de <strong>prueba</strong> (<code>pk_test_</code> / <code>sk_test_</code>) antes de pasar a producción. En esta versión el checkout queda optimizado para cobro con tarjeta; para medios asíncronos se necesitará integrar órdenes y webhook.
+    </div>
+
+    <div class="secciones">
+      <div class="card seccion">
+        <h3>Llaves de Culqi</h3>
+
+        <label>Llave pública (Public Key) <app-info-tooltip texto="Se usa en el navegador del cliente para tokenizar la tarjeta. No es secreta."></app-info-tooltip></label>
+        <input type="text" [ngModel]="form().publicKey"
+               (ngModelChange)="actualizarCampo('publicKey', $event)"
+               placeholder="pk_test_xxxxxxxxxxxxxxxx" />
+
+        <label>Llave secreta (Secret Key) <app-info-tooltip texto="Se usa solo en el servidor para cobrar. Nunca se muestra de vuelta una vez guardada."></app-info-tooltip></label>
+        @if (form().tieneSecretKey) {
+          <p class="ok-badge">Ya tienes una llave secreta guardada. Ingresa una nueva solo si necesitas reemplazarla.</p>
+        }
+        <input type="password" [ngModel]="form().secretKeyNueva"
+               (ngModelChange)="actualizarCampo('secretKeyNueva', $event)"
+               placeholder="Solo si cambias la llave" />
+      </div>
+    </div>
+
+    <div class="card seccion activar">
+      <label class="checkbox-row">
+        <input type="checkbox" [ngModel]="form().activo" (ngModelChange)="actualizarCampo('activo', $event)" />
+        Activar pagos online (habilita el botón de pago dentro del link público de seguimiento)
+      </label>
+    </div>
+
+    <div class="acciones">
+      <button type="button" class="btn btn--ghost" (click)="volver()">Cancelar</button>
+      <button type="button" class="btn btn--primario" [disabled]="guardando()" (click)="guardar()">
+        {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
+  }
+</div>

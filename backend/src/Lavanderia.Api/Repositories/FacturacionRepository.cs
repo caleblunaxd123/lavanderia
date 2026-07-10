@@ -14,6 +14,9 @@ public interface IFacturacionRepository
         int id, string estado, string? codigoRespuesta, string? descripcionRespuesta,
         byte[]? xmlFirmado, byte[]? cdrZip, string? hashCpe, DateTime? fechaEnvio, CancellationToken ct = default);
     Task<ComprobanteElectronico?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
+    /// <summary>Comprobante ya emitido (PENDIENTE o ACEPTADO) para este pedido, si existe.
+    /// RECHAZADO/ERROR/ANULADO no cuentan: esos casos sí deben poder re-emitirse.</summary>
+    Task<ComprobanteElectronico?> ObtenerVigentePorPedidoAsync(int pedidoId, CancellationToken ct = default);
     Task<(List<ComprobanteElectronico> Items, int Total)> ListarPaginadoAsync(int sedeId, int pagina, int tamanoPagina, CancellationToken ct = default);
 }
 
@@ -212,6 +215,18 @@ public class FacturacionRepository : IFacturacionRepository
         cmd.CommandText = ComprobanteSelect + " WHERE c.Id = @Id AND c.SedeId = @SedeId";
         cmd.AddParam("@Id", id);
         cmd.AddParam("@SedeId", sedeId);
+        return await cmd.ReadFirstOrDefaultAsync(MapComprobante, ct);
+    }
+
+    public async Task<ComprobanteElectronico?> ObtenerVigentePorPedidoAsync(int pedidoId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = ComprobanteSelect + @"
+            WHERE c.PedidoId = @PedidoId AND c.Estado IN ('PENDIENTE', 'ACEPTADO')
+            ORDER BY c.FechaEmision DESC";
+        cmd.AddParam("@PedidoId", pedidoId);
         return await cmd.ReadFirstOrDefaultAsync(MapComprobante, ct);
     }
 

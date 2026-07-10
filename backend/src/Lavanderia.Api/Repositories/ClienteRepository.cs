@@ -219,6 +219,19 @@ public class ClienteRepository : IClienteRepository
                 await cmdPedidos.ExecuteNonQueryAsync(ct);
             }
 
+            await using (var cmdMovPuntos = conn.CreateCommand())
+            {
+                cmdMovPuntos.Transaction = tx;
+                cmdMovPuntos.CommandText = @"
+                    UPDATE dbo.MovimientoPuntos
+                    SET ClienteId = @Destino
+                    WHERE ClienteId = @Origen AND NegocioId = @NegocioId";
+                cmdMovPuntos.AddParam("@Destino", destinoId);
+                cmdMovPuntos.AddParam("@Origen", origenId);
+                cmdMovPuntos.AddParam("@NegocioId", negocioId);
+                await cmdMovPuntos.ExecuteNonQueryAsync(ct);
+            }
+
             await using (var cmdDesactivar = conn.CreateCommand())
             {
                 cmdDesactivar.Transaction = tx;

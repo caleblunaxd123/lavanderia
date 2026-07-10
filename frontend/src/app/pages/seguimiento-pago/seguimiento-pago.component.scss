@@ -1,0 +1,261 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f4f6fb;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.pagina {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.estado {
+  text-align: center;
+  padding: 40px 16px;
+  color: #667;
+  font-size: 15px;
+}
+
+.estado--error {
+  color: #b3261e;
+}
+
+.tarjeta {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
+  padding: 24px 20px;
+}
+
+.cabecera {
+  text-align: center;
+  margin-bottom: 20px;
+
+  .logo {
+    max-height: 56px;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--color-primario-cliente, #0b57d0);
+  }
+
+  .numero {
+    margin: 4px 0 0;
+    color: #667;
+    font-size: 14px;
+  }
+
+  .resumen {
+    margin: 10px auto 0;
+    color: #455468;
+    font-size: 14px;
+    line-height: 1.4;
+    max-width: 32ch;
+  }
+}
+
+.pasos {
+  display: flex;
+  justify-content: space-between;
+  margin: 24px 0 18px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 6%;
+    right: 6%;
+    height: 2px;
+    background: #e2e5ec;
+    z-index: 0;
+  }
+}
+
+.paso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+
+  &__punto {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #e2e5ec;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #e2e5ec;
+  }
+
+  &__nombre {
+    font-size: 11px;
+    color: #99a;
+    text-align: center;
+  }
+
+  &--alcanzado &__punto {
+    background: var(--color-primario-cliente, #0b57d0);
+    box-shadow: 0 0 0 1px var(--color-primario-cliente, #0b57d0);
+  }
+
+  &--alcanzado &__nombre {
+    color: #333;
+    font-weight: 600;
+  }
+
+  &--actual &__punto {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primario-cliente, #0b57d0) 25%, transparent);
+  }
+}
+
+.fecha {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  background: #eef4ff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #42526b;
+
+  strong {
+    color: #152033;
+    text-transform: capitalize;
+  }
+}
+
+.items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.item-chip {
+  background: #f3f5f8;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: #475569;
+}
+
+.montos {
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  padding: 12px 0;
+  margin-bottom: 16px;
+
+  &__fila {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+    color: #556;
+
+    &--saldo {
+      font-weight: 700;
+      color: #b3261e;
+      font-size: 16px;
+    }
+  }
+}
+
+.aviso {
+  text-align: center;
+  font-size: 14px;
+  color: #556;
+  padding: 8px 0;
+}
+
+.aviso--ok {
+  color: #1e7a34;
+  font-weight: 600;
+}
+
+.aviso--anulado {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.btn-pagar,
+.btn-secundario {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-pagar {
+  background: var(--color-primario-cliente, #0b57d0);
+  color: #fff;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.btn-secundario {
+  background: #fff;
+  color: var(--color-primario-cliente, #0b57d0);
+  border: 1px solid color-mix(in srgb, var(--color-primario-cliente, #0b57d0) 35%, #d9e4f7);
+}
+
+.hint {
+  text-align: center;
+  font-size: 12px;
+  color: #667085;
+  margin: 8px 0 0;
+}
+
+.mensaje-cobro {
+  text-align: center;
+  font-size: 13px;
+  color: #b3261e;
+  margin-top: 12px;
+}
+
+.contacto {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+
+  h2 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #344054;
+  }
+
+  p {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: #475467;
+  }
+}
+
+@media (max-width: 480px) {
+  :host {
+    padding: 14px;
+  }
+
+  .tarjeta {
+    padding: 18px 16px;
+  }
+
+  .fecha {
+    flex-direction: column;
+  }
+}

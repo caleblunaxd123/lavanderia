@@ -315,6 +315,47 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  // ---------- Delivery / link de pago online ----------
+  readonly convirtiendoDelivery = signal(false);
+  readonly enviandoLinkPago = signal(false);
+
+  convertirADelivery(p: Pedido) {
+    if (this.convirtiendoDelivery()) return;
+    this.convirtiendoDelivery.set(true);
+    this.service.convertirDelivery(p.id).subscribe({
+      next: () => {
+        this.convirtiendoDelivery.set(false);
+        this.toast.exito(`Pedido #${p.numero} convertido a Delivery`);
+        this.refrescarPedidoAbierto();
+        this.recargar(true);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.convirtiendoDelivery.set(false);
+        this.toast.error(err.error?.mensaje ?? 'No se pudo convertir el pedido a Delivery.');
+      }
+    });
+  }
+
+  enviarLinkPago(p: Pedido) {
+    if (this.enviandoLinkPago() || !p.clienteCelular) {
+      if (!p.clienteCelular) this.toast.advertencia('Este cliente no tiene celular registrado.');
+      return;
+    }
+    this.enviandoLinkPago.set(true);
+    this.service.linkSeguimiento(p.id).subscribe({
+      next: ({ token }) => {
+        this.enviandoLinkPago.set(false);
+        const url = `${window.location.origin}/seguimiento/${token}`;
+        const mensaje = `Hola ${p.clienteNombre}, para tu pedido #${p.numero} puedes ver el estado y pagar en línea (tarjeta o Yape) aquí: ${url}`;
+        this.whatsapp.enviar(p.clienteCelular!, mensaje);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.enviandoLinkPago.set(false);
+        this.toast.error(err.error?.mensaje ?? 'No se pudo generar el link de pago.');
+      }
+    });
+  }
+
   // ---------- Facturación electrónica ----------
   emitirComprobante(tipo: 'BOLETA' | 'FACTURA') {
     const p = this.pedidoAbierto();
