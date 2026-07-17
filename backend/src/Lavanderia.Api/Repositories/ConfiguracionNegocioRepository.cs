@@ -118,6 +118,8 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
         cmd.AddParam("@CondicionesServicio", c.CondicionesServicio);
         cmd.AddParam("@NotasProduccion", c.NotasProduccion);
         cmd.AddParam("@CostoDelivery", c.CostoDelivery);
+        cmd.AddParam("@ValorPuntoCanje", c.ValorPuntoCanje);
+        cmd.AddParam("@MaxDescuentoPct", c.MaxDescuentoPct);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 }
