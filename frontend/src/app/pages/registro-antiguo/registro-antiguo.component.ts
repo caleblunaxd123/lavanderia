@@ -151,6 +151,7 @@ export class RegistroAntiguoComponent implements OnInit {
 
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
+      && this.celular.trim().length > 0
       && this.items().length > 0
       && this.subtotal() > 0
       && !this.registrando();
@@ -164,7 +165,9 @@ export class RegistroAntiguoComponent implements OnInit {
 
     const payload = {
       clienteId: this.clienteExistente?.id,
-      clienteNuevo: this.clienteExistente ? undefined : {
+      // Se envía siempre (igual que en Registrar): si el cliente existente no tenía
+      // celular, lo que el operador escriba aquí actualiza su ficha.
+      clienteNuevo: {
         nombre: this.nombre.trim(),
         celular: this.celular || null,
         dni: this.documentoIdentidad || null,
@@ -198,7 +201,7 @@ export class RegistroAntiguoComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.registrando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo registrar el pedido.');
+        this.toast.desdeHttp(err, 'No se pudo registrar el pedido.');
       }
     });
   }

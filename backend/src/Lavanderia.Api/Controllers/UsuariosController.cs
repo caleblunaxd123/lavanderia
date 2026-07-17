@@ -39,7 +39,9 @@ public class UsuariosController : ControllerBase
 
     [HttpGet("roles")]
     public async Task<ActionResult<List<RolDto>>> Roles(CancellationToken ct)
-        => Ok((await _roles.ListarTodosAsync(ct)).Select(r => new RolDto(r.Id, r.Codigo, r.Nombre)).ToList());
+        => Ok((await _roles.ListarTodosAsync(ct))
+            .Where(r => r.Codigo != "PROPIETARIO")
+            .Select(r => new RolDto(r.Id, r.Codigo, r.Nombre)).ToList());
 
     [HttpPost]
     public async Task<ActionResult<UsuarioAdminDto>> Crear([FromBody] UsuarioAdminDto dto, CancellationToken ct)
@@ -56,6 +58,9 @@ public class UsuariosController : ControllerBase
 
         if (!EmailValido(dto.Email))
             return BadRequest(new { mensaje = "El email ingresado no tiene un formato valido." });
+
+        if (!await RolAdministrableAsync(dto.RolId, ct))
+            return BadRequest(new { mensaje = "El rol seleccionado no es válido para un usuario del negocio." });
 
         var existente = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
         if (existente is not null)
@@ -99,6 +104,15 @@ public class UsuariosController : ControllerBase
         if (!EmailValido(dto.Email))
             return BadRequest(new { mensaje = "El email ingresado no tiene un formato valido." });
 
+        if (!string.IsNullOrWhiteSpace(dto.Password) && !PasswordValida(dto.Password))
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres e incluir letras y numeros." });
+
+        if (!await RolAdministrableAsync(dto.RolId, ct))
+            return BadRequest(new { mensaje = "El rol seleccionado no es válido para un usuario del negocio." });
+
+        if (id == UsuarioIdActual && (dto.RolId != existente.RolId || !dto.Activo))
+            return BadRequest(new { mensaje = "No puedes cambiar tu propio rol ni desactivar tu usuario." });
+
         if (!string.Equals(existente.UsuarioLogin, usuario, StringComparison.OrdinalIgnoreCase))
         {
             var tomado = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
@@ -122,8 +136,6 @@ public class UsuariosController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(dto.Password))
         {
-            if (!PasswordValida(dto.Password))
-                return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres e incluir letras y numeros." });
             await _usuarios.ActualizarPasswordAsync(id, BCrypt.Net.BCrypt.HashPassword(dto.Password), NegocioIdActual, ct);
         }
 
@@ -167,6 +179,12 @@ public class UsuariosController : ControllerBase
         if (sedeId is not null) return true;
         var admin = await _roles.BuscarPorCodigoAsync("ADMIN", ct);
         return admin is not null && admin.Id == rolId;
+    }
+
+    private async Task<bool> RolAdministrableAsync(int rolId, CancellationToken ct)
+    {
+        var rol = (await _roles.ListarTodosAsync(ct)).FirstOrDefault(r => r.Id == rolId);
+        return rol is not null && rol.Codigo != "PROPIETARIO";
     }
 
     private static bool PasswordValida(string? password)

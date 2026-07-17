@@ -57,8 +57,17 @@
       <h4>Ingresos y gastos reales del día</h4>
       <p class="hint hint--intro">Calculado automáticamente de los pedidos y gastos registrados en la fecha seleccionada (no editable).</p>
 
+      <div class="scope-toggle">
+        <button type="button" class="scope-btn" [class.is-active]="!verTodos()" (click)="verTodos() && alternarVerTodos()">
+          Solo {{ usuarioSeleccionadoNombre() || 'mis movimientos' }}
+        </button>
+        <button type="button" class="scope-btn" [class.is-active]="verTodos()" (click)="!verTodos() && alternarVerTodos()">
+          Toda la caja del día
+        </button>
+      </div>
+
       <div class="resumen-fila">
-        <span>Ingresos totales (todos los métodos)</span>
+        <span>Ventas del día (todos los métodos)<br><small class="hint">Efectivo + digital. No es el efectivo en caja.</small></span>
         <strong class="txt-verde">S/ {{ ingresosTotal().toFixed(2) }}</strong>
       </div>
       @if (cargandoMovimientos()) {
@@ -83,6 +92,50 @@
             {{ pagosDigitalesTotal() }} {{ pagosDigitalesTotal() === 1 ? 'pago digital' : 'pagos digitales' }} hoy (Yape/Plin/Transferencia/POS)
           </p>
         }
+      }
+
+      <div class="digital-resumen digital-resumen--visible">
+        <div>
+          <span>Total digital</span>
+          <strong>S/ {{ ingresosDigitalesTotal().toFixed(2) }}</strong>
+        </div>
+        <div>
+          <span>Yape / Plin / transferencia</span>
+          <strong>S/ {{ ingresosTransferenciaMovil().toFixed(2) }}</strong>
+        </div>
+        <div>
+          <span>POS / tarjeta</span>
+          <strong>S/ {{ ingresosTarjeta().toFixed(2) }}</strong>
+        </div>
+      </div>
+      @if (ingresosDigitalesDetalle().length > 0) {
+        <div class="digital-bloque">
+          <label>
+            <app-icon name="smartphone" [size]="13"></app-icon>
+            Pagos digitales del día <small class="hint">(Yape / Plin / Transferencia / Tarjeta — no entran al cajón físico)</small>
+          </label>
+          <table class="digital-tabla digital-tabla--detalle">
+            <thead>
+              <tr><th>Hora</th><th>Método</th><th>Pedido</th><th class="num">Monto</th></tr>
+            </thead>
+            <tbody>
+              @for (m of ingresosDigitalesDetalle(); track m.id) {
+                <tr>
+                  <td class="mono">{{ m.fecha | date:'HH:mm' }}</td>
+                  <td><span [class]="'metodo-tag metodo-tag--' + m.metodoPago.toLowerCase()">{{ etiquetasMetodo[m.metodoPago] || m.metodoPago }}</span></td>
+                  <td>{{ m.pedidoNumero ? ('#' + m.pedidoNumero) : (m.descripcion || '—') }}</td>
+                  <td class="num">S/ {{ m.monto.toFixed(2) }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Total digital</td>
+                <td class="num total">S/ {{ ingresosDigitalesTotal().toFixed(2) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       }
 
       <div class="gastos-bloque">
@@ -126,13 +179,27 @@
       }
 
       <label>Caja Inicial (con la que abriste)</label>
-      <input type="number" [(ngModel)]="cajaInicial" />
+      <input type="number" [ngModel]="cajaInicial()" (ngModelChange)="cajaInicial.set(+$event || 0)" />
 
       <label>Pedidos pagados en Efectivo <small class="hint">(automático)</small></label>
       <input type="text" [value]="pedidosPagadosEfectivo().toFixed(2)" disabled />
 
-      <div class="deberia-haber">
-        En caja debería haber: <strong>S/ {{ enCajaDeberiaHaber().toFixed(2) }}</strong>
+      <div class="formula">
+        <div class="formula__fila">
+          <span>Caja inicial</span><span>S/ {{ cajaInicial().toFixed(2) }}</span>
+        </div>
+        <div class="formula__fila">
+          <span>+ Pagos en efectivo del día</span><span>S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</span>
+        </div>
+        <div class="formula__fila">
+          <span>− Gastos en efectivo</span><span>S/ {{ gastosEfectivo().toFixed(2) }}</span>
+        </div>
+        <div class="formula__fila formula__fila--total">
+          <span>= En caja debería haber</span><span>S/ {{ enCajaDeberiaHaber().toFixed(2) }}</span>
+        </div>
+        <div class="formula__fila formula__fila--contado">
+          <span>Efectivo contado (físico)</span><span>S/ {{ totalContado().toFixed(2) }}</span>
+        </div>
       </div>
 
       <div class="estados">
@@ -154,8 +221,18 @@
       <label>Monto en Caja (contado)</label>
       <input type="text" [value]="totalContado().toFixed(2)" disabled />
 
-      <label>Caja Final (se entrega)</label>
-      <input type="text" [value]="enCajaDeberiaHaber().toFixed(2)" disabled />
+      <label>Corte (efectivo que se entrega) <small class="hint">(opcional)</small></label>
+      <input type="number" step="0.01" min="0" [(ngModel)]="corte" placeholder="0.00" />
+
+      <label>Caja Final (queda para mañana)</label>
+      <input type="text" [value]="cajaFinalRemanente.toFixed(2)" disabled />
+
+      @if (corte > 0) {
+        <div class="entrega-msg">Se hace entrega de <strong>S/ {{ corte.toFixed(2) }}</strong></div>
+      }
+
+      <label>Nota <small class="hint">(opcional, se ve en el reporte)</small></label>
+      <textarea rows="2" [(ngModel)]="nota" placeholder="Ej: se entregó a caja fuerte, faltó un vuelto…"></textarea>
 
       <button class="btn btn--primario" (click)="guardarCuadre()" [disabled]="guardando()">
         {{ guardando() ? 'Guardando…' : 'Guardar y Generar PDF' }}
@@ -166,6 +243,62 @@
       }
     </div>
   </div>
+
+  <!-- Detalle itemizado de pagos y gastos del día (como el sistema de referencia) -->
+  @if (detalleIngresos().length > 0 || gastosDelDia().length > 0) {
+    <div class="detalle-pagos">
+      <h3 class="detalle-pagos__titulo">Detalle de movimientos del día</h3>
+      <div class="detalle-grid">
+        @for (grupo of detalleIngresos(); track grupo.metodo) {
+          <div class="card detalle-tabla" [class.detalle-tabla--efectivo]="grupo.metodo === 'EFECTIVO'">
+            <div class="detalle-tabla__head">
+              <strong>{{ etiquetasMetodo[grupo.metodo] || grupo.metodo }}</strong>
+              <span>S/ {{ grupo.total.toFixed(2) }}</span>
+            </div>
+            <table>
+              <thead>
+                <tr><th>N°</th><th>Cliente</th><th>Hora</th><th class="num">Monto</th></tr>
+              </thead>
+              <tbody>
+                @for (m of grupo.items; track m.id) {
+                  <tr>
+                    <td>{{ m.pedidoNumero ? ('#' + m.pedidoNumero) : '—' }}</td>
+                    <td class="cli">{{ m.clienteNombre || m.descripcion || '—' }}</td>
+                    <td>{{ m.fecha | date:'hh:mm a' }}</td>
+                    <td class="num">S/ {{ m.monto.toFixed(2) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        @if (gastosDelDia().length > 0) {
+          <div class="card detalle-tabla detalle-tabla--gasto">
+            <div class="detalle-tabla__head">
+              <strong>Gastos</strong>
+              <span>S/ {{ gastosTotal().toFixed(2) }}</span>
+            </div>
+            <table>
+              <thead>
+                <tr><th>Tipo</th><th>Método</th><th>Hora</th><th class="num">Monto</th></tr>
+              </thead>
+              <tbody>
+                @for (g of gastosDelDia(); track g.id) {
+                  <tr>
+                    <td>{{ g.tipoGastoNombre || 'Otros' }}</td>
+                    <td>{{ etiquetasMetodo[g.metodoPago] || g.metodoPago }}</td>
+                    <td>{{ g.fecha | date:'hh:mm a' }}</td>
+                    <td class="num">S/ {{ g.monto.toFixed(2) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
 
   @if (modalGasto()) {
     <div class="modal-backdrop" (click)="modalGasto.set(false)"></div>

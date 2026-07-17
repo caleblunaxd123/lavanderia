@@ -147,8 +147,22 @@
 
 @media (max-width: 720px) {
   .sede-badge {
-    bottom: 12px;
+    position: sticky;
+    top: 56px;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    display: flex;
+    justify-content: center;
+    width: max-content;
     max-width: calc(100vw - 24px);
+    margin: 8px auto 0;
+    z-index: 19;
+  }
+
+  .sede-badge__menu {
+    top: calc(100% + 8px);
+    bottom: auto;
   }
 
   .sede-badge__btn span {

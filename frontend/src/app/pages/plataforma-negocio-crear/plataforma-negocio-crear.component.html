@@ -7,6 +7,23 @@
     </div>
   </div>
 
+  @if (creada(); as c) {
+    <div class="card exito">
+      <div class="exito__icono"><app-icon name="check" [size]="28"></app-icon></div>
+      <h3>¡Empresa "{{ c.nombre }}" creada!</h3>
+      <p>Estos son los datos de acceso del administrador. <strong>Anótalos ahora</strong> — la contraseña no se vuelve a mostrar.</p>
+      <div class="cred-box">
+        <div class="cred-row"><span>Acceso</span><b class="mono">{{ c.url }}</b><button class="link" (click)="copiar(c.url)">copiar</button></div>
+        <div class="cred-row"><span>Usuario</span><b>{{ c.usuario }}</b><button class="link" (click)="copiar(c.usuario)">copiar</button></div>
+        <div class="cred-row"><span>Contraseña</span><b>{{ c.password }}</b><button class="link" (click)="copiar(c.password)">copiar</button></div>
+      </div>
+      <div class="exito__acciones">
+        <button class="btn btn--ghost" (click)="copiarTodo()">Copiar todo</button>
+        <button class="btn btn--ghost" (click)="crearOtra()">Crear otra</button>
+        <button class="btn btn--primario" (click)="irAlPanel()">Ir al panel</button>
+      </div>
+    </div>
+  } @else {
   <div class="card form-wrap">
     <form (submit)="guardar(); $event.preventDefault()">
       <h3>Datos de la empresa</h3>
@@ -34,6 +51,9 @@
       <label>Email del titular <small class="hint">(opcional)</small></label>
       <input type="email" [(ngModel)]="form.titularEmail" name="titularEmail" placeholder="correo@ejemplo.com" autocomplete="email" />
 
+      <label>Celular del titular <small class="hint">(opcional)</small></label>
+      <input type="tel" [(ngModel)]="form.titularCelular" name="titularCelular" placeholder="Ej: 999888777" maxlength="20" />
+
       <label>Nombre de la primera sede *</label>
       <input type="text" [(ngModel)]="form.sedeNombre" name="sedeNombre" placeholder="Ej: Principal" />
 
@@ -45,8 +65,11 @@
           <input type="text" [(ngModel)]="form.adminUsuario" name="adminUsuario" placeholder="Ej: admindonpepe" autocomplete="username" />
         </div>
         <div>
-          <label>Contrasena *</label>
-          <input type="password" [(ngModel)]="form.adminPassword" name="adminPassword" autocomplete="new-password" />
+          <label>Contraseña *</label>
+          <div class="pass-row">
+            <input type="text" [(ngModel)]="form.adminPassword" name="adminPassword" autocomplete="new-password" placeholder="Mín. 8, con números" />
+            <button type="button" class="btn btn--ghost btn--sm" (click)="generarPassword()">Generar</button>
+          </div>
         </div>
       </div>
 
@@ -68,4 +91,5 @@
       </div>
     </form>
   </div>
+  }
 </div>

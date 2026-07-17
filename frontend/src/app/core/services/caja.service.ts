@@ -34,12 +34,17 @@ export class CajaService {
 
   guardarCuadre(data: {
     fecha: string;
+    usuarioId?: number;
     cajaInicial: number;
     pedidosPagadosEfect: number;
     gastos: number;
     totalContado: number;
     diferencia: number;
     cajaFinal: number;
+    corte: number;
+    ingresosDigital: number;
+    ingresosTarjeta: number;
+    nota?: string;
     observaciones?: string;
   }) {
     return this.http.post<CuadreCajaGuardado>(`${this.base}/cuadres`, data);
@@ -73,6 +78,10 @@ export interface CuadreCajaGuardado {
   totalContado: number;
   diferencia: number;
   cajaFinal: number;
+  corte: number;
+  ingresosDigital: number;
+  ingresosTarjeta: number;
+  nota?: string;
   observaciones?: string;
   fechaCreacion: string;
 }

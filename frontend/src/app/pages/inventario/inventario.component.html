@@ -30,7 +30,7 @@
       <div class="card tabla-wrap">
         <table class="tabla">
           <thead>
-            <tr><th>Nombre</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th><th></th></tr>
+            <tr><th>Nombre</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Última compra</th><th>Estado</th><th></th></tr>
           </thead>
           <tbody>
             @for (i of insumosPaginados(); track i.id) {
@@ -39,6 +39,7 @@
                 <td>{{ i.unidadMedida }}</td>
                 <td class="mono">{{ i.stockActual }}</td>
                 <td class="mono">{{ i.stockMinimo }}</td>
+                <td class="mono">{{ i.ultimaCompra ? (i.ultimaCompra | date:'dd/MM/yy') : '—' }}</td>
                 <td>
                   @if (!i.activo) {
                     <span class="badge badge--gris">Inactivo</span>
@@ -80,6 +81,7 @@
               <div><span>Unidad:</span> {{ i.unidadMedida }}</div>
               <div><span>Stock actual:</span> <strong>{{ i.stockActual }}</strong></div>
               <div><span>Stock mínimo:</span> {{ i.stockMinimo }}</div>
+              <div><span>Última compra:</span> {{ i.ultimaCompra ? (i.ultimaCompra | date:'dd/MM/yy') : '—' }}</div>
             </div>
             <div class="insumo-card__acciones">
               <button class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">Registrar movimiento</button>
@@ -283,6 +285,9 @@
         <input type="number" step="0.01" [(ngModel)]="movCantidad" name="cantidad" />
 
         @if (movTipo === 'COMPRA') {
+          <label>Fecha de compra <small class="hint">(puedes registrar una compra anterior)</small></label>
+          <input type="date" [(ngModel)]="movFecha" name="fechaCompra" [max]="hastaHistorial" />
+
           <div class="row-2">
             <div>
               <label>Costo total (opcional)</label>

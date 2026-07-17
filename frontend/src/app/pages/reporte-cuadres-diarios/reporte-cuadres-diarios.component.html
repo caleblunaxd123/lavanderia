@@ -1,0 +1,115 @@
+<div class="page">
+  <header class="cab">
+    <div>
+      <h2>Reporte de Cuadres Diarios</h2>
+      <p>Cierres de caja del mes, con corte, ingresos digitales y días sin cuadrar.</p>
+    </div>
+    <div class="cab__acciones">
+      <div class="campo-mes">
+        <label for="mes-cuadres">Mes</label>
+        <input id="mes-cuadres" type="month" [(ngModel)]="mesFiltro" (change)="cargar()" />
+      </div>
+      <button type="button" class="btn btn--secundario" [attr.aria-expanded]="expandido()" (click)="toggleExpandido()">
+        {{ expandido() ? 'Mostrar menos' : 'Mostrar más' }}
+      </button>
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (data()) {
+    @if (data(); as rep) {
+    <div class="layout">
+      <!-- Tabla principal -->
+      <div class="card tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              @if (expandido()) {
+                <th class="num">Caja Inicial</th>
+                <th class="num">Ingresos (efectivo)</th>
+                <th class="num">Egresos</th>
+                <th class="num">Monto en Caja</th>
+                <th class="num">Corte</th>
+                <th class="num">Caja Final</th>
+              }
+              <th>Estado</th>
+              <th class="num">Margen Error</th>
+              <th>Nota</th>
+              @if (expandido()) {
+                <th class="num">Transf. Móvil</th>
+                <th class="num">Tarjeta</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (dia of rep.dias; track dia.fecha) {
+              @if (dia.sinInformacion) {
+                <tr class="fila-vacia">
+                  <td>{{ dia.fecha | date:'dd/MM/yyyy' }}</td>
+                  <td [attr.colspan]="expandido() ? 12 : 4">
+                    <span class="sin-info">Sin información</span>
+                    @if (dia.noCuadradoIngresos > 0 || dia.noCuadradoEgresos > 0) {
+                      <button type="button" class="link-nocuadrado" (click)="verDia(dia)">
+                        · Hay movimientos sin cuadrar (ver)
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @else {
+                @for (c of dia.cuadres; track c.id) {
+                  <tr>
+                    <td>{{ $first ? (dia.fecha | date:'dd/MM/yyyy') : '' }}</td>
+                    <td>{{ c.usuarioNombre }}</td>
+                    @if (expandido()) {
+                      <td class="num">{{ c.cajaInicial | number:'1.2-2' }}</td>
+                      <td class="num">{{ c.ingresosEfectivo | number:'1.2-2' }}</td>
+                      <td class="num">{{ c.egresos | number:'1.2-2' }}</td>
+                      <td class="num">{{ c.montoEnCaja | number:'1.2-2' }}</td>
+                      <td class="num">{{ c.corte | number:'1.2-2' }}</td>
+                      <td class="num">{{ c.cajaFinal | number:'1.2-2' }}</td>
+                    }
+                    <td><span [class]="claseEstado(c.estado)">{{ c.estado === 'CUADRA' ? 'Cuadró' : (c.estado === 'SOBRA' ? 'Sobra' : 'Falta') }}</span></td>
+                    <td class="num">S/ {{ c.margenError | number:'1.2-2' }}</td>
+                    <td class="nota">{{ c.nota || '—' }}</td>
+                    @if (expandido()) {
+                      <td class="num">{{ c.ingresosDigital | number:'1.2-2' }}</td>
+                      <td class="num">{{ c.ingresosTarjeta | number:'1.2-2' }}</td>
+                    }
+                  </tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Panel lateral: montos no cuadrados -->
+      <aside class="card panel-nocuadrado">
+        <h3>Montos no cuadrados</h3>
+        @if (noCuadrados().length === 0) {
+          <p class="hint">Todos los días con movimientos tienen su cuadre. 👍</p>
+        } @else {
+          <p class="hint">Días con dinero registrado pero sin cuadre guardado:</p>
+          <ul>
+            @for (d of noCuadrados(); track d.fecha) {
+              <li>
+                <div class="nc-fecha">{{ d.fecha | date:'dd/MM/yyyy' }}</div>
+                <div class="nc-montos">
+                  <span class="nc-ing">Ingresos S/ {{ d.noCuadradoIngresos | number:'1.2-2' }}</span>
+                  <span class="nc-egr">Egresos S/ {{ d.noCuadradoEgresos | number:'1.2-2' }}</span>
+                </div>
+                <button type="button" class="btn-icon" (click)="verDia(d)" title="Ir a cuadrar este día" aria-label="Ir a cuadrar este día">
+                  <app-icon name="arrow-right" [size]="15"></app-icon>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </aside>
+    </div>
+    }
+  }
+</div>

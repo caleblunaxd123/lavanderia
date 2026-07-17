@@ -75,22 +75,22 @@
       <h3>Datos fiscales</h3>
 
       <label>RUC</label>
-      <input type="text" [ngModel]="form().ruc"
+      <input type="text" [ngModel]="form().ruc" maxlength="20"
              (ngModelChange)="actualizarCampo('ruc', $event)"
              placeholder="20XXXXXXXXX" />
 
       <label>Dirección</label>
-      <input type="text" [ngModel]="form().direccion"
+      <input type="text" [ngModel]="form().direccion" maxlength="200"
              (ngModelChange)="actualizarCampo('direccion', $event)"
              placeholder="Av. Ejemplo 123, Lima" />
 
       <label>Teléfono</label>
-      <input type="text" [ngModel]="form().telefono"
+      <input type="text" [ngModel]="form().telefono" maxlength="30"
              (ngModelChange)="actualizarCampo('telefono', $event)"
              placeholder="+51 9XX XXX XXX" />
 
       <label>Horario de atención</label>
-      <input type="text" [ngModel]="form().horarioAtencion"
+      <input type="text" [ngModel]="form().horarioAtencion" maxlength="120"
              (ngModelChange)="actualizarCampo('horarioAtencion', $event)"
              placeholder="Lun-Sab 8am - 8pm" />
     </div>

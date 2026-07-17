@@ -66,6 +66,7 @@ export class InventarioComponent implements OnInit {
   movMetodoPago: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS' = 'EFECTIVO';
   movTipoGastoId: number | '' = '';
   movDescripcion = '';
+  movFecha = '';  // fecha de la compra (opcional, solo COMPRA)
   guardandoMovimiento = signal(false);
 
   // ---------- Historial ----------
@@ -156,7 +157,7 @@ export class InventarioComponent implements OnInit {
         this.guardandoInsumo.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el insumo.';
         this.errorFormInsumo.set(msg);
-        this.toast.error(msg);
+        this.toast.desdeHttp(err, msg);
       }
     });
   }
@@ -176,7 +177,7 @@ export class InventarioComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoInsumo.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo desactivar.');
+        this.toast.desdeHttp(err, 'No se pudo desactivar.');
       }
     });
   }
@@ -216,6 +217,7 @@ export class InventarioComponent implements OnInit {
     this.movMetodoPago = 'EFECTIVO';
     this.movTipoGastoId = '';
     this.movDescripcion = '';
+    this.movFecha = this.formatoFecha(new Date());  // por defecto hoy
     this.modalMovimiento.set(true);
   }
 
@@ -238,7 +240,8 @@ export class InventarioComponent implements OnInit {
       costoTotal: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movCosto : null,
       metodoPago: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movMetodoPago : null,
       tipoGastoId: this.movTipoGastoId ? (this.movTipoGastoId as number) : null,
-      descripcion: this.movDescripcion.trim() || null
+      descripcion: this.movDescripcion.trim() || null,
+      fecha: this.movTipo === 'COMPRA' && this.movFecha ? this.movFecha : null
     }).subscribe({
       next: () => {
         this.guardandoMovimiento.set(false);
@@ -248,7 +251,7 @@ export class InventarioComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoMovimiento.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo registrar el movimiento.');
+        this.toast.desdeHttp(err, 'No se pudo registrar el movimiento.');
       }
     });
   }

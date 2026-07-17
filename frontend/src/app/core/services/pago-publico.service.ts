@@ -28,6 +28,9 @@ export interface SeguimientoPedido {
   saldo: number;
   requierePago: boolean;
   publicKeyCulqi?: string | null;
+  motorizadoNombre?: string | null;
+  motorizadoCelular?: string | null;
+  puedeReprogramar: boolean;
 }
 
 export interface ResultadoCobro {
@@ -48,5 +51,9 @@ export class PagoPublicoService {
 
   cobrar(token: string, culqiTokenId: string, email: string) {
     return this.http.post<ResultadoCobro>(`${this.base}/${token}/cobrar`, { culqiTokenId, email });
+  }
+
+  reprogramar(token: string, nuevaFecha: string) {
+    return this.http.post<void>(`${this.base}/${token}/reprogramar`, { nuevaFecha });
   }
 }

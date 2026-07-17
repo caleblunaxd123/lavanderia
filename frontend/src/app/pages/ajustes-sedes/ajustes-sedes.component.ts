@@ -98,7 +98,7 @@ export class AjustesSedesComponent implements OnInit {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar la sede.';
         this.errorForm.set(msg);
-        this.toast.error(msg);
+        this.toast.desdeHttp(err, msg);
       }
     });
   }

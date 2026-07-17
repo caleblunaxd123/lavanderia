@@ -1,5 +1,6 @@
 <header class="topbar">
-  <button class="topbar__hamburger" (click)="toggleMenu()" aria-label="Menú">
+  <button type="button" class="topbar__hamburger" (click)="toggleMenu()" aria-label="Menú"
+          [attr.aria-expanded]="menuAbierto()" aria-controls="menu-principal-movil">
     <span></span><span></span><span></span>
   </button>
 
@@ -28,7 +29,7 @@
       <strong>{{ usuario()?.nombreCompleto }}</strong>
       <span>{{ usuario()?.rol }}</span>
     </div>
-    <button class="user-menu__btn" (click)="logout()" title="Cerrar sesión">
+    <button type="button" class="user-menu__btn" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M4 12h12"/>
       </svg>
@@ -44,7 +45,10 @@
 
 @if (mostrarBadgeSede()) {
   <div class="sede-badge">
-    <button class="sede-badge__btn" (click)="puedeCambiarSede() && toggleSedeMenu()" [disabled]="cambiandoSede()" [class.is-fijo]="!puedeCambiarSede()">
+    <button type="button" class="sede-badge__btn" (click)="puedeCambiarSede() && toggleSedeMenu()"
+            [disabled]="cambiandoSede()" [class.is-fijo]="!puedeCambiarSede()"
+            [attr.aria-expanded]="puedeCambiarSede() ? sedeMenuAbierto() : null"
+            [attr.aria-label]="puedeCambiarSede() ? 'Cambiar sede activa' : 'Sede activa'">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 21s7-6.5 7-11.5A7 7 0 1 0 5 9.5C5 14.5 12 21 12 21Z" />
         <circle cx="12" cy="9.5" r="2.5" />
@@ -59,7 +63,7 @@
     @if (sedeMenuAbierto()) {
       <div class="sede-badge__menu">
         @for (s of sedes(); track s.id) {
-          <button
+          <button type="button"
             class="sede-badge__item"
             [class.is-active]="s.id === usuario()?.sedeId"
             (click)="elegirSede(s.id)">
@@ -73,7 +77,7 @@
 
 @if (menuAbierto()) {
   <div class="drawer-backdrop" (click)="cerrarMenu()"></div>
-  <aside class="drawer">
+  <aside id="menu-principal-movil" class="drawer">
     <div class="drawer__header">
       <strong>{{ negocio().nombreNegocio }}</strong>
       <span>{{ usuario()?.nombreCompleto }} · {{ usuario()?.rol }}</span>
@@ -87,7 +91,7 @@
         <a [routerLink]="link.path" routerLinkActive="is-active" (click)="cerrarMenu()">{{ link.label }}</a>
       }
       <div class="drawer__separator"></div>
-      <button class="drawer__logout" (click)="logout()">Cerrar sesión</button>
+      <button type="button" class="drawer__logout" (click)="logout()">Cerrar sesión</button>
     </nav>
   </aside>
 }

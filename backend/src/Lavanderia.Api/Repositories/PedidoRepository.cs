@@ -22,9 +22,14 @@ public interface IPedidoRepository
     Task RegistrarPagoAsync(int pedidoId, decimal monto, string metodo, int usuarioId, string? descripcion, int sedeId, CancellationToken ct = default);
     Task AgregarItemAsync(int pedidoId, PedidoItem item, int sedeId, CancellationToken ct = default);
     Task AnularAsync(int pedidoId, int usuarioId, string motivo, int sedeId, CancellationToken ct = default);
+    Task DonarAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
+    Task ReenviarAlmacenAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
     Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int usuarioId, string? motivo, int sedeId, CancellationToken ct = default);
     Task<List<PedidoAbandonado>> ListarListosAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
     Task<bool> CambiarModalidadAsync(int pedidoId, string modalidad, int sedeId, CancellationToken ct = default);
+    /// <summary>motorizadoId en null desasigna. No valida aqui que el motorizado pertenezca a
+    /// la sede — eso lo valida el controller, que ya tiene el objeto Motorizado cargado.</summary>
+    Task<bool> AsignarMotorizadoAsync(int pedidoId, int? motorizadoId, int sedeId, CancellationToken ct = default);
 }
 
 public class PedidoRepository : IPedidoRepository
@@ -168,7 +173,7 @@ public class PedidoRepository : IPedidoRepository
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT p.Id, p.SedeId, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni,
+            SELECT p.Id, p.SedeId, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni, c.Puntos AS ClientePuntos,
                    p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
                    p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                    p.AreaActualId, a.Nombre AS AreaActualNombre,
@@ -183,6 +188,25 @@ public class PedidoRepository : IPedidoRepository
 
         var pedido = await cmd.ReadFirstOrDefaultAsync(MapPedido, ct);
         if (pedido == null) return null;
+
+        // Motorizado asignado: consulta aparte (no se agrega a MapPedido, que reutilizan otras
+        // consultas de esta clase con su propia lista de columnas — agregarlo ahi rompería esas).
+        await using (var cmdMoto = conn.CreateCommand())
+        {
+            cmdMoto.CommandText = @"
+                SELECT p.MotorizadoId, m.Nombre, m.Celular
+                FROM dbo.Pedido p
+                LEFT JOIN dbo.Motorizado m ON m.Id = p.MotorizadoId
+                WHERE p.Id = @Id";
+            cmdMoto.AddParam("@Id", id);
+            await using var rMoto = await cmdMoto.ExecuteReaderAsync(ct);
+            if (await rMoto.ReadAsync(ct) && !rMoto.IsDBNull(rMoto.GetOrdinal("MotorizadoId")))
+            {
+                pedido.MotorizadoId = rMoto.GetInt32(rMoto.GetOrdinal("MotorizadoId"));
+                pedido.MotorizadoNombre = rMoto.GetNullableString("Nombre");
+                pedido.MotorizadoCelular = rMoto.GetNullableString("Celular");
+            }
+        }
 
         await using var cmdItems = conn.CreateCommand();
         cmdItems.CommandText = @"
@@ -249,7 +273,7 @@ public class PedidoRepository : IPedidoRepository
 
         cmd.CommandText = @$"
             SELECT
-                p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni,
+                p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni, c.Puntos AS ClientePuntos,
                 p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
                 p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                 p.AreaActualId, a.Nombre AS AreaActualNombre,
@@ -295,7 +319,7 @@ public class PedidoRepository : IPedidoRepository
 
         cmd.CommandText = @$"
             SELECT
-                p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni,
+                p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni, c.Puntos AS ClientePuntos,
                 p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
                 p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                 p.AreaActualId, a.Nombre AS AreaActualNombre,
@@ -734,6 +758,18 @@ public class PedidoRepository : IPedidoRepository
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
+    public async Task<bool> AsignarMotorizadoAsync(int pedidoId, int? motorizadoId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Pedido SET MotorizadoId = @MotorizadoId WHERE Id = @Id AND SedeId = @SedeId";
+        cmd.AddParam("@MotorizadoId", motorizadoId);
+        cmd.AddParam("@Id", pedidoId);
+        cmd.AddParam("@SedeId", sedeId);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
     public async Task AnularAsync(int pedidoId, int usuarioId, string motivo, int sedeId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
@@ -773,6 +809,68 @@ public class PedidoRepository : IPedidoRepository
         }
     }
 
+    public async Task DonarAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            // Solo se dona lo que está en custodia (LISTO) y no anulado.
+            cmd.CommandText = @"
+                UPDATE dbo.Pedido SET EstadoProceso = 'DONADO'
+                 WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso = 'LISTO'";
+            cmd.AddParam("@Id", pedidoId);
+            cmd.AddParam("@SedeId", sedeId);
+            var filas = await cmd.ExecuteNonQueryAsync(ct);
+            if (filas == 0) throw new InvalidOperationException("El pedido no está en almacén (LISTO) o no existe.");
+
+            await RegistrarHistorialAsync(new PedidoHistorial
+            {
+                PedidoId = pedidoId,
+                EstadoProceso = "DONADO",
+                UsuarioId = usuarioId,
+                Fecha = DateTime.Now,
+                Nota = "Enviado a donación por tiempo en custodia"
+            }, conn, tx, ct);
+            await tx.CommitAsync(ct);
+        }
+        catch { await tx.RollbackAsync(ct); throw; }
+    }
+
+    public async Task ReenviarAlmacenAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            // Mueve un pedido pendiente/en proceso directo a almacén (LISTO para recojo).
+            cmd.CommandText = @"
+                UPDATE dbo.Pedido SET EstadoProceso = 'LISTO', AreaActualId = NULL
+                 WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso IN ('PENDIENTE','EN_PROCESO')";
+            cmd.AddParam("@Id", pedidoId);
+            cmd.AddParam("@SedeId", sedeId);
+            var filas = await cmd.ExecuteNonQueryAsync(ct);
+            if (filas == 0) throw new InvalidOperationException("El pedido no está pendiente/en proceso o no existe.");
+
+            await RegistrarHistorialAsync(new PedidoHistorial
+            {
+                PedidoId = pedidoId,
+                EstadoProceso = "LISTO",
+                UsuarioId = usuarioId,
+                Fecha = DateTime.Now,
+                Nota = "Reenviado a almacén (listo para recojo)"
+            }, conn, tx, ct);
+            await tx.CommitAsync(ct);
+        }
+        catch { await tx.RollbackAsync(ct); throw; }
+    }
+
     private static Pedido MapPedido(SqlDataReader r) => new()
     {
         Id = r.GetInt32(r.GetOrdinal("Id")),
@@ -781,6 +879,7 @@ public class PedidoRepository : IPedidoRepository
         ClienteNombre = r.GetNullableString("ClienteNombre"),
         ClienteCelular = r.GetNullableString("ClienteCelular"),
         ClienteDni = r.GetNullableString("ClienteDni"),
+        ClientePuntos = r.GetInt32(r.GetOrdinal("ClientePuntos")),
         UsuarioId = r.GetInt32(r.GetOrdinal("UsuarioId")),
         UsuarioNombre = r.GetNullableString("UsuarioNombre"),
         FechaIngreso = r.GetDateTime(r.GetOrdinal("FechaIngreso")),

@@ -5,11 +5,60 @@ import { environment } from '../../../environments/environment';
 export interface ReporteResult {
   columnas: string[];
   filas: Record<string, string>[];
+  /** Acción por fila (ej: 'donar', 'reenviar-almacen'). Si está, cada fila trae '_id'. */
+  accion?: string | null;
 }
 
 export type ReporteKey =
   | 'ordenes-pendientes' | 'gastos' | 'general' | 'servicios' | 'cuadres-caja'
   | 'ordenes-mensual' | 'almacen' | 'anulados' | 'registro-entregas' | 'pagos' | 'descuento-directo';
+
+export interface SlaArea {
+  areaId: number;
+  areaNombre: string;
+  orden: number;
+  tiempoEstMinutos: number;
+  minutosPromedioReal: number;
+  pedidosProcesados: number;
+}
+
+export interface PedidoEstancado {
+  pedidoId: number;
+  numero: number;
+  clienteNombre: string;
+  areaNombre: string;
+  minutosEnArea: number;
+  tiempoEstMinutos: number;
+}
+
+export interface TableroSla {
+  areas: SlaArea[];
+  estancados: PedidoEstancado[];
+}
+
+export interface VistaGerencial {
+  ventasHoy: number;
+  ventasMes: number;
+  saldoPorCobrar: number;
+  gastosMes: number;
+  utilidadMes: number;
+  pedidosActivos: number;
+  pedidosListosSinRecoger: number;
+  comprobantesPendientes: number;
+  comprobantesRechazados: number;
+  insumosBajoStock: number;
+  cajaEsperadaHoy: number;
+}
+
+export interface ConsolidadoSede {
+  sedeId: number;
+  sedeNombre: string;
+  ventasHoy: number;
+  ventasMes: number;
+  saldoPorCobrar: number;
+  pedidosActivos: number;
+  pedidosListos: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ReportesService {
@@ -22,4 +71,70 @@ export class ReportesService {
     if (hasta) params = params.set('hasta', hasta);
     return this.http.get<ReporteResult>(`${this.base}/${key}`, { params });
   }
+
+  sla(desde?: string, hasta?: string) {
+    let params = new HttpParams();
+    if (desde) params = params.set('desde', desde);
+    if (hasta) params = params.set('hasta', hasta);
+    return this.http.get<TableroSla>(`${this.base}/sla`, { params });
+  }
+
+  vistaGerencial() {
+    return this.http.get<VistaGerencial>(`${this.base}/vista-gerencial`);
+  }
+
+  consolidado() {
+    return this.http.get<ConsolidadoSede[]>(`${this.base}/consolidado`);
+  }
+
+  cuadresDiarios(anio: number, mes: number) {
+    const params = new HttpParams().set('anio', anio).set('mes', mes);
+    return this.http.get<CuadresDiariosReporte>(`${this.base}/cuadres-diarios`, { params });
+  }
+
+  /** Descarga el reporte como .xlsx real (generado en el backend). */
+  exportarExcel(key: ReporteKey, desde?: string, hasta?: string) {
+    let params = new HttpParams();
+    if (desde) params = params.set('desde', desde);
+    if (hasta) params = params.set('hasta', hasta);
+    return this.http.get(`${this.base}/export/${key}`, { params, responseType: 'blob' });
+  }
+
+  // Acciones operativas desde reportes (mutan el pedido).
+  donarPedido(pedidoId: number) {
+    return this.http.post<void>(`${environment.apiUrl}/pedidos/${pedidoId}/donar`, {});
+  }
+  reenviarAlmacen(pedidoId: number) {
+    return this.http.post<void>(`${environment.apiUrl}/pedidos/${pedidoId}/reenviar-almacen`, {});
+  }
+}
+
+export interface CuadreDiarioFila {
+  id: number;
+  usuarioNombre: string;
+  cajaInicial: number;
+  ingresosEfectivo: number;
+  egresos: number;
+  montoEnCaja: number;
+  corte: number;
+  cajaFinal: number;
+  estado: 'CUADRA' | 'SOBRA' | 'FALTA';
+  margenError: number;
+  nota?: string | null;
+  ingresosDigital: number;
+  ingresosTarjeta: number;
+}
+
+export interface CuadreDiarioDia {
+  fecha: string;
+  cuadres: CuadreDiarioFila[];
+  sinInformacion: boolean;
+  noCuadradoIngresos: number;
+  noCuadradoEgresos: number;
+}
+
+export interface CuadresDiariosReporte {
+  anio: number;
+  mes: number;
+  dias: CuadreDiarioDia[];
 }

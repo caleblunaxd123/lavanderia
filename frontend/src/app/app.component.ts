@@ -29,6 +29,7 @@ export class AppComponent implements OnInit {
     if (r.startsWith('/login')) return false;
     if (r.startsWith('/ticket/')) return false;  // ticket es fullscreen para imprimir
     if (r.startsWith('/cuadre-caja/imprimir/')) return false;  // cuadre imprimible tambien
+    if (r.startsWith('/seguimiento/')) return false;  // portal publico del cliente (incluye pago): jamas mostrar el nav interno
     if (this.esPlataforma()) return false;  // usa su propio header minimo
     return true;
   });

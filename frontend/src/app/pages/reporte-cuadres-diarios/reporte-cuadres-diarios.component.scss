@@ -1,0 +1,67 @@
+.page { padding: 20px 24px; max-width: 1280px; margin: 0 auto; }
+
+.cab {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
+  h2 { margin: 0; font-size: 22px; color: #1a202c; }
+  p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+  &__acciones { display: flex; gap: 12px; align-items: flex-end; }
+}
+.campo-mes {
+  display: flex; flex-direction: column; gap: 4px;
+  label { font-size: 12px; color: #64748b; font-weight: 600; }
+  input { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+}
+.cab .btn { min-height: 36px; }
+
+.estado { padding: 40px; text-align: center; color: #64748b; }
+
+.layout { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
+@media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+
+.tabla-wrap { overflow-x: auto; padding: 0; }
+.tabla {
+  width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap;
+  th, td { padding: 9px 12px; border-bottom: 1px solid #eef0f4; text-align: left; }
+  thead th { background: #f8fafc; color: #64748b; font-weight: 600; position: sticky; top: 0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .nota { white-space: normal; max-width: 200px; color: #475569; }
+  .fila-vacia td { background: #fcfcfd; color: #94a3b8; }
+  .sin-info { font-style: italic; }
+  tbody tr:hover { background: #f9fafb; }
+}
+.link-nocuadrado {
+  background: none; border: none; color: #b45309; cursor: pointer; font-size: 12px; font-weight: 600;
+  min-height: 32px; padding: 5px 4px;
+  &:hover { text-decoration: underline; }
+}
+
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  &--verde { background: #dcfce7; color: #166534; }
+  &--naranja { background: #ffedd5; color: #9a3412; }
+  &--rojo { background: #fee2e2; color: #991b1b; }
+  &--gris { background: #f1f5f9; color: #475569; }
+}
+
+.panel-nocuadrado {
+  padding: 16px;
+  h3 { margin: 0 0 8px; font-size: 15px; color: #1a202c; }
+  .hint { font-size: 12px; color: #64748b; margin: 0 0 10px; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  li {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
+    padding: 8px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+  }
+  .nc-fecha { grid-column: 1; font-weight: 700; font-size: 13px; color: #92400e; }
+  .nc-montos { grid-column: 1; display: flex; gap: 10px; font-size: 12px; }
+  .nc-ing { color: #166534; }
+  .nc-egr { color: #991b1b; }
+  .btn-icon {
+    grid-column: 2; grid-row: 1 / span 2; align-self: center;
+    background: #fff; border: 1px solid #fcd34d; border-radius: 8px; padding: 6px;
+    cursor: pointer; color: #92400e;
+    min-width: 36px; min-height: 36px;
+    &:hover { background: #fef3c7; }
+  }
+}

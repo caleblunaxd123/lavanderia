@@ -27,6 +27,14 @@
   padding: 24px;
   margin-bottom: 20px;
 
+  h3 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--azul-oscuro);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+
   label {
     display: block;
     font-size: 12px;

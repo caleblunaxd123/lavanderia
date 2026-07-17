@@ -26,6 +26,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   accessToken: string;
   expira: string;
+  refreshToken: string;
   usuario: UsuarioSesion;
 }
 
@@ -48,6 +49,8 @@ export interface ConfiguracionNegocio {
   condicionesServicio?: string | null;
   notasProduccion?: string | null;
   costoDelivery: number;
+  valorPuntoCanje: number;
+  maxDescuentoPct: number;
   servicioDeliveryId?: number | null;
 }
 
@@ -60,6 +63,7 @@ export interface Cliente {
   direccion?: string | null;
   puntos: number;
   fechaCreacion?: string;
+  fechaNacimiento?: string | null;
 }
 
 export interface Servicio {
@@ -98,6 +102,7 @@ export interface Pedido {
   clienteNombre?: string;
   clienteCelular?: string;
   clienteDni?: string | null;
+  clientePuntos?: number;
   usuarioNombre?: string | null;
   fechaIngreso: string;
   fechaEntregaEst?: string | null;
@@ -117,6 +122,9 @@ export interface Pedido {
   anulado: boolean;
   motivoAnulacion?: string | null;
   codigoAntiguo?: string | null;
+  motorizadoId?: number | null;
+  motorizadoNombre?: string | null;
+  motorizadoCelular?: string | null;
   items: PedidoItem[];
 }
 
@@ -133,6 +141,8 @@ export interface MovimientoCaja {
   monto: number;
   descripcion?: string | null;
   pedidoId?: number | null;
+  pedidoNumero?: number | null;
+  clienteNombre?: string | null;
   tipoGastoId?: number | null;
   tipoGastoNombre?: string | null;
 }
@@ -148,6 +158,15 @@ export interface PedidoAbandonado {
   diasEsperando: number;
 }
 
+export interface MiSuscripcion {
+  mostrar: boolean;
+  tipo: 'OK' | 'AVISO' | 'VENCIDA' | string;
+  mensaje: string;
+  proximoPago?: string | null;
+  diasParaVencer?: number | null;
+  estadoSuscripcion: string;
+}
+
 export interface NegocioResumen {
   id: number;
   nombre: string;
@@ -156,6 +175,12 @@ export interface NegocioResumen {
   fechaCreacion: string;
   cantidadSedes: number;
   cantidadUsuarios: number;
+  planSuscripcion: string;
+  estadoSuscripcion: string;
+  montoMensual: number;
+  proximoPago?: string | null;
+  ultimoAcceso?: string | null;
+  pedidosMes: number;
 }
 
 export interface CrearNegocioRequest {
@@ -164,11 +189,64 @@ export interface CrearNegocioRequest {
   rucEmpresa?: string | null;
   titularNombre?: string | null;
   titularEmail?: string | null;
+  titularCelular?: string | null;
   sedeNombre: string;
   adminUsuario: string;
   adminNombreCompleto: string;
   adminEmail?: string | null;
   adminPassword: string;
+}
+
+export interface PlataformaResumen {
+  totalEmpresas: number;
+  empresasActivas: number;
+  empresasSuspendidas: number;
+  empresasNuevasMes: number;
+  ingresoMensualRecurrente: number;
+  pedidosMesTotal: number;
+  empresasPorVencer: number;
+  empresasVencidas: number;
+}
+
+export interface SedeResumen { id: number; nombre: string; direccion?: string | null; activo: boolean; }
+export interface UsuarioResumen { id: number; usuario: string; nombreCompleto: string; rolCodigo: string; activo: boolean; ultimoAcceso?: string | null; }
+
+export interface NegocioDetalle {
+  id: number;
+  nombre: string;
+  slug: string;
+  rucEmpresa?: string | null;
+  titularNombre?: string | null;
+  titularEmail?: string | null;
+  titularCelular?: string | null;
+  notasInternas?: string | null;
+  activo: boolean;
+  fechaCreacion: string;
+  planSuscripcion: string;
+  estadoSuscripcion: string;
+  montoMensual: number;
+  proximoPago?: string | null;
+  pedidosMes: number;
+  ultimoAcceso?: string | null;
+  adminUsuario?: string | null;
+  sedes: SedeResumen[];
+  usuarios: UsuarioResumen[];
+}
+
+export interface EditarNegocioRequest {
+  nombre: string;
+  rucEmpresa?: string | null;
+  titularNombre?: string | null;
+  titularEmail?: string | null;
+  titularCelular?: string | null;
+  notasInternas?: string | null;
+}
+
+export interface CambiarSuscripcionRequest {
+  planSuscripcion: string;
+  estadoSuscripcion: string;
+  montoMensual: number;
+  proximoPago?: string | null;
 }
 
 export interface CrearPedidoRequest {

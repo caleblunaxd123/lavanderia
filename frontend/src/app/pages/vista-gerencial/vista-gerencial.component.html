@@ -1,0 +1,95 @@
+<div class="page">
+  <div class="page__header">
+    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Reportes</button>
+    <div>
+      <h2>Vista Gerencial</h2>
+      <p>Caja, cobranza, facturación e inventario en una sola pantalla.</p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando…</div>
+  } @else if (kpis()) {
+    @let k = kpis()!;
+    <div class="kpis">
+      <div class="kpi">
+        <span class="kpi__label">Ventas de hoy</span>
+        <strong class="kpi__valor">S/ {{ k.ventasHoy | number:'1.2-2' }}</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Ventas del mes</span>
+        <strong class="kpi__valor">S/ {{ k.ventasMes | number:'1.2-2' }}</strong>
+      </div>
+      <div class="kpi" [class.kpi--alerta]="k.saldoPorCobrar > 0">
+        <span class="kpi__label">Saldo por cobrar</span>
+        <strong class="kpi__valor">S/ {{ k.saldoPorCobrar | number:'1.2-2' }}</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Utilidad del mes</span>
+        <strong class="kpi__valor" [class.kpi__valor--negativo]="k.utilidadMes < 0">S/ {{ k.utilidadMes | number:'1.2-2' }}</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Caja esperada hoy (efectivo)</span>
+        <strong class="kpi__valor">S/ {{ k.cajaEsperadaHoy | number:'1.2-2' }}</strong>
+      </div>
+      <div class="kpi">
+        <span class="kpi__label">Pedidos activos</span>
+        <strong class="kpi__valor">{{ k.pedidosActivos }}</strong>
+      </div>
+      <div class="kpi" [class.kpi--alerta]="k.pedidosListosSinRecoger > 0">
+        <span class="kpi__label">Listos sin recoger</span>
+        <strong class="kpi__valor">{{ k.pedidosListosSinRecoger }}</strong>
+      </div>
+      <div class="kpi" [class.kpi--alerta]="k.comprobantesPendientes > 0">
+        <span class="kpi__label">Comprobantes pendientes</span>
+        <strong class="kpi__valor">{{ k.comprobantesPendientes }}</strong>
+      </div>
+      <div class="kpi" [class.kpi--alerta]="k.comprobantesRechazados > 0">
+        <span class="kpi__label">Comprobantes rechazados</span>
+        <strong class="kpi__valor">{{ k.comprobantesRechazados }}</strong>
+      </div>
+      <div class="kpi" [class.kpi--alerta]="k.insumosBajoStock > 0">
+        <span class="kpi__label">Insumos bajo stock mínimo</span>
+        <strong class="kpi__valor">{{ k.insumosBajoStock }}</strong>
+      </div>
+    </div>
+  }
+
+  @if (sla(); as s) {
+    <div class="card seccion">
+      <h3>Tiempo promedio por área (últimos 30 días)</h3>
+      @if (s.areas.length === 0) {
+        <p class="hint">Aún no hay suficientes pedidos completados para calcular esto.</p>
+      } @else {
+        <div class="areas">
+          @for (a of s.areas; track a.areaId) {
+            <div class="area-fila">
+              <span class="area-fila__nombre">{{ a.areaNombre }}</span>
+              <span class="area-fila__dato">{{ a.minutosPromedioReal | number:'1.0-0' }} min real (meta {{ a.tiempoEstMinutos }} min)</span>
+              <span class="area-fila__desvio" [class.area-fila__desvio--mal]="porcentajeDesvio(a) > 20">
+                {{ porcentajeDesvio(a) > 0 ? '+' : '' }}{{ porcentajeDesvio(a) }}%
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="card seccion">
+      <h3>Pedidos estancados ahora</h3>
+      @if (s.estancados.length === 0) {
+        <p class="ok-badge">✓ Ningún pedido lleva más tiempo del esperado en su área actual.</p>
+      } @else {
+        <div class="estancados">
+          @for (p of s.estancados; track p.pedidoId) {
+            <div class="estancado-fila">
+              <span><strong>#{{ p.numero }}</strong> {{ p.clienteNombre }}</span>
+              <span>{{ p.areaNombre }}</span>
+              <span class="estancado-fila__tiempo">{{ p.minutosEnArea }} min (meta {{ p.tiempoEstMinutos }} min)</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

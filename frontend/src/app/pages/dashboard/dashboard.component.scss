@@ -1,5 +1,27 @@
 .page { padding: 20px 24px; max-width: 1280px; margin: 0 auto; }
 
+.aviso-suscripcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+
+  app-icon { flex-shrink: 0; }
+
+  &--vencida {
+    background: #fef2f2;
+    color: #991b1b;
+    border-color: #fecaca;
+  }
+}
+
 .hola {
   display: flex;
   justify-content: space-between;

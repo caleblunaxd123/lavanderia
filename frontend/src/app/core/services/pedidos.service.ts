@@ -122,4 +122,8 @@ export class PedidosService {
   linkSeguimiento(id: number) {
     return this.http.get<{ token: string }>(`${this.base}/${id}/link-seguimiento`);
   }
+
+  asignarMotorizado(id: number, motorizadoId: number | null) {
+    return this.http.put<void>(`${this.base}/${id}/motorizado`, { motorizadoId });
+  }
 }

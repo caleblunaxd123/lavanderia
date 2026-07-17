@@ -76,6 +76,7 @@ public class InsumosController : TenantAwareControllerBase
     [HttpPost("{id:int}/movimientos")]
     public async Task<IActionResult> RegistrarMovimiento(int id, [FromBody] RegistrarMovimientoInsumoRequest req, CancellationToken ct)
     {
+        req.Tipo = req.Tipo.Trim().ToUpperInvariant();
         var tiposValidos = new[] { "COMPRA", "CONSUMO", "AJUSTE" };
         if (!tiposValidos.Contains(req.Tipo)) return BadRequest(new { mensaje = "Tipo de movimiento inválido." });
 
@@ -84,6 +85,22 @@ public class InsumosController : TenantAwareControllerBase
 
         if (req.Tipo != "AJUSTE" && req.Cantidad <= 0)
             return BadRequest(new { mensaje = "La cantidad debe ser mayor a 0." });
+        if (req.Tipo == "AJUSTE" && req.Cantidad == 0)
+            return BadRequest(new { mensaje = "El ajuste debe aumentar o disminuir el stock; la cantidad no puede ser 0." });
+
+        if (req.CostoTotal is < 0)
+            return BadRequest(new { mensaje = "El costo total no puede ser negativo." });
+
+        if (req.Fecha is DateTime fecha && fecha.Date > DateTime.Today)
+            return BadRequest(new { mensaje = "La fecha de compra no puede estar en el futuro." });
+
+        if (!string.IsNullOrWhiteSpace(req.MetodoPago))
+        {
+            req.MetodoPago = req.MetodoPago.Trim().ToUpperInvariant();
+            var metodosValidos = new[] { "EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "POS", "TARJETA" };
+            if (!metodosValidos.Contains(req.MetodoPago))
+                return BadRequest(new { mensaje = "Método de pago inválido." });
+        }
 
         if (req.Tipo == "CONSUMO" && req.Cantidad > insumo.StockActual)
             return BadRequest(new { mensaje = $"No hay suficiente stock. Disponible: {insumo.StockActual} {insumo.UnidadMedida}." });
@@ -103,7 +120,8 @@ public class InsumosController : TenantAwareControllerBase
             Tipo = req.Tipo,
             Cantidad = req.Cantidad,
             CostoTotal = req.CostoTotal,
-            Fecha = DateTime.Now,
+            // Solo COMPRA permite fechar en el pasado (registrar una compra anterior).
+            Fecha = req.Tipo == "COMPRA" && req.Fecha is DateTime f ? f.Date + DateTime.Now.TimeOfDay : DateTime.Now,
             UsuarioId = UsuarioId,
             Descripcion = req.Descripcion
         };
@@ -150,6 +168,7 @@ public class InsumosController : TenantAwareControllerBase
         UnidadMedida = i.UnidadMedida,
         StockActual = i.StockActual,
         StockMinimo = i.StockMinimo,
-        Activo = i.Activo
+        Activo = i.Activo,
+        UltimaCompra = i.UltimaCompra
     };
 }

@@ -54,6 +54,18 @@ public class PagosController : TenantAwareControllerBase
 
         var entornoPublico = ObtenerEntorno(publicKey);
         var entornoSecreto = ObtenerEntorno(secretKeyNueva);
+        if (entornoSecreto is null && !string.IsNullOrWhiteSpace(existente.SecretKeyCifrada))
+        {
+            try
+            {
+                entornoSecreto = ObtenerEntorno(_secretos.Desproteger(existente.SecretKeyCifrada));
+            }
+            catch
+            {
+                if (dto.Activo)
+                    return BadRequest(new { mensaje = "La llave secreta guardada no se puede leer. Ingresa una nueva antes de activar los pagos." });
+            }
+        }
         if (entornoPublico is not null && entornoSecreto is not null && entornoPublico != entornoSecreto)
             return BadRequest(new { mensaje = "La llave pública y la llave secreta deben ser del mismo entorno (test o live)." });
 

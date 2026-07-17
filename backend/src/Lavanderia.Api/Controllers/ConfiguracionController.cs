@@ -81,6 +81,8 @@ public class ConfiguracionController : TenantAwareControllerBase
         existente.CondicionesServicio = dto.CondicionesServicio;
         existente.NotasProduccion = dto.NotasProduccion;
         existente.CostoDelivery = dto.CostoDelivery;
+        existente.ValorPuntoCanje = dto.ValorPuntoCanje;
+        existente.MaxDescuentoPct = dto.MaxDescuentoPct;
 
         await _repo.ActualizarAsync(existente, NegocioId, ct);
 
@@ -118,6 +120,8 @@ public class ConfiguracionController : TenantAwareControllerBase
         MensajePieTicket = c.MensajePieTicket,
         CondicionesServicio = c.CondicionesServicio,
         NotasProduccion = c.NotasProduccion,
-        CostoDelivery = c.CostoDelivery
+        CostoDelivery = c.CostoDelivery,
+        ValorPuntoCanje = c.ValorPuntoCanje,
+        MaxDescuentoPct = c.MaxDescuentoPct
     };
 }

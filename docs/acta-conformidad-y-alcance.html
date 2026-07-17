@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Acta de Conformidad y Alcance — Sistema de Gestión para Lavandería</title>
+<style>
+  :root {
+    --azul: #0b57d0;
+    --azul-oscuro: #0a3d91;
+    --gris: #5f6b7a;
+    --borde: #d8dee8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { font-family: "Segoe UI", Arial, sans-serif; color: #1f2937; font-size: 10.5pt; line-height: 1.35; }
+
+  @page { size: A4; margin: 11mm 12mm 12mm; }
+  .pagina { page-break-after: always; }
+  .pagina:last-child { page-break-after: auto; }
+
+  header.doc {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid var(--azul);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+  header.doc .marca { font-size: 13pt; font-weight: 700; color: var(--azul-oscuro); }
+  header.doc .titulo { text-align: right; }
+  header.doc .titulo h1 { font-size: 14pt; color: var(--azul-oscuro); letter-spacing: .02em; }
+  header.doc .titulo p { font-size: 9pt; color: var(--gris); }
+
+  .intro { font-size: 9pt; color: #374151; margin-bottom: 8px; text-align: justify; }
+
+  h2 {
+    font-size: 11pt;
+    color: var(--azul-oscuro);
+    border-left: 4px solid var(--azul);
+    padding-left: 8px;
+    margin: 10px 0 6px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  th, td { border: 1px solid var(--borde); padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #eef4ff; color: var(--azul-oscuro); font-size: 9pt; text-transform: uppercase; letter-spacing: .03em; }
+
+  ul { margin: 3px 0 7px 18px; }
+  li { margin-bottom: 2px; font-size: 9pt; }
+
+  .nota {
+    font-size: 8pt;
+    color: var(--gris);
+    background: #f6f8fc;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 6px 9px;
+    margin: 6px 0 8px;
+    text-align: justify;
+  }
+
+  .cuotas { display: flex; gap: 10px; margin-top: 8px; }
+  .cuota {
+    flex: 1;
+    border: 1px solid var(--borde);
+    border-top: 3px solid var(--azul);
+    border-radius: 6px;
+    padding: 9px 10px;
+    font-size: 9pt;
+  }
+  .cuota strong.num { display: block; font-size: 11pt; color: var(--azul-oscuro); margin-bottom: 2px; }
+  .cuota .etapa { font-weight: 700; margin-bottom: 4px; }
+  .cuota .fecha { margin-top: 6px; color: var(--gris); font-size: 8.5pt; }
+
+  .firmas { display: flex; gap: 30px; margin-top: 38px; }
+  .firma { flex: 1; text-align: center; font-size: 9.5pt; }
+  .firma .linea { border-top: 1px solid #333; margin-bottom: 6px; padding-top: 6px; font-weight: 700; }
+  .firma .rol { color: var(--gris); }
+  .firma .fecha { margin-top: 10px; }
+
+  footer.doc {
+    margin-top: 22px;
+    border-top: 1px solid var(--borde);
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: var(--gris);
+  }
+
+  p.parrafo { font-size: 9.5pt; text-align: justify; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== PÁGINA 1 ==================== -->
+<div class="pagina">
+  <header class="doc">
+    <div class="marca">LunaIT Solution</div>
+    <div class="titulo">
+      <h1>ACTA DE CONFORMIDAD Y ALCANCE</h1>
+      <p>Sistema de Gestión para Lavandería — Versión SaaS</p>
+    </div>
+  </header>
+
+  <p class="intro">
+    Este documento formaliza por escrito lo conversado entre las partes sobre el alcance, el cronograma de pagos y las
+    condiciones del desarrollo del Sistema de Gestión para Lavandería, incluyendo su conversión a plataforma multi-sede y
+    multi-empresa (SaaS), el módulo de Facturación Electrónica conectado directamente con SUNAT y el módulo de pagos en
+    línea (pasarela de pagos). Su objetivo es que ambas partes tengan claridad de qué está incluido, qué no, y en qué
+    momento se revisa cada entrega — evitando ambigüedades a futuro.
+  </p>
+
+  <h2>Partes</h2>
+  <table>
+    <tr><th style="width:50%">Desarrollador</th><th>Cliente</th></tr>
+    <tr>
+      <td>
+        <strong>Caleb Luna — LunaIT Solution</strong><br>
+        Desarrollo de software a medida<br>
+        DNI: 75063839
+      </td>
+      <td>
+        <strong>Mequias Inosencio Canavire Aguilar</strong><br>
+        Persona natural con negocio<br>
+        DNI: 10687682
+      </td>
+    </tr>
+  </table>
+
+  <h2>Alcance incluido en esta entrega (S/ 3,000)</h2>
+  <ul>
+    <li>Sistema completo de gestión: Pedidos (registro, seguimiento por área, tickets, búsqueda rápida, alertas de recojo, prioridad urgente)</li>
+    <li>Cuadre de Caja con ingresos reales por método de pago, utilidad neta del día automática, gastos categorizados e historial imprimible</li>
+    <li>Clientes con búsqueda rápida y sistema de puntos de fidelización</li>
+    <li>Promociones y descuentos configurables (CRUD completo)</li>
+    <li>Usuarios y roles con permisos configurables por módulo</li>
+    <li>Reportes de ventas, gastos, servicios, cuadres, anulados y movimientos</li>
+    <li>Ajustes: negocio, servicios y precios, categorías, tipos de gasto, puntos, IGV y metas</li>
+    <li>Conversión del sistema a plataforma multi-sede y multi-empresa (SaaS): más de una sede, y capacidad de dar de alta más de un negocio en la misma plataforma</li>
+    <li>Inventario / control de stock de consumibles (detergente, bolsas, insumos)</li>
+    <li>Módulo de Facturación Electrónica, conectado directamente con SUNAT (modalidad Facturador del Contribuyente, sin operador externo/OSE) — emisión de Boletas de Venta electrónicas; la emisión de Facturas queda sujeta al régimen tributario vigente del Cliente ante SUNAT</li>
+    <li><strong>Módulo de pagos en línea (pasarela de pagos), incluido en el costo de esta cotización:</strong> el cliente final puede pagar su pedido desde la web (tarjeta, Yape) a través del link de seguimiento del pedido, sin pagarle en efectivo al repartidor</li>
+    <li>Módulos adicionales razonables solicitados durante esta implementación, con paridad de funcionalidades respecto a sistemas similares del mercado</li>
+  </ul>
+
+  <div class="nota">
+    <strong>Nota sobre Facturación Electrónica:</strong> el Desarrollador realiza la conexión e implementación técnica con SUNAT. Los costos propios de
+    SUNAT (certificado digital y trámites asociados) corren por cuenta del Cliente. Se recomienda confirmar con su contador qué tipos de comprobante
+    puede emitir según su régimen tributario vigente.
+    <br>
+    <strong>Nota sobre pagos en línea:</strong> la implementación técnica de la pasarela está incluida. Las comisiones por transacción que cobra la
+    pasarela de pagos (Culqi u otra) y los requisitos de alta del comercio corren por cuenta del Cliente.
+  </div>
+
+  <h2>Alcance NO incluido (cotización aparte)</h2>
+  <ul>
+    <li>Costos propios de SUNAT para facturación electrónica (certificado digital, trámites)</li>
+    <li>Comisiones por transacción de la pasarela de pagos y trámites de alta del comercio</li>
+    <li>WhatsApp Business API oficial (opcional, tiene costo por mensaje y verificación ante Meta)</li>
+    <li>Soporte y mantenimiento posteriores a la garantía de 3 meses (plan mensual, a cotizar)</li>
+    <li>Cualquier módulo, cambio o funcionalidad solicitada después de la Cuota 3 (entrega final)</li>
+  </ul>
+
+  <h2>Cronograma de pagos (S/ 3,000 en 3 cuotas de S/ 1,000)</h2>
+  <div class="cuotas">
+    <div class="cuota">
+      <strong class="num">1 — S/ 1,000</strong>
+      <div class="etapa">Validación y reserva</div>
+      Confirma el proyecto. Ya se mostró el sistema funcionando.
+      <div class="fecha">Fecha: 06/07/2026 (recibido)</div>
+    </div>
+    <div class="cuota">
+      <strong class="num">2 — S/ 1,000</strong>
+      <div class="etapa">Checklist parcial</div>
+      Se presenta el checklist del sistema base (pág. 3) y acta de conformidad parcial.
+      <div class="fecha">Fecha: Aprox. 20/07/2026</div>
+    </div>
+    <div class="cuota">
+      <strong class="num">3 — S/ 1,000</strong>
+      <div class="etapa">Entrega final</div>
+      Sistema 100% funcionando: multi-sede, multi-empresa, facturación electrónica y pagos en línea. Acta final.
+      <div class="fecha">Fecha: Aprox. 03/08/2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PÁGINA 2 ==================== -->
+<div class="pagina">
+  <h2>Presentación de avances semanales</h2>
+  <p class="parrafo">
+    Además de las 3 cuotas de pago, todos los sábados o domingos se presentará al Cliente un avance del sistema, para que
+    tenga visibilidad continua del progreso hasta la entrega final.
+  </p>
+  <table>
+    <tr><th style="width:16%">Semana</th><th style="width:28%">Fecha de presentación</th><th>Avance a mostrar</th></tr>
+    <tr><td>Semana 1</td><td>Sáb 11 / Dom 12 jul</td><td>Núcleo operativo: Pedidos, Cuadre de Caja, Clientes y fidelización</td></tr>
+    <tr><td>Semana 2</td><td>Sáb 18 / Dom 19 jul</td><td>Promociones, Usuarios y permisos, Reportes, Ajustes — checklist parcial (Cuota 2, ~20/07)</td></tr>
+    <tr><td>Semana 3</td><td>Sáb 25 / Dom 26 jul</td><td>Plataforma multi-sede y multi-empresa funcionando; Facturación Electrónica en configuración y pruebas con SUNAT</td></tr>
+    <tr><td>Semana 4</td><td>Sáb 01 / Dom 02 ago</td><td>Facturación Electrónica 100% operativa (Boletas) + pagos en línea (pasarela) + multi-sede validado — entrega final (Cuota 3, ~03/08)</td></tr>
+  </table>
+
+  <h2>Garantía</h2>
+  <p class="parrafo">
+    A partir de la entrega final (Cuota 3), el Desarrollador ofrece <strong>3 meses de garantía</strong> para la corrección
+    gratuita de errores del sistema entregado, hasta dejarlo funcionando correctamente en la operación diaria del negocio.
+    Esta garantía no cubre funcionalidades nuevas ni cambios de alcance.
+  </p>
+
+  <h2>Propiedad y licencia de uso</h2>
+  <p class="parrafo">
+    El Cliente es propietario del sistema entregado y puede operarlo libremente para su negocio y sus sedes, sin
+    restricciones ni pagos adicionales por su uso. Asimismo, el Cliente tiene el derecho de ofrecer, alquilar o
+    sublicenciar este sistema a terceros (otras lavanderías o negocios), pudiendo operarlo también como su propio
+    servicio SaaS.
+  </p>
+  <p class="parrafo">
+    El Cliente autoriza al Proveedor a utilizar el proyecto desarrollado como caso de éxito o referencia comercial,
+    pudiendo mencionar el proyecto y utilizar imágenes o descripciones generales de la solución con fines de portafolio,
+    promoción o presentación comercial, siempre que no se divulgue información confidencial, datos sensibles ni
+    información estratégica del Cliente sin su autorización previa.
+  </p>
+</div>
+
+<!-- ==================== PÁGINA 3 ==================== -->
+<div class="pagina">
+  <h2>Checklist de módulos</h2>
+  <p class="parrafo">
+    Se marca la columna «Conforme» cuando cada módulo queda validado por ambas partes. Este checklist se revisa
+    progresivamente en las presentaciones semanales, se consolida en la Cuota 2 (sistema base) y se cierra en la Cuota 3
+    (entrega final: multi-sede, multi-empresa, facturación y pagos en línea).
+  </p>
+  <table>
+    <tr><th>Módulo</th><th style="width:22%">Se revisa en</th><th style="width:12%">Conforme</th></tr>
+    <tr><td>Pedidos: registro, seguimiento por área, tickets, búsqueda, alertas, urgente</td><td>Semana 1</td><td></td></tr>
+    <tr><td>Cuadre de Caja: ingresos reales, utilidad neta, gastos, historial</td><td>Semana 1</td><td></td></tr>
+    <tr><td>Clientes y fidelización</td><td>Semana 1</td><td></td></tr>
+    <tr><td>Promociones (CRUD)</td><td>Semana 2 — Cuota 2</td><td></td></tr>
+    <tr><td>Usuarios y permisos por módulo</td><td>Semana 2 — Cuota 2</td><td></td></tr>
+    <tr><td>Reportes (ventas, gastos, servicios, cuadres, anulados, movimientos)</td><td>Semana 2 — Cuota 2</td><td></td></tr>
+    <tr><td>Ajustes (negocio, servicios, categorías, tipos de gasto, puntos, IGV, metas)</td><td>Semana 2 — Cuota 2</td><td></td></tr>
+    <tr><td>Plataforma multi-sede y multi-empresa (SaaS)</td><td>Semana 3</td><td></td></tr>
+    <tr><td>Facturación electrónica — configuración SUNAT (RUC, certificado, series)</td><td>Semana 3</td><td></td></tr>
+    <tr><td>Facturación electrónica — emisión de comprobantes (conexión directa SUNAT)</td><td>Semana 4 — Cuota 3</td><td></td></tr>
+    <tr><td>Pagos en línea (pasarela de pagos) — portal público de seguimiento y pago</td><td>Semana 4 — Cuota 3</td><td></td></tr>
+  </table>
+
+  <p class="parrafo" style="margin-top:10px">
+    Una vez firmada el acta de conformidad final (Cuota 3), cualquier solicitud posterior de cambios, ajustes o nuevos
+    módulos se considera fuera de este alcance y se cotiza de forma independiente.
+  </p>
+
+  <h2>Conformidad</h2>
+  <div class="firmas">
+    <div class="firma">
+      <div class="linea">Caleb Luna — LunaIT Solution</div>
+      <div class="rol">Desarrollador</div>
+      <div class="fecha">Fecha: 12/07/2026</div>
+    </div>
+    <div class="firma">
+      <div class="linea">Mequias Inosencio Canavire Aguilar</div>
+      <div class="rol">Cliente — DNI 10687682</div>
+      <div class="fecha">Fecha: ____/____/______</div>
+    </div>
+  </div>
+
+  <footer class="doc">
+    <div>
+      Caleb Luna — LunaIT Solution<br>
+      Desarrollo de software a medida — Sistemas para negocios
+    </div>
+    <div style="text-align:right">
+      Documento generado a partir de lo conversado entre las partes.<br>
+      Válido junto con la Propuesta Comercial ya aceptada.
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>

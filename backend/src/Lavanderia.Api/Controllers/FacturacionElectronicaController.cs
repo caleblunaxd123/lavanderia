@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using Lavanderia.Api.Domain;
 using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
@@ -66,8 +68,37 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
 
         if (!string.IsNullOrWhiteSpace(dto.SolClaveNueva))
             existente.SolClaveCifrada = _secretos.Proteger(dto.SolClaveNueva);
+
         if (!string.IsNullOrWhiteSpace(dto.CertificadoPfxBase64))
-            existente.CertificadoPfx = Convert.FromBase64String(dto.CertificadoPfxBase64);
+        {
+            byte[] certificadoBytes;
+            try
+            {
+                certificadoBytes = Convert.FromBase64String(dto.CertificadoPfxBase64);
+            }
+            catch (FormatException)
+            {
+                return BadRequest(new { mensaje = "El archivo del certificado no se pudo leer. Sube de nuevo el .pfx." });
+            }
+
+            // Si tambien llega una contrasena nueva en este mismo request, se valida que el
+            // .pfx realmente abra con ella antes de guardarlo — evita descubrir un certificado
+            // invalido/contrasena incorrecta recien al intentar emitir un comprobante real.
+            if (!string.IsNullOrWhiteSpace(dto.CertificadoPasswordNueva))
+            {
+                try
+                {
+                    using var _ = X509CertificateLoader.LoadPkcs12(certificadoBytes, dto.CertificadoPasswordNueva, X509KeyStorageFlags.EphemeralKeySet);
+                }
+                catch (CryptographicException)
+                {
+                    return BadRequest(new { mensaje = "El certificado .pfx no se pudo abrir con la contraseña indicada." });
+                }
+            }
+
+            existente.CertificadoPfx = certificadoBytes;
+        }
+
         if (!string.IsNullOrWhiteSpace(dto.CertificadoPasswordNueva))
             existente.CertificadoPasswordCifrada = _secretos.Proteger(dto.CertificadoPasswordNueva);
 
@@ -76,6 +107,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     }
 
     [HttpPost("pedidos/{pedidoId:int}/comprobante")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<ComprobanteDto>> EmitirComprobante(int pedidoId, [FromBody] EmitirComprobanteRequest req, CancellationToken ct)
     {
         var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, SedeId!.Value, ct);
@@ -173,6 +205,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     }
 
     [HttpGet("facturacion/comprobantes")]
+    [Authorize(Policy = "Modulo:AJUSTES")]
     public async Task<ActionResult<PagedResultDto<ComprobanteDto>>> Listar(
         [FromQuery] int pagina = 1, [FromQuery] int tamanoPagina = 15, CancellationToken ct = default)
     {
@@ -189,6 +222,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     }
 
     [HttpGet("facturacion/comprobantes/{id:int}")]
+    [Authorize(Policy = "Modulo:AJUSTES")]
     public async Task<ActionResult<ComprobanteDto>> Obtener(int id, CancellationToken ct)
     {
         var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
@@ -197,6 +231,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     }
 
     [HttpGet("facturacion/comprobantes/{id:int}/pdf")]
+    [Authorize(Policy = "Modulo:AJUSTES")]
     public async Task<IActionResult> Pdf(int id, CancellationToken ct)
     {
         var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);

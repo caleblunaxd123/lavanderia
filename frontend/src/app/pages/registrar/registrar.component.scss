@@ -2,6 +2,17 @@
   padding: 20px 24px;
 }
 
+.form-status {
+  margin: -6px 0 14px;
+  padding: 9px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .page__header {
   display: flex;
   align-items: center;
@@ -49,6 +60,38 @@
   color: var(--rojo);
   font-weight: 600;
   margin-top: 6px;
+}
+
+.cargo-domicilio {
+  margin: 12px 0 4px;
+  padding: 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #eef2ff;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+
+    label { margin: 0 !important; color: #3730a3 !important; font-weight: 700 !important; }
+    span { color: #6366f1; font-size: 10.5px; font-weight: 600; }
+  }
+
+  &__input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    color: #3730a3;
+    font-size: 15px;
+    font-weight: 700;
+
+    input { flex: 1; background: #fff; border-color: #a5b4fc !important; font-weight: 700; }
+  }
+
+  .hint { margin-top: 6px; color: #6366f1; }
 }
 
 .modalidad {
@@ -275,13 +318,22 @@
     margin: 10px 0 4px;
   }
 
-  input, select {
+  input, select, textarea {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--gris-borde);
     border-radius: 6px;
     font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
   }
+
+  textarea {
+    resize: vertical;
+    line-height: 1.4;
+  }
+
+  .label-obs { margin-top: 12px; }
 }
 
 .row-agregar {
@@ -374,6 +426,37 @@
     color: #94a3b8;
     font-style: italic;
   }
+}
+
+.canje {
+  margin-top: 14px;
+  padding: 12px;
+  background: #fff9ec;
+  border: 1px solid #fde8c4;
+  border-radius: 10px;
+
+  &__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    span { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: #7a5b1c; }
+    strong { font-size: 11.5px; color: #b7791f; }
+  }
+
+  &__input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: #7a5b1c;
+
+    input { width: 80px; }
+    strong { color: #7a5b1c; }
+  }
+
+  .hint { margin-top: 6px; font-size: 11px; }
 }
 
 .switch-row {

@@ -119,7 +119,7 @@ export class AjustesUsuariosComponent implements OnInit {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el usuario.';
         this.errorForm.set(msg);
-        this.toast.error(msg);
+        this.toast.desdeHttp(err, msg);
       }
     });
   }

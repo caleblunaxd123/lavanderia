@@ -24,6 +24,9 @@ export class PlataformaNegocioCrearComponent {
   guardando = signal(false);
   slugEditadoManualmente = false;
 
+  // Tras crear, mostramos las credenciales (única vez que se ve la contraseña en claro).
+  readonly creada = signal<{ nombre: string; slug: string; url: string; usuario: string; password: string } | null>(null);
+
   get urlAcceso() {
     const slug = this.form.slug || '<slug>';
     return `${window.location.origin}/${slug}/login`;
@@ -56,6 +59,7 @@ export class PlataformaNegocioCrearComponent {
       rucEmpresa: this.normalizarOpcional(this.form.rucEmpresa),
       titularNombre: this.normalizarOpcional(this.form.titularNombre),
       titularEmail: this.normalizarOpcional(this.form.titularEmail),
+      titularCelular: this.normalizarOpcional(this.form.titularCelular),
       sedeNombre: this.form.sedeNombre.trim(),
       adminUsuario: this.form.adminUsuario.trim(),
       adminNombreCompleto: this.form.adminNombreCompleto.trim(),
@@ -90,19 +94,55 @@ export class PlataformaNegocioCrearComponent {
     this.guardando.set(true);
     this.errorForm.set(null);
 
+    const passwordUsada = this.form.adminPassword;
+    const usuarioUsado = this.form.adminUsuario;
+
     this.svc.crear(this.form).subscribe({
       next: creado => {
         this.guardando.set(false);
-        this.toast.exito(`Empresa "${creado.nombre}" creada. Ya puede ingresar en /${creado.slug}/login.`);
-        this.router.navigate(['/plataforma']);
+        this.toast.exito(`Empresa "${creado.nombre}" creada.`);
+        this.creada.set({
+          nombre: creado.nombre,
+          slug: creado.slug,
+          url: `${window.location.origin}/${creado.slug}/login`,
+          usuario: usuarioUsado,
+          password: passwordUsada
+        });
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo crear la empresa.';
         this.errorForm.set(msg);
-        this.toast.error(msg);
+        this.toast.desdeHttp(err, msg);
       }
     });
+  }
+
+  generarPassword() {
+    // 9 chars: 3 sílabas (6) + 3 dígitos, garantiza el mínimo de 8 con letras y números.
+    const s = ['la', 've', 'ro', 'mi', 'sa', 'to', 'ni', 'ba', 'lu', 'ca'];
+    const pick = () => s[Math.floor(Math.random() * s.length)];
+    const p = pick() + pick() + pick();
+    this.form.adminPassword = p.charAt(0).toUpperCase() + p.slice(1) + Math.floor(100 + Math.random() * 900);
+  }
+
+  copiar(texto: string) {
+    navigator.clipboard?.writeText(texto).then(() => this.toast.info('Copiado'), () => {});
+  }
+
+  copiarTodo() {
+    const c = this.creada();
+    if (!c) return;
+    this.copiar(`${c.nombre}\nAcceso: ${c.url}\nUsuario: ${c.usuario}\nContraseña: ${c.password}`);
+  }
+
+  irAlPanel() { this.router.navigate(['/plataforma']); }
+
+  crearOtra() {
+    this.creada.set(null);
+    this.form = this.formVacio();
+    this.slugEditadoManualmente = false;
+    this.errorForm.set(null);
   }
 
   cancelar() { this.router.navigate(['/plataforma']); }
@@ -118,7 +158,7 @@ export class PlataformaNegocioCrearComponent {
 
   private formVacio(): CrearNegocioRequest {
     return {
-      nombre: '', slug: '', rucEmpresa: null, titularNombre: null, titularEmail: null,
+      nombre: '', slug: '', rucEmpresa: null, titularNombre: null, titularEmail: null, titularCelular: null,
       sedeNombre: 'Principal', adminUsuario: '', adminNombreCompleto: '', adminEmail: null, adminPassword: ''
     };
   }

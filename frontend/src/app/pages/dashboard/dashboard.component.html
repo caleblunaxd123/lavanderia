@@ -9,6 +9,13 @@
     }
   </header>
 
+  @if (avisoSuscripcion(); as aviso) {
+    <div class="aviso-suscripcion" [class.aviso-suscripcion--vencida]="aviso.tipo === 'VENCIDA'">
+      <app-icon [name]="aviso.tipo === 'VENCIDA' ? 'warning' : 'calendar'" [size]="18"></app-icon>
+      <span>{{ aviso.mensaje }}</span>
+    </div>
+  }
+
   @if (mostrarOnboarding()) {
     <section class="card onboarding">
       <div class="onboarding__header">

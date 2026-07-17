@@ -4,6 +4,7 @@ using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace Lavanderia.Api.Controllers;
@@ -17,17 +18,36 @@ public class AuthController : ControllerBase
     private readonly ISedeRepository _sedes;
     private readonly INegocioRepository _negocios;
     private readonly ITokenService _tokens;
+    private readonly IRefreshTokenRepository _refreshTokens;
+    private readonly int _refreshTokenDias;
+    private readonly string _celularPlataforma;
 
-    public AuthController(IUsuarioRepository usuarios, IRolPermisoRepository permisos, ISedeRepository sedes, INegocioRepository negocios, ITokenService tokens)
+    public AuthController(
+        IUsuarioRepository usuarios, IRolPermisoRepository permisos, ISedeRepository sedes,
+        INegocioRepository negocios, ITokenService tokens, IRefreshTokenRepository refreshTokens,
+        Microsoft.Extensions.Options.IOptions<JwtOptions> jwtOpts, IConfiguration config)
     {
         _usuarios = usuarios;
         _permisos = permisos;
         _sedes = sedes;
         _negocios = negocios;
         _tokens = tokens;
+        _refreshTokens = refreshTokens;
+        _refreshTokenDias = jwtOpts.Value.RefreshTokenDays;
+        _celularPlataforma = config["Plataforma:CelularContacto"] ?? "";
+    }
+
+    private async Task<string> EmitirRefreshTokenAsync(int usuarioId, CancellationToken ct)
+    {
+        var token = RefreshTokenGenerator.GenerarToken();
+        var hash = RefreshTokenGenerator.Hash(token);
+        var expira = DateTime.UtcNow.AddDays(_refreshTokenDias);
+        await _refreshTokens.CrearAsync(usuarioId, hash, expira, ct);
+        return token;
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     [AllowAnonymous]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest req, CancellationToken ct)
     {
@@ -40,7 +60,10 @@ public class AuthController : ControllerBase
 
         var negocioUsuario = await _negocios.ObtenerPorIdAsync(usuario.NegocioId, ct);
         if (negocioUsuario is null || (!negocioUsuario.Activo && usuario.RolCodigo != "PROPIETARIO"))
-            return Unauthorized(new { mensaje = "La empresa esta suspendida. Contacta al administrador de la plataforma." });
+        {
+            var contacto = string.IsNullOrWhiteSpace(_celularPlataforma) ? "" : $" al Número {_celularPlataforma}";
+            return Unauthorized(new { mensaje = $"La empresa está suspendida. Contacta al administrador de la plataforma{contacto}." });
+        }
 
         // Si la URL trae el slug de una empresa, el usuario autenticado debe pertenecer a ella.
         // Sin esto, cualquier usuario global podria "entrar" visualmente por la URL de otra empresa.
@@ -53,13 +76,78 @@ public class AuthController : ControllerBase
 
         var modulos = await ObtenerModulosAsync(usuario, ct);
         var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
+        var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, ct);
+        // Marca de actividad para el panel del propietario (saber qué empresas usan el sistema).
+        await _usuarios.RegistrarUltimoAccesoAsync(usuario.Id, ct);
 
         return Ok(new LoginResponse(
             token,
             expira,
+            refreshToken,
             new UsuarioDto(usuario.Id, usuario.UsuarioLogin, usuario.NombreCompleto, usuario.RolCodigo, modulos,
                 usuario.NegocioId, usuario.SedeId, usuario.SedeNombre)
         ));
+    }
+
+    /// <summary>
+    /// Renueva el access token (de corta duracion) usando el refresh token de larga duracion.
+    /// Rota el refresh token en cada uso: el anterior queda revocado y se emite uno nuevo, asi
+    /// que si alguien roba un refresh token ya usado, el siguiente intento con el original falla.
+    /// </summary>
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<ActionResult<LoginResponse>> Refresh([FromBody] RefreshTokenRequest req, CancellationToken ct)
+    {
+        var hash = RefreshTokenGenerator.Hash(req.RefreshToken);
+        var guardado = await _refreshTokens.ObtenerPorHashAsync(hash, ct);
+        if (guardado is null || guardado.Revocado || guardado.FechaExpiracion <= DateTime.UtcNow)
+            return Unauthorized(new { mensaje = "Sesión expirada. Inicia sesión de nuevo." });
+
+        var usuario = await _usuarios.ObtenerPorIdAsync(guardado.UsuarioId, ct);
+        if (usuario is null || !usuario.Activo)
+            return Unauthorized(new { mensaje = "Sesión expirada. Inicia sesión de nuevo." });
+
+        var negocio = await _negocios.ObtenerPorIdAsync(usuario.NegocioId, ct);
+        if (negocio is null || (!negocio.Activo && usuario.RolCodigo != "PROPIETARIO"))
+        {
+            await _refreshTokens.RevocarAsync(hash, ct);
+            return Unauthorized(new { mensaje = "La empresa está suspendida. Contacta al administrador de la plataforma." });
+        }
+
+        if (usuario.SedeId is int sedeId)
+        {
+            var sede = await _sedes.ObtenerPorIdAsync(sedeId, ct);
+            if (sede is null || !sede.Activo || sede.NegocioId != usuario.NegocioId)
+            {
+                await _refreshTokens.RevocarAsync(hash, ct);
+                return Unauthorized(new { mensaje = "La sede asignada ya no está disponible. Contacta al administrador." });
+            }
+        }
+
+        await _refreshTokens.RevocarAsync(hash, ct);
+
+        var modulos = await ObtenerModulosAsync(usuario, ct);
+        var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
+        var nuevoRefreshToken = await EmitirRefreshTokenAsync(usuario.Id, ct);
+
+        return Ok(new LoginResponse(
+            token,
+            expira,
+            nuevoRefreshToken,
+            new UsuarioDto(usuario.Id, usuario.UsuarioLogin, usuario.NombreCompleto, usuario.RolCodigo, modulos,
+                usuario.NegocioId, usuario.SedeId, usuario.SedeNombre)
+        ));
+    }
+
+    /// <summary>Revoca el refresh token de esta sesion (logout real: server-side, no solo borrar
+    /// el token del navegador). El access token ya emitido sigue siendo valido hasta su
+    /// expiracion natural (corta, ver Jwt:AccessTokenMinutes), pero no podra renovarse mas.</summary>
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest req, CancellationToken ct)
+    {
+        await _refreshTokens.RevocarAsync(RefreshTokenGenerator.Hash(req.RefreshToken), ct);
+        return NoContent();
     }
 
     [HttpGet("me")]
@@ -89,6 +177,8 @@ public class AuthController : ControllerBase
         var sede = await _sedes.ObtenerPorIdAsync(req.SedeId, ct);
         if (sede is null || sede.NegocioId != usuario.NegocioId)
             return BadRequest(new { mensaje = "La sede no pertenece a tu negocio." });
+        if (!sede.Activo)
+            return BadRequest(new { mensaje = "La sede seleccionada está inactiva." });
 
         if (usuario.SedeId is int sedeAsignada && sedeAsignada != req.SedeId)
             return BadRequest(new { mensaje = "Tu usuario esta asignado a otra sede." });
@@ -97,10 +187,12 @@ public class AuthController : ControllerBase
         usuario.SedeNombre = sede.Nombre;
         var modulos = await ObtenerModulosAsync(usuario, ct);
         var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
+        var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, ct);
 
         return Ok(new LoginResponse(
             token,
             expira,
+            refreshToken,
             new UsuarioDto(usuario.Id, usuario.UsuarioLogin, usuario.NombreCompleto, usuario.RolCodigo, modulos,
                 usuario.NegocioId, usuario.SedeId, usuario.SedeNombre)
         ));

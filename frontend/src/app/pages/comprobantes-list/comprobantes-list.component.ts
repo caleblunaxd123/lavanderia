@@ -65,7 +65,7 @@ export class ComprobantesListComponent implements OnInit {
       },
       error: (err) => {
         this.reenviandoId.set(null);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo reenviar el comprobante.');
+        this.toast.desdeHttp(err, 'No se pudo reenviar el comprobante.');
       }
     });
   }

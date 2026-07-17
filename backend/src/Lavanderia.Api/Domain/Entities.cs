@@ -13,6 +13,10 @@ public class CuadreCaja
     public decimal TotalContado { get; set; }
     public decimal Diferencia { get; set; }
     public decimal CajaFinal { get; set; }
+    public decimal Corte { get; set; }
+    public decimal IngresosDigital { get; set; }
+    public decimal IngresosTarjeta { get; set; }
+    public string? Nota { get; set; }
     public string? Observaciones { get; set; }
     public DateTime FechaCreacion { get; set; }
 }
@@ -38,6 +42,8 @@ public class ConfiguracionNegocio
     public string? CondicionesServicio { get; set; }
     public string? NotasProduccion { get; set; }
     public decimal CostoDelivery { get; set; }
+    public decimal ValorPuntoCanje { get; set; }   // soles que vale 1 punto al canjear (0 = canje off)
+    public decimal MaxDescuentoPct { get; set; }    // tope de descuento manual (0 = sin tope)
 }
 
 public class Rol
@@ -71,6 +77,7 @@ public class Usuario
     public int NegocioId { get; set; }
     public int? SedeId { get; set; }
     public string? SedeNombre { get; set; }
+    public DateTime? UltimoAcceso { get; set; }
 }
 
 public class Negocio
@@ -81,8 +88,15 @@ public class Negocio
     public string? RucEmpresa { get; set; }
     public string? TitularNombre { get; set; }
     public string? TitularEmail { get; set; }
+    public string? TitularCelular { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; }
+    // Suscripción (panel del propietario del SaaS)
+    public string PlanSuscripcion { get; set; } = "BASICO";
+    public string EstadoSuscripcion { get; set; } = "ACTIVA"; // PRUEBA / ACTIVA / VENCIDA / SUSPENDIDA
+    public decimal MontoMensual { get; set; }
+    public DateOnly? ProximoPago { get; set; }
+    public string? NotasInternas { get; set; }
 }
 
 public class Sede
@@ -108,6 +122,7 @@ public class Cliente
     public int Puntos { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; }
+    public DateOnly? FechaNacimiento { get; set; }
 }
 
 public class MovimientoPuntos
@@ -121,6 +136,7 @@ public class MovimientoPuntos
     public string Tipo { get; set; } = "SUMA"; // SUMA | RESTA
     public int? UsuarioId { get; set; }
     public string? UsuarioNombre { get; set; }
+    public int? PedidoId { get; set; }
 }
 
 public class Categoria
@@ -180,6 +196,7 @@ public class Pedido
     public string? ClienteNombre { get; set; }
     public string? ClienteCelular { get; set; }
     public string? ClienteDni { get; set; }
+    public int ClientePuntos { get; set; }
     public int UsuarioId { get; set; }
     public string? UsuarioNombre { get; set; }
     public DateTime FechaIngreso { get; set; }
@@ -202,6 +219,9 @@ public class Pedido
     public bool Anulado { get; set; }
     public string? MotivoAnulacion { get; set; }
     public string? CodigoAntiguo { get; set; }
+    public int? MotorizadoId { get; set; }
+    public string? MotorizadoNombre { get; set; }
+    public string? MotorizadoCelular { get; set; }
     public List<PedidoItem> Items { get; set; } = new();
 }
 
@@ -240,6 +260,8 @@ public class MovimientoCaja
     public decimal Monto { get; set; }
     public string? Descripcion { get; set; }
     public int? PedidoId { get; set; }
+    public int? PedidoNumero { get; set; }
+    public string? ClienteNombre { get; set; }
     public int UsuarioId { get; set; }
     public int? TipoGastoId { get; set; }
     public string? TipoGastoNombre { get; set; }
@@ -262,6 +284,7 @@ public class Insumo
     public decimal StockActual { get; set; }
     public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;
+    public DateTime? UltimaCompra { get; set; }
 }
 
 public class MovimientoInsumo
@@ -278,6 +301,15 @@ public class MovimientoInsumo
     public string? UsuarioNombre { get; set; }
     public string? Descripcion { get; set; }
     public int? MovimientoCajaId { get; set; }
+}
+
+public class Motorizado
+{
+    public int Id { get; set; }
+    public int SedeId { get; set; }
+    public string Nombre { get; set; } = "";
+    public string? Celular { get; set; }
+    public bool Activo { get; set; } = true;
 }
 
 public class RolPersonal

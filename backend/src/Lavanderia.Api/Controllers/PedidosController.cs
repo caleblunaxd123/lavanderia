@@ -213,6 +213,22 @@ public class PedidosController : TenantAwareControllerBase
         }
     }
 
+    /// <summary>Asigna (o quita, con motorizadoId null) el repartidor a cargo de este pedido.</summary>
+    [HttpPut("{id:int}/motorizado")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<IActionResult> AsignarMotorizado(int id, [FromBody] AsignarMotorizadoRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.AsignarMotorizadoAsync(id, req.MotorizadoId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
     /// <summary>Devuelve el token del link público de seguimiento/pago de este pedido,
     /// generándolo si todavía no existe uno vigente. Solo aplica a pedidos Delivery.</summary>
     [HttpGet("{id:int}/link-seguimiento")]
@@ -237,7 +253,39 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.AnularAsync(id, req.Motivo, UsuarioId, SedeId!.Value, ct);
+            await _service.AnularAsync(id, req.Motivo, UsuarioId, NegocioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    /// <summary>Envía a donación un pedido con mucho tiempo en custodia (desde el reporte de Almacén).</summary>
+    [HttpPost("{id:int}/donar")]
+    [Authorize(Policy = "Modulo:REPORTES")]
+    public async Task<IActionResult> Donar(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _service.DonarAsync(id, UsuarioId, SedeId!.Value, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    /// <summary>Reenvía un pedido pendiente directo a almacén (LISTO), desde el reporte de Órdenes Pendientes.</summary>
+    [HttpPost("{id:int}/reenviar-almacen")]
+    [Authorize(Policy = "Modulo:REPORTES")]
+    public async Task<IActionResult> ReenviarAlmacen(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _service.ReenviarAlmacenAsync(id, UsuarioId, SedeId!.Value, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)

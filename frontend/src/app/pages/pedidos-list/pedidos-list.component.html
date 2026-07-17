@@ -18,7 +18,9 @@
       </div>
       <div class="alerta-abandonados__lista">
         @for (a of abandonados(); track a.pedidoId) {
-          <div class="alerta-abandonados__item" (click)="abrirDetallePorId(a.pedidoId)">
+          <div class="alerta-abandonados__item" (click)="abrirDetallePorId(a.pedidoId)"
+               (keydown.enter)="abrirDetallePorId(a.pedidoId)" role="button" tabindex="0"
+               [attr.aria-label]="'Abrir pedido ' + a.numero + ' de ' + a.clienteNombre">
             <div>
               <strong>#{{ a.numero }}</strong> {{ a.clienteNombre }}
               <span class="alerta-abandonados__dias">{{ a.diasEsperando }} días esperando</span>
@@ -158,7 +160,9 @@
         </thead>
         <tbody>
           @for (p of pedidosFiltrados(); track p.id) {
-            <tr (click)="abrirDetalle(p)" class="tabla__row" [ngClass]="claseFila(p)">
+            <tr (click)="abrirDetalle(p)" (keydown.enter)="abrirDetalle(p)" role="button" tabindex="0"
+                [attr.aria-label]="'Abrir pedido ' + p.numero + ' de ' + p.clienteNombre"
+                class="tabla__row" [ngClass]="claseFila(p)">
               <td class="mono">
                 #{{ p.numero }}
                 @if (p.esUrgente) { <span class="badge-urgente" title="Servicio urgente"><app-icon name="fire" [size]="13"></app-icon></span> }
@@ -389,6 +393,27 @@
         </div>
       }
 
+      <!-- Repartidor asignado -->
+      @if (!p.anulado && p.modalidad === 'Delivery') {
+        <div class="detalle-seccion">
+          <label class="fecha-entrega__label">
+            <app-icon name="calendar" [size]="13"></app-icon> Repartidor asignado
+          </label>
+          <select
+            [ngModel]="p.motorizadoId ?? ''"
+            (ngModelChange)="asignarMotorizado(p, $event)"
+            [disabled]="asignandoMotorizado()">
+            <option value="">Sin asignar</option>
+            @for (m of motorizadosActivos(); track m.id) {
+              <option [value]="m.id">{{ m.nombre }}</option>
+            }
+          </select>
+          @if (p.motorizadoCelular) {
+            <p class="hint">Celular: {{ p.motorizadoCelular }}</p>
+          }
+        </div>
+      }
+
       <!-- Cobros -->
       <div class="detalle-seccion cobros">
         <div class="cobros__title">
@@ -471,6 +496,14 @@
           </tr>
         </table>
       </div>
+
+      <!-- Observaciones del pedido -->
+      @if (p.observaciones) {
+        <div class="detalle-seccion observaciones-pedido">
+          <h4><app-icon name="note" [size]="13"></app-icon> Observaciones del pedido</h4>
+          <p>{{ p.observaciones }}</p>
+        </div>
+      }
 
       <!-- Reimprimir ticket -->
       <div class="detalle-seccion detalle-seccion--slim">

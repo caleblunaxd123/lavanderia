@@ -4,7 +4,10 @@
       <h2>Clientes</h2>
       <p>{{ clientes().length }} resultado{{ clientes().length === 1 ? '' : 's' }}</p>
     </div>
-    <button class="btn btn--primario" (click)="abrirModal()">+ Nuevo cliente</button>
+    <div class="page__acciones">
+      <a class="btn btn--ghost" routerLink="/clientes/crm">CRM</a>
+      <button class="btn btn--primario" (click)="abrirModal()">+ Nuevo cliente</button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -206,6 +209,9 @@
 
       <label>Dirección</label>
       <input type="text" [(ngModel)]="nuevoCliente.direccion" name="direccion" placeholder="Dirección (opcional)" />
+
+      <label>Fecha de nacimiento</label>
+      <input type="date" [(ngModel)]="nuevoCliente.fechaNacimiento" name="fechaNacimiento" />
 
       @if (errorNuevo()) {
         <div class="modal__error">{{ errorNuevo() }}</div>

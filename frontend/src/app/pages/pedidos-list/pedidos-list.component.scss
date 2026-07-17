@@ -1017,6 +1017,38 @@
   &--pagado    { background: #e6f9ee; color: #147a45; }
 }
 
+// ---------- Observaciones del pedido ----------
+.observaciones-pedido {
+  h4 { display: flex; align-items: center; gap: 6px; }
+  p {
+    margin: 0;
+    padding: 10px 12px;
+    background: #fff9ec;
+    border: 1px solid #fde8c4;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #7a5b1c;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+}
+
+// ---------- Repartidor asignado ----------
+.detalle-seccion select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--gris-borde);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: #fff;
+
+  &:focus { outline: none; border-color: var(--azul-oscuro); }
+  &:disabled { opacity: .6; }
+}
+
 // ---------- Fecha de entrega ----------
 .fecha-entrega {
   background: linear-gradient(135deg, #eef4ff 0%, #e0ecff 100%);

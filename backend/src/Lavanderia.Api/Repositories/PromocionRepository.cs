@@ -113,12 +113,16 @@ public class PromocionRepository : IPromocionRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    // Antes borraba el registro (DELETE). Se cambia a soft-delete (mismo efecto visible: la
+    // promocion deja de listarse/usarse) porque un borrado fisico pierde para siempre el
+    // historico de que promociones existieron/se aplicaron. El nombre/contrato del metodo no
+    // cambia para no tocar el controller ni el frontend.
     public async Task EliminarAsync(int id, int negocioId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM dbo.Promocion WHERE Id = @Id AND NegocioId = @NegocioId";
+        cmd.CommandText = "UPDATE dbo.Promocion SET Activa = 0 WHERE Id = @Id AND NegocioId = @NegocioId";
         cmd.AddParam("@Id", id);
         cmd.AddParam("@NegocioId", negocioId);
         await cmd.ExecuteNonQueryAsync(ct);

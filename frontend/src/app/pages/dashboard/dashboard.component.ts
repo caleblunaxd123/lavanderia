@@ -6,7 +6,9 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Dashboard, PedidosService } from '../../core/services/pedidos.service';
 import { PersonalService } from '../../core/services/personal.service';
+import { SuscripcionService } from '../../core/services/suscripcion.service';
 import { ToastService } from '../../core/services/toast.service';
+import { MiSuscripcion } from '../../core/models/models';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 
@@ -30,10 +32,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly config = inject(ConfiguracionService);
   private readonly catalogos = inject(CatalogosService);
   private readonly personalSvc = inject(PersonalService);
+  private readonly suscripcionSvc = inject(SuscripcionService);
 
   readonly data = signal<Dashboard | null>(null);
   readonly cargando = signal(false);
   readonly usuario = this.auth.usuario;
+
+  // Aviso de vencimiento de la suscripción (lo ve la propia empresa).
+  readonly suscripcion = signal<MiSuscripcion | null>(null);
+  readonly avisoSuscripcion = computed(() => {
+    const s = this.suscripcion();
+    return s && s.mostrar ? s : null;
+  });
 
   // Checklist de primeros pasos para un negocio recien creado (solo ADMIN, y solo
   // mientras falte algo por hacer o el usuario no lo haya cerrado desde este navegador).
@@ -81,8 +91,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.cargar();
     this.cargarOnboarding();
-    // Refresco cada 60s para tener siempre datos frescos
-    this.timerId = setInterval(() => this.cargar(true), 60_000);
+    this.suscripcionSvc.mia().subscribe({
+      next: s => this.suscripcion.set(s),
+      error: () => { /* aviso no crítico: silencioso */ }
+    });
+    // Refresco cada 30s para tener siempre datos frescos (la presentacion promete "cada 30 segundos")
+    this.timerId = setInterval(() => this.cargar(true), 30_000);
   }
 
   ngOnDestroy() { if (this.timerId) clearInterval(this.timerId); }

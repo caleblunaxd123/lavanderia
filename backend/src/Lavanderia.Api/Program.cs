@@ -5,10 +5,15 @@ using Lavanderia.Api.Services;
 using Lavanderia.Api.Services.Facturacion;
 using Lavanderia.Api.Services.Pagos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
@@ -21,6 +26,28 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Configuracion Jwt faltante.");
 
+// Falla rapido en Produccion si alguien olvido cambiar los valores de ejemplo de
+// appsettings.json: un JWT firmado con esta clave conocida, o una cuenta admin/propietario
+// con la clave por defecto, le darian control total del sistema (o de todo el SaaS) a
+// cualquiera que haya leido este repo publico.
+if (builder.Environment.IsProduction())
+{
+    const string ClavePlaceholder = "CAMBIAR_ESTA_CLAVE_EN_PROD_DEBE_TENER_AL_MENOS_32_CHARS";
+    if (jwt.SecretKey == ClavePlaceholder || jwt.SecretKey.Length < 32)
+        throw new InvalidOperationException(
+            "Jwt:SecretKey sigue en su valor de ejemplo (o es muy corta). Configura una clave real de al menos 32 caracteres via variable de entorno antes de arrancar en Produccion.");
+
+    var passwordAdmin = builder.Configuration.GetValue<string>("SeedAdmin:Password");
+    if (passwordAdmin == "admin123")
+        throw new InvalidOperationException(
+            "SeedAdmin:Password sigue en su valor de ejemplo ('admin123'). Configura una contrasena real antes de arrancar en Produccion.");
+
+    var passwordPropietario = builder.Configuration.GetValue<string>("SeedPropietario:Password");
+    if (passwordPropietario == "propietario123")
+        throw new InvalidOperationException(
+            "SeedPropietario:Password sigue en su valor de ejemplo ('propietario123'). Este usuario administra TODOS los negocios del SaaS: configura una contrasena real antes de arrancar en Produccion.");
+}
+
 // ------------------------------------------------------------
 // Servicios
 // ------------------------------------------------------------
@@ -30,6 +57,24 @@ builder.Services.AddControllers()
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errores = context.ModelState
+            .Where(x => x.Value?.Errors.Count > 0)
+            .ToDictionary(
+                x => string.IsNullOrWhiteSpace(x.Key) ? "solicitud" : x.Key,
+                x => x.Value!.Errors.Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage)
+                    ? "Valor inválido."
+                    : e.ErrorMessage).ToArray());
+        return new BadRequestObjectResult(new
+        {
+            mensaje = "Revisa los datos ingresados y vuelve a intentarlo.",
+            errores
+        });
+    };
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -58,9 +103,20 @@ builder.Services.AddTransient<INegocioRepository, NegocioRepository>();
 builder.Services.AddTransient<ISedeRepository, SedeRepository>();
 builder.Services.AddTransient<IFacturacionRepository, FacturacionRepository>();
 builder.Services.AddTransient<IPagosRepository, PagosRepository>();
+builder.Services.AddTransient<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddTransient<IGerencialRepository, GerencialRepository>();
+builder.Services.AddTransient<IMotorizadoRepository, MotorizadoRepository>();
 
-// Facturacion electronica (SUNAT directo)
-builder.Services.AddDataProtection();
+// Facturacion electronica (SUNAT directo) + Pagos online: SecretProtector cifra credenciales
+// reales (clave SOL, password del certificado .pfx, secret key de Culqi) con las llaves de
+// Data Protection. Sin persistirlas a disco, un reinicio/redeploy sin volumen fijo genera un
+// llavero nuevo y todo lo ya cifrado queda indescifrable (Desproteger lanza excepcion) hasta
+// que el negocio reconfigure sus credenciales a mano.
+var keysPath = builder.Configuration.GetValue<string>("DataProtection:KeysPath")
+    ?? Path.Combine(builder.Environment.ContentRootPath, "keys");
+builder.Services.AddDataProtection()
+    .SetApplicationName("Lavanderia")
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 builder.Services.AddTransient<SecretProtector>();
 builder.Services.AddHttpClient<SunatSoapClient>();
 builder.Services.AddTransient<IFacturacionElectronicaProvider, SunatDirectoProvider>();
@@ -68,6 +124,40 @@ builder.Services.AddTransient<ComprobantePdfGenerator>();
 
 // Pagos online (Culqi)
 builder.Services.AddHttpClient<CulqiService>();
+
+// Limites defensivos para los puntos anonimos que pueden disparar trabajo costoso o
+// solicitudes hacia terceros. En produccion, el proxy debe preservar la IP remota real.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            mensaje = "Demasiados intentos. Espera un minuto y vuelve a intentarlo."
+        }, ct);
+    };
+
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+    options.AddPolicy("pago-publico", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 
 // Contexto de tenant (negocio/sede) leido de los claims del JWT actual
 builder.Services.AddHttpContextAccessor();
@@ -149,11 +239,18 @@ app.UseExceptionHandler(errorApp =>
         var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
         if (context.Response.HasStarted) return;
 
+        // SqlException 8152 = "String or binary data would be truncated" (columna mas chica que
+        // el dato enviado) y 2627/2601 = violacion de constraint UNIQUE: son errores de datos del
+        // usuario, no fallas del servidor, asi que no deben salir como 500 generico.
         var (status, mensaje) = exception switch
         {
+            InvalidOperationException ex when ex.Message == "Nullable object must have a value." =>
+                (StatusCodes.Status400BadRequest, "Selecciona una sede antes de continuar."),
             InvalidOperationException ex => (StatusCodes.Status400BadRequest, ex.Message),
             ArgumentException ex => (StatusCodes.Status400BadRequest, ex.Message),
             UnauthorizedAccessException ex => (StatusCodes.Status403Forbidden, ex.Message),
+            SqlException { Number: 8152 } => (StatusCodes.Status400BadRequest, "Uno de los datos ingresados es demasiado largo para ese campo."),
+            SqlException { Number: 2627 or 2601 } => (StatusCodes.Status409Conflict, "Ya existe un registro con ese mismo dato."),
             _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado. Intenta nuevamente.")
         };
 
@@ -165,6 +262,7 @@ app.UseExceptionHandler(errorApp =>
 });
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

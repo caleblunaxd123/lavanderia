@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Net;
 
 namespace Lavanderia.Api.Services.Pagos;
 
@@ -59,14 +60,22 @@ public class CulqiService
             return new ResultadoCargoCulqi(false, null, "Respuesta inválida de la pasarela de pago.");
         }
 
-        if (resp.IsSuccessStatusCode)
+        var chargeId = json.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
+        if (resp.StatusCode == HttpStatusCode.Created &&
+            !string.IsNullOrWhiteSpace(chargeId) &&
+            chargeId.StartsWith("chr_", StringComparison.OrdinalIgnoreCase))
         {
-            var chargeId = json.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
             return new ResultadoCargoCulqi(true, chargeId, "Pago aprobado.");
         }
 
         var mensaje = json.TryGetProperty("user_message", out var userMessage) ? userMessage.GetString() : null;
-        return new ResultadoCargoCulqi(false, null, mensaje ?? "No se pudo procesar el pago. Intenta con otra tarjeta.");
+        if (resp.StatusCode == HttpStatusCode.OK)
+        {
+            return new ResultadoCargoCulqi(false, null,
+                mensaje ?? "El banco solicita autenticación adicional (3DS). No se realizó el cobro; intenta nuevamente o usa Yape.");
+        }
+
+        return new ResultadoCargoCulqi(false, null, mensaje ?? "No se pudo procesar el pago. Intenta nuevamente o usa otro medio de pago.");
     }
 
     private static (string? firstName, string? lastName) SepararNombre(string? nombreCompleto)

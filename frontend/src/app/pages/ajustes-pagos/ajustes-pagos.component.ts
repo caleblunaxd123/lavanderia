@@ -52,7 +52,7 @@ export class AjustesPagosComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo guardar la configuración.');
+        this.toast.desdeHttp(err, 'No se pudo guardar la configuración.');
       }
     });
   }

@@ -4,6 +4,8 @@ backend/**/obj/
 backend/**/appsettings.Development.json
 backend/**/appsettings.Local.json
 backend/db/backups/
+# Llaves de Data Protection (cifran secretos reales: Culqi, SUNAT) — nunca al repo.
+backend/**/keys/
 *.user
 
 # Documents / backups not needed to run the app
@@ -26,3 +28,7 @@ frontend/coverage/
 # OS
 Thumbs.db
 .DS_Store
+
+# Office temp / lock files
+~$*
+*.tmp

@@ -9,6 +9,7 @@ export interface Insumo {
   stockActual: number;
   stockMinimo: number;
   activo: boolean;
+  ultimaCompra?: string | null;
 }
 
 export interface MovimientoInsumo {
@@ -30,6 +31,7 @@ export interface RegistrarMovimientoInsumoRequest {
   metodoPago?: string | null;
   tipoGastoId?: number | null;
   descripcion?: string | null;
+  fecha?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

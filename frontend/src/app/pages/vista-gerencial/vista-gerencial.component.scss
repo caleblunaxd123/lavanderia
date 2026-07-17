@@ -1,0 +1,107 @@
+.page { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+.page__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  h2 { margin: 0; font-size: 20px; }
+  p  { margin: 4px 0 0; color: #64748b; font-size: 13px; }
+}
+
+.volver {
+  background: transparent;
+  border: 1px solid var(--gris-borde);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gris-texto);
+  cursor: pointer;
+
+  &:hover { background: #eef4ff; color: var(--azul-oscuro); border-color: var(--azul-oscuro); }
+}
+
+.estado { padding: 40px; text-align: center; color: #64748b; }
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  background: #fff;
+  border: 1px solid var(--gris-borde);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__label { font-size: 12px; color: #64748b; }
+  &__valor { font-size: 20px; font-weight: 700; color: var(--gris-texto); }
+  &__valor--negativo { color: #dc2626; }
+
+  &--alerta {
+    border-color: #fca5a5;
+    background: #fff7f7;
+  }
+}
+
+.seccion {
+  padding: 20px;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--azul-oscuro);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+}
+
+.hint { font-size: 12px; color: #94a3b8; font-style: italic; }
+
+.ok-badge {
+  font-size: 12px;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 0;
+}
+
+.area-fila, .estancado-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+
+  &:last-child { border-bottom: none; }
+}
+
+.area-fila__nombre { font-weight: 600; min-width: 130px; }
+.area-fila__dato { color: #64748b; flex: 1; }
+.area-fila__desvio {
+  font-weight: 700;
+  color: #15803d;
+  &--mal { color: #dc2626; }
+}
+
+.estancado-fila {
+  justify-content: space-between;
+  &__tiempo { color: #dc2626; font-weight: 600; }
+}
+
+@media (max-width: 720px) {
+  .page { padding: 14px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .area-fila, .estancado-fila { flex-direction: column; align-items: flex-start; gap: 2px; }
+}

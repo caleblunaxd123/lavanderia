@@ -22,26 +22,39 @@ export class AjustesPuntosComponent implements OnInit {
 
   private base: ConfiguracionNegocio = { ...this.svc.configuracion() };
   solesPorPunto = this.base.solesPorPunto;
+  valorPuntoCanje = this.base.valorPuntoCanje ?? 0;
+  maxDescuentoPct = this.base.maxDescuentoPct ?? 0;
   readonly guardando = signal(false);
 
   ngOnInit() {
     this.svc.cargar().subscribe({
-      next: c => { this.base = { ...c }; this.solesPorPunto = c.solesPorPunto; },
+      next: c => {
+        this.base = { ...c };
+        this.solesPorPunto = c.solesPorPunto;
+        this.valorPuntoCanje = c.valorPuntoCanje ?? 0;
+        this.maxDescuentoPct = c.maxDescuentoPct ?? 0;
+      },
       error: () => this.toast.error('No se pudo cargar la configuración.')
     });
   }
 
   guardar() {
     if (this.solesPorPunto <= 0) return;
+    if (this.valorPuntoCanje < 0 || this.maxDescuentoPct < 0 || this.maxDescuentoPct > 100) return;
     this.guardando.set(true);
-    this.svc.actualizar({ ...this.base, solesPorPunto: this.solesPorPunto }).subscribe({
+    this.svc.actualizar({
+      ...this.base,
+      solesPorPunto: this.solesPorPunto,
+      valorPuntoCanje: this.valorPuntoCanje,
+      maxDescuentoPct: this.maxDescuentoPct
+    }).subscribe({
       next: () => {
         this.guardando.set(false);
-        this.toast.exito('Configuración de puntos guardada');
+        this.toast.exito('Configuración guardada');
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo guardar.');
+        this.toast.desdeHttp(err, 'No se pudo guardar.');
       }
     });
   }

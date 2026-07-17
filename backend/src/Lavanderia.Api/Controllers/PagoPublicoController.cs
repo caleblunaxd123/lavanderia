@@ -6,6 +6,7 @@ using Lavanderia.Api.Services.Facturacion;
 using Lavanderia.Api.Services.Pagos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Lavanderia.Api.Controllers;
 
@@ -20,6 +21,7 @@ public class PagoPublicoController : ControllerBase
     private readonly IConfiguracionNegocioRepository _configNegocio;
     private readonly CulqiService _culqi;
     private readonly SecretProtector _secretos;
+    private readonly ILogger<PagoPublicoController> _log;
 
     public PagoPublicoController(
         IPagosRepository pagos,
@@ -27,7 +29,8 @@ public class PagoPublicoController : ControllerBase
         IPedidoService pedidoService,
         IConfiguracionNegocioRepository configNegocio,
         CulqiService culqi,
-        SecretProtector secretos)
+        SecretProtector secretos,
+        ILogger<PagoPublicoController> log)
     {
         _pagos = pagos;
         _pedidos = pedidos;
@@ -35,6 +38,7 @@ public class PagoPublicoController : ControllerBase
         _configNegocio = configNegocio;
         _culqi = culqi;
         _secretos = secretos;
+        _log = log;
     }
 
     [HttpGet("{token:guid}")]
@@ -78,11 +82,47 @@ public class PagoPublicoController : ControllerBase
             MontoPagado = pedido.MontoPagado,
             Saldo = saldo,
             RequierePago = puedePagar,
-            PublicKeyCulqi = puedePagar ? pagosConfig!.PublicKey : null
+            PublicKeyCulqi = puedePagar ? pagosConfig!.PublicKey : null,
+            MotorizadoNombre = pedido.MotorizadoNombre,
+            MotorizadoCelular = pedido.MotorizadoCelular,
+            PuedeReprogramar = !pedido.Anulado && pedido.EstadoProceso != "ENTREGADO"
         });
     }
 
+    /// <summary>Permite al cliente, desde el link público, pedir una nueva fecha/hora de
+    /// entrega o recojo sin tener que llamar a la lavandería.</summary>
+    [HttpPost("{token:guid}/reprogramar")]
+    public async Task<IActionResult> Reprogramar(Guid token, [FromBody] ReprogramarPedidoPublicoRequest req, CancellationToken ct)
+    {
+        var solicitud = await _pagos.ObtenerPorTokenAsync(token, ct);
+        if (solicitud is null) return NotFound(new { mensaje = "Link no encontrado o inválido." });
+
+        var pedido = await _pedidos.ObtenerPorIdAsync(solicitud.PedidoId, solicitud.SedeId, ct);
+        if (pedido is null) return NotFound(new { mensaje = "El pedido ya no existe." });
+
+        // El personal puede poner cualquier fecha desde el panel, pero desde el link publico
+        // (sin autenticacion) se acota a una ventana razonable para evitar reprogramaciones absurdas.
+        if (req.NuevaFecha > DateTime.Now.AddDays(60))
+            return BadRequest(new { mensaje = "La fecha elegida es demasiado lejana. Elige una fecha dentro de los próximos 60 días." });
+
+        try
+        {
+            await _pedidoService.CambiarFechaEntregaAsync(
+                pedido.Id,
+                new CambiarFechaEntregaRequest { Fecha = req.NuevaFecha, Motivo = "Reprogramado por el cliente desde el portal público" },
+                pedido.UsuarioId,
+                solicitud.SedeId,
+                ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
     [HttpPost("{token:guid}/cobrar")]
+    [EnableRateLimiting("pago-publico")]
     public async Task<ActionResult<CobrarSolicitudPagoResultDto>> Cobrar(Guid token, [FromBody] CobrarSolicitudPagoRequest req, CancellationToken ct)
     {
         var solicitud = await _pagos.ObtenerPorTokenAsync(token, ct);
@@ -113,30 +153,69 @@ public class PagoPublicoController : ControllerBase
             return StatusCode(500, new { mensaje = "No se pudo procesar el pago. Contacta al negocio." });
         }
 
-        var resultado = await _culqi.CobrarAsync(
-            secretKey,
-            saldo,
-            req.CulqiTokenId,
-            req.Email,
-            $"Pedido #{pedido.Numero}",
-            pedido.ClienteNombre,
-            pedido.ClienteCelular,
-            pedido.ClienteDni,
-            ct);
+        if (!await _pagos.IntentarIniciarCobroAsync(solicitud.Id, ct))
+            return Conflict(new { mensaje = "El pago ya está siendo procesado o este link dejó de estar vigente." });
+
+        ResultadoCargoCulqi resultado;
+        try
+        {
+            resultado = await _culqi.CobrarAsync(
+                secretKey,
+                saldo,
+                req.CulqiTokenId,
+                req.Email,
+                $"Pedido #{pedido.Numero}",
+                pedido.ClienteNombre,
+                pedido.ClienteCelular,
+                pedido.ClienteDni,
+                ct);
+        }
+        catch (Exception ex)
+        {
+            await _pagos.RestaurarPendienteAsync(solicitud.Id, CancellationToken.None);
+            _log.LogError(ex, "Fallo la comunicacion con Culqi para SolicitudPago {SolicitudId}.", solicitud.Id);
+            return StatusCode(502, new { mensaje = "No se pudo comunicar con la pasarela de pago. No se realizó ningún cargo; intenta nuevamente." });
+        }
 
         if (!resultado.Exitoso)
+        {
+            await _pagos.RestaurarPendienteAsync(solicitud.Id, ct);
             return Ok(new CobrarSolicitudPagoResultDto { Exito = false, Mensaje = resultado.Mensaje, SaldoPendiente = saldo });
+        }
 
-        var marcadoAhora = await _pagos.MarcarPagadoAsync(solicitud.Id, resultado.ChargeId ?? "", ct);
-        if (marcadoAhora)
+        var metodoPago = req.CulqiTokenId.StartsWith("ype_", StringComparison.OrdinalIgnoreCase)
+            ? "YAPE"
+            : "TARJETA";
+
+        // Culqi ya confirmo el cargo. Primero conciliamos pedido/caja y despues cerramos la
+        // solicitud. Ante una falla se bloquea cualquier reintento para impedir un doble cargo.
+        try
         {
             await _pedidoService.RegistrarPagoAsync(
                 pedido.Id,
-                new RegistrarPagoRequest { Monto = saldo, Metodo = "TARJETA", Descripcion = "Pago en línea (Culqi)" },
+                new RegistrarPagoRequest { Monto = saldo, Metodo = metodoPago, Descripcion = $"Pago en línea ({metodoPago} / Culqi)" },
                 pedido.UsuarioId,
                 solicitud.SedeId,
                 ct);
         }
+        catch (Exception ex)
+        {
+            await _pagos.MarcarRequiereConciliacionAsync(solicitud.Id, resultado.ChargeId ?? "", CancellationToken.None);
+            _log.LogCritical(ex,
+                "Culqi cobro OK (ChargeId={ChargeId}, Monto={Monto}) para SolicitudPago {SolicitudId} / Pedido {PedidoId}, " +
+                "pero RegistrarPagoAsync fallo. El cliente SI fue cobrado; reconciliar el pedido manualmente en caja.",
+                resultado.ChargeId, saldo, solicitud.Id, pedido.Id);
+            return Ok(new CobrarSolicitudPagoResultDto
+            {
+                Exito = true,
+                Mensaje = "El pago fue recibido y está pendiente de confirmación en el pedido. No vuelvas a pagarlo; contacta a la lavandería si el estado no cambia.",
+                SaldoPendiente = 0
+            });
+        }
+
+        var marcadoAhora = await _pagos.MarcarPagadoAsync(solicitud.Id, resultado.ChargeId ?? "", ct);
+        if (!marcadoAhora)
+            _log.LogCritical("Pago conciliado en pedido {PedidoId}, pero no se pudo cerrar SolicitudPago {SolicitudId}.", pedido.Id, solicitud.Id);
 
         return Ok(new CobrarSolicitudPagoResultDto { Exito = true, Mensaje = "Pago confirmado. Gracias.", SaldoPendiente = 0 });
     }

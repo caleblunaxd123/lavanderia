@@ -12,8 +12,12 @@ public interface IPagosRepository
     Task<SolicitudPago> CrearSolicitudAsync(int negocioId, int sedeId, int pedidoId, decimal monto, CancellationToken ct = default);
     Task<SolicitudPago?> ObtenerVigentePorPedidoAsync(int pedidoId, CancellationToken ct = default);
     Task<SolicitudPago?> ObtenerPorTokenAsync(Guid token, CancellationToken ct = default);
-    /// <summary>Marca la solicitud como pagada solo si seguia PENDIENTE (idempotente ante
-    /// reintentos del cliente o dobles llamadas). Devuelve false si ya estaba resuelta.</summary>
+    /// <summary>Reserva atomicamente el intento antes de llamar al proveedor. Evita que dos
+    /// pestañas cobren el mismo pedido al mismo tiempo.</summary>
+    Task<bool> IntentarIniciarCobroAsync(int id, CancellationToken ct = default);
+    Task RestaurarPendienteAsync(int id, CancellationToken ct = default);
+    Task MarcarRequiereConciliacionAsync(int id, string culqiChargeId, CancellationToken ct = default);
+    /// <summary>Marca la solicitud como pagada solo si estaba siendo procesada.</summary>
     Task<bool> MarcarPagadoAsync(int id, string culqiChargeId, CancellationToken ct = default);
 }
 
@@ -145,6 +149,46 @@ public class PagosRepository : IPagosRepository
         return await cmd.ReadFirstOrDefaultAsync(MapSolicitud, ct);
     }
 
+    public async Task<bool> IntentarIniciarCobroAsync(int id, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE dbo.SolicitudPago
+               SET Estado = 'PROCESANDO'
+             WHERE Id = @Id AND Estado = 'PENDIENTE' AND FechaExpiracion > SYSDATETIME()";
+        cmd.AddParam("@Id", id);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    public async Task RestaurarPendienteAsync(int id, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE dbo.SolicitudPago
+               SET Estado = CASE WHEN FechaExpiracion > SYSDATETIME() THEN 'PENDIENTE' ELSE 'EXPIRADO' END
+             WHERE Id = @Id AND Estado = 'PROCESANDO'";
+        cmd.AddParam("@Id", id);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task MarcarRequiereConciliacionAsync(int id, string culqiChargeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE dbo.SolicitudPago
+               SET Estado = 'CONCILIAR', CulqiChargeId = @ChargeId, FechaPago = SYSDATETIME()
+             WHERE Id = @Id AND Estado = 'PROCESANDO'";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@ChargeId", culqiChargeId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
     public async Task<bool> MarcarPagadoAsync(int id, string culqiChargeId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
@@ -153,7 +197,7 @@ public class PagosRepository : IPagosRepository
         cmd.CommandText = @"
             UPDATE dbo.SolicitudPago
                SET Estado = 'PAGADO', CulqiChargeId = @ChargeId, FechaPago = SYSDATETIME()
-             WHERE Id = @Id AND Estado = 'PENDIENTE'";
+             WHERE Id = @Id AND Estado = 'PROCESANDO'";
         cmd.AddParam("@Id", id);
         cmd.AddParam("@ChargeId", culqiChargeId);
         var filas = await cmd.ExecuteNonQueryAsync(ct);

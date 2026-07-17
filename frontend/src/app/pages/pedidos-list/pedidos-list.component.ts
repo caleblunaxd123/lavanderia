@@ -8,6 +8,7 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { PedidoHistorial, PedidosService } from '../../core/services/pedidos.service';
 import { FacturacionService } from '../../core/services/facturacion.service';
+import { Motorizado, MotorizadosService } from '../../core/services/motorizados.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
@@ -31,6 +32,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly whatsapp = inject(WhatsappService);
   private readonly config = inject(ConfiguracionService);
   private readonly facturacionSvc = inject(FacturacionService);
+  private readonly motorizadosSvc = inject(MotorizadosService);
   readonly emitiendoComprobante = signal(false);
 
   readonly pedidos = signal<Pedido[]>([]);
@@ -170,6 +172,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.recargar();
     this.cargarAbandonados();
     this.cargarMetaMensual();
+    this.motorizadosSvc.listarActivos().subscribe(m => this.motorizadosActivos.set(m));
     this.timerId = setInterval(() => { this.recargar(true); this.cargarAbandonados(); }, 30_000);
   }
 
@@ -258,6 +261,10 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
 
   recargar(silencioso = false) {
     if (!silencioso) this.cargando.set(true);
+    // Toda mutacion (avanzar, entregar, anular, pagar) y el refresco periodico entran con
+    // silencioso=true: es el momento de refrescar tambien los contadores de las pestañas,
+    // que salen del endpoint de dashboard y quedarian desactualizados.
+    if (silencioso) this.cargarMetaMensual();
     this.error.set(null);
     const texto = this.busqueda().trim();
     const usandoFiltroFecha = !texto && this.filtro() === 'fecha';
@@ -325,23 +332,64 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
         this.avanzando.set(false);
         this.toast.exito(eraLista ? `Pedido #${p.numero} entregado` : 'Etapa actualizada');
         this.recargar(true);
-        if (this.pedidoAbierto()?.id === p.id) {
-          this.service.obtener(p.id).subscribe(actualizado => {
+        // Refresca el pedido para conocer su nuevo estado. Si acaba de quedar LISTO, avisa
+        // automáticamente al cliente por WhatsApp que puede recogerlo (el operario ya no
+        // tiene que acordarse de tocar el botón).
+        this.service.obtener(p.id).subscribe(actualizado => {
+          if (!actualizado) return;
+          if (this.pedidoAbierto()?.id === p.id) {
             this.pedidoAbierto.set(actualizado);
             this.service.historial(actualizado.id).subscribe(h => this.historial.set(h));
-          });
-        }
+          }
+          if (!eraLista && actualizado.estadoProceso === 'LISTO' && actualizado.clienteCelular) {
+            this.avisarListoAuto(actualizado);
+          }
+        });
       },
       error: (err: HttpErrorResponse) => {
         this.avanzando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo avanzar la etapa.');
+        this.toast.desdeHttp(err, 'No se pudo avanzar la etapa.');
       }
     });
+  }
+
+  /** Abre WhatsApp con el mensaje de "pedido listo" cuando el pedido acaba de terminar producción. */
+  private avisarListoAuto(p: Pedido) {
+    const cliente = (p.clienteNombre ?? '').trim().split(' ')[0] || 'cliente';
+    const esDomicilio = p.modalidad === 'Recojo' || p.modalidad === 'Delivery';
+    const fallback = esDomicilio
+      ? `Hola ${cliente}! Tu pedido #${p.numero} ya está listo y saldrá a ruta.`
+      : `Hola ${cliente}! Tu pedido #${p.numero} ya está listo para recoger en ${this.config.configuracion().nombreNegocio}. Te esperamos!`;
+    const mensaje = this.whatsapp.mensaje('LISTO', {
+      cliente, numero: String(p.numero), negocio: this.config.configuracion().nombreNegocio
+    }, fallback);
+    this.whatsapp.enviar(p.clienteCelular!, mensaje);
+    this.toast.info(`Pedido #${p.numero} listo — se abrió WhatsApp para avisar a ${cliente}.`);
   }
 
   // ---------- Delivery / link de pago online ----------
   readonly convirtiendoDelivery = signal(false);
   readonly enviandoLinkPago = signal(false);
+  readonly motorizadosActivos = signal<Motorizado[]>([]);
+  readonly asignandoMotorizado = signal(false);
+
+  asignarMotorizado(p: Pedido, motorizadoIdTexto: string) {
+    if (this.asignandoMotorizado()) return;
+    const motorizadoId = motorizadoIdTexto ? Number(motorizadoIdTexto) : null;
+    this.asignandoMotorizado.set(true);
+    this.service.asignarMotorizado(p.id, motorizadoId).subscribe({
+      next: () => {
+        this.asignandoMotorizado.set(false);
+        this.toast.exito(motorizadoId ? 'Repartidor asignado' : 'Repartidor quitado del pedido');
+        this.refrescarPedidoAbierto();
+        this.recargar(true);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.asignandoMotorizado.set(false);
+        this.toast.desdeHttp(err, 'No se pudo asignar el repartidor.');
+      }
+    });
+  }
 
   convertirADelivery(p: Pedido) {
     if (this.convirtiendoDelivery()) return;
@@ -355,7 +403,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.convirtiendoDelivery.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo convertir el pedido a Delivery.');
+        this.toast.desdeHttp(err, 'No se pudo convertir el pedido a Delivery.');
       }
     });
   }
@@ -375,7 +423,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.enviandoLinkPago.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo generar el link de pago.');
+        this.toast.desdeHttp(err, 'No se pudo generar el link de pago.');
       }
     });
   }
@@ -393,7 +441,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.emitiendoComprobante.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo emitir el comprobante.');
+        this.toast.desdeHttp(err, 'No se pudo emitir el comprobante.');
       }
     });
   }
@@ -421,7 +469,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.procesando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo registrar el pago.');
+        this.toast.desdeHttp(err, 'No se pudo registrar el pago.');
       }
     });
   }
@@ -456,7 +504,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
         },
         error: (err: HttpErrorResponse) => {
           this.procesando.set(false);
-          this.toast.error(err.error?.mensaje ?? 'No se pudo completar la entrega.');
+          this.toast.desdeHttp(err, 'No se pudo completar la entrega.');
         }
       });
     };
@@ -466,7 +514,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
         next: () => flujo(),
         error: (err: HttpErrorResponse) => {
           this.procesando.set(false);
-          this.toast.error(err.error?.mensaje ?? 'No se pudo cobrar el saldo.');
+          this.toast.desdeHttp(err, 'No se pudo cobrar el saldo.');
         }
       });
     } else if (saldo > 0.01) {
@@ -499,7 +547,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.procesando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo agregar el ítem.');
+        this.toast.desdeHttp(err, 'No se pudo agregar el ítem.');
       }
     });
   }
@@ -524,7 +572,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.procesando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo anular el pedido.');
+        this.toast.desdeHttp(err, 'No se pudo anular el pedido.');
       }
     });
   }
@@ -570,7 +618,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.procesando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo actualizar la fecha.');
+        this.toast.desdeHttp(err, 'No se pudo actualizar la fecha.');
       }
     });
   }

@@ -11,6 +11,7 @@ public interface IReporteRepository
     Task<ReporteResultDto> GeneralAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
     Task<ReporteResultDto> ServiciosAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
     Task<ReporteResultDto> CuadresCajaAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
+    Task<CuadresDiariosReporteDto> CuadresDiariosAsync(int anio, int mes, int sedeId, CancellationToken ct = default);
     Task<ReporteResultDto> OrdenesMensualAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
     Task<ReporteResultDto> AlmacenAsync(int sedeId, CancellationToken ct = default);
     Task<ReporteResultDto> AnuladosAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
@@ -49,7 +50,7 @@ public class ReporteRepository : IReporteRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT p.Numero, c.Nombre AS Cliente, c.Celular, p.FechaIngreso, a.Nombre AS AreaActual,
+            SELECT p.Id AS PedidoId, p.Numero, c.Nombre AS Cliente, c.Celular, p.FechaIngreso, a.Nombre AS AreaActual,
                    p.EstadoProceso, p.Total, p.MontoPagado,
                    DATEDIFF(DAY, p.FechaIngreso, SYSDATETIME()) AS DiasEnProceso
             FROM dbo.Pedido p
@@ -59,8 +60,9 @@ public class ReporteRepository : IReporteRepository
             ORDER BY p.FechaIngreso";
         cmd.AddParam("@SedeId", sedeId);
         var columnas = new List<string> { "N°", "Cliente", "Celular", "Ingreso", "Área actual", "Estado", "Total", "Pagado", "Días en proceso" };
-        return await Ejecutar(cmd, columnas, r => new Dictionary<string, string>
+        var res = await Ejecutar(cmd, columnas, r => new Dictionary<string, string>
         {
+            ["_id"] = Texto(r, "PedidoId"),
             ["N°"] = "#" + Texto(r, "Numero"),
             ["Cliente"] = Texto(r, "Cliente"),
             ["Celular"] = Texto(r, "Celular"),
@@ -71,6 +73,8 @@ public class ReporteRepository : IReporteRepository
             ["Pagado"] = Soles(r, "MontoPagado"),
             ["Días en proceso"] = Texto(r, "DiasEnProceso"),
         }, ct);
+        res.Accion = "reenviar-almacen";
+        return res;
     }
 
     public async Task<ReporteResultDto> GastosAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default)
@@ -134,7 +138,8 @@ public class ReporteRepository : IReporteRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT s.Nombre, SUM(i.Cantidad) AS CantidadVendida, SUM(i.Total) AS IngresoTotal
+            SELECT s.Nombre, SUM(i.Cantidad) AS CantidadVendida, SUM(i.Total) AS IngresoTotal,
+                   CASE WHEN SUM(i.Cantidad) > 0 THEN SUM(i.Total) / SUM(i.Cantidad) ELSE 0 END AS PrecioPromedio
             FROM dbo.PedidoItem i
             INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
             INNER JOIN dbo.Pedido p ON p.Id = i.PedidoId
@@ -144,11 +149,12 @@ public class ReporteRepository : IReporteRepository
         cmd.AddParam("@Desde", desde.Date);
         cmd.AddParam("@Hasta", hasta.Date);
         cmd.AddParam("@SedeId", sedeId);
-        var columnas = new List<string> { "Servicio", "Cantidad vendida", "Ingreso generado" };
+        var columnas = new List<string> { "Servicio", "Cantidad vendida", "Precio promedio", "Ingreso generado" };
         return await Ejecutar(cmd, columnas, r => new Dictionary<string, string>
         {
             ["Servicio"] = Texto(r, "Nombre"),
             ["Cantidad vendida"] = r.GetDecimal(r.GetOrdinal("CantidadVendida")).ToString("0.##"),
+            ["Precio promedio"] = Soles(r, "PrecioPromedio"),
             ["Ingreso generado"] = Soles(r, "IngresoTotal"),
         }, ct);
     }
@@ -182,6 +188,93 @@ public class ReporteRepository : IReporteRepository
                 ["Estado"] = estado,
             };
         }, ct);
+    }
+
+    public async Task<CuadresDiariosReporteDto> CuadresDiariosAsync(int anio, int mes, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+
+        // 1) Cuadres guardados del mes (pueden ser varios por día, uno por colaborador).
+        var cuadresPorDia = new Dictionary<int, List<CuadreDiarioFilaDto>>();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT c.Id, c.Fecha, u.NombreCompleto AS Usuario, c.CajaInicial, c.PedidosPagadosEfect,
+                       c.Gastos, c.TotalContado, c.Corte, c.CajaFinal, c.Diferencia, c.Nota,
+                       c.IngresosDigital, c.IngresosTarjeta
+                FROM dbo.CuadreCaja c
+                INNER JOIN dbo.Usuario u ON u.Id = c.UsuarioId
+                WHERE c.SedeId = @SedeId AND YEAR(c.Fecha) = @Anio AND MONTH(c.Fecha) = @Mes
+                ORDER BY c.Fecha, c.FechaCreacion";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@Anio", anio);
+            cmd.AddParam("@Mes", mes);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+            {
+                var dia = r.GetDateTime(r.GetOrdinal("Fecha")).Day;
+                var dif = r.GetDecimal(r.GetOrdinal("Diferencia"));
+                var estado = Math.Abs(dif) < 0.01m ? "CUADRA" : (dif > 0 ? "SOBRA" : "FALTA");
+                var fila = new CuadreDiarioFilaDto(
+                    r.GetInt32(r.GetOrdinal("Id")),
+                    r.GetString(r.GetOrdinal("Usuario")),
+                    r.GetDecimal(r.GetOrdinal("CajaInicial")),
+                    r.GetDecimal(r.GetOrdinal("PedidosPagadosEfect")),
+                    r.GetDecimal(r.GetOrdinal("Gastos")),
+                    r.GetDecimal(r.GetOrdinal("TotalContado")),
+                    r.GetDecimal(r.GetOrdinal("Corte")),
+                    r.GetDecimal(r.GetOrdinal("CajaFinal")),
+                    estado,
+                    Math.Abs(dif),
+                    r.IsDBNull(r.GetOrdinal("Nota")) ? null : r.GetString(r.GetOrdinal("Nota")),
+                    r.GetDecimal(r.GetOrdinal("IngresosDigital")),
+                    r.GetDecimal(r.GetOrdinal("IngresosTarjeta")));
+                if (!cuadresPorDia.TryGetValue(dia, out var lista)) { lista = new(); cuadresPorDia[dia] = lista; }
+                lista.Add(fila);
+            }
+        }
+
+        // 2) Totales de movimientos por día (para detectar dinero no cuadrado en días sin cuadre).
+        var movPorDia = new Dictionary<int, (decimal Ing, decimal Egr)>();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT DAY(m.Fecha) AS Dia,
+                       SUM(CASE WHEN m.Tipo = 'INGRESO' THEN m.Monto ELSE 0 END) AS Ingresos,
+                       SUM(CASE WHEN m.Tipo = 'GASTO' THEN m.Monto ELSE 0 END) AS Egresos
+                FROM dbo.MovimientoCaja m
+                WHERE m.SedeId = @SedeId AND YEAR(m.Fecha) = @Anio AND MONTH(m.Fecha) = @Mes
+                GROUP BY DAY(m.Fecha)";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@Anio", anio);
+            cmd.AddParam("@Mes", mes);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+                movPorDia[r.GetInt32(r.GetOrdinal("Dia"))] =
+                    (r.GetDecimal(r.GetOrdinal("Ingresos")), r.GetDecimal(r.GetOrdinal("Egresos")));
+        }
+
+        // 3) Armar la lista día por día (hasta hoy si es el mes en curso).
+        var hoy = DateTime.Today;
+        int ultimoDia = DateTime.DaysInMonth(anio, mes);
+        if (anio == hoy.Year && mes == hoy.Month) ultimoDia = Math.Min(ultimoDia, hoy.Day);
+
+        var dias = new List<CuadreDiarioDiaDto>();
+        for (int d = 1; d <= ultimoDia; d++)
+        {
+            var fecha = new DateOnly(anio, mes, d);
+            if (cuadresPorDia.TryGetValue(d, out var cuadres) && cuadres.Count > 0)
+            {
+                dias.Add(new CuadreDiarioDiaDto(fecha, cuadres, false, 0, 0));
+            }
+            else
+            {
+                var (ing, egr) = movPorDia.TryGetValue(d, out var m) ? m : (0m, 0m);
+                dias.Add(new CuadreDiarioDiaDto(fecha, new(), true, ing, egr));
+            }
+        }
+        return new CuadresDiariosReporteDto(anio, mes, dias);
     }
 
     public async Task<ReporteResultDto> OrdenesMensualAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default)
@@ -221,7 +314,7 @@ public class ReporteRepository : IReporteRepository
                 WHERE EstadoProceso = 'LISTO'
                 GROUP BY PedidoId
             )
-            SELECT p.Numero, c.Nombre AS Cliente, c.Celular, ul.FechaListo, p.Total, p.MontoPagado,
+            SELECT p.Id AS PedidoId, p.Numero, c.Nombre AS Cliente, c.Celular, ul.FechaListo, p.Total, p.MontoPagado,
                    DATEDIFF(DAY, ul.FechaListo, SYSDATETIME()) AS DiasEnCustodia
             FROM dbo.Pedido p
             INNER JOIN dbo.Cliente c ON c.Id = p.ClienteId
@@ -230,8 +323,9 @@ public class ReporteRepository : IReporteRepository
             ORDER BY ul.FechaListo";
         cmd.AddParam("@SedeId", sedeId);
         var columnas = new List<string> { "N°", "Cliente", "Celular", "Listo desde", "Total", "Pagado", "Días en custodia" };
-        return await Ejecutar(cmd, columnas, r => new Dictionary<string, string>
+        var res = await Ejecutar(cmd, columnas, r => new Dictionary<string, string>
         {
+            ["_id"] = Texto(r, "PedidoId"),
             ["N°"] = "#" + Texto(r, "Numero"),
             ["Cliente"] = Texto(r, "Cliente"),
             ["Celular"] = Texto(r, "Celular"),
@@ -240,6 +334,8 @@ public class ReporteRepository : IReporteRepository
             ["Pagado"] = Soles(r, "MontoPagado"),
             ["Días en custodia"] = Texto(r, "DiasEnCustodia"),
         }, ct);
+        res.Accion = "donar";
+        return res;
     }
 
     public async Task<ReporteResultDto> AnuladosAsync(DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default)

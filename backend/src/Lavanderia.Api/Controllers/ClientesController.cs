@@ -14,6 +14,14 @@ public class ClientesController : TenantAwareControllerBase
 
     public ClientesController(IClienteRepository repo) => _repo = repo;
 
+    [HttpGet("analitica")]
+    public async Task<ActionResult<List<ClienteAnaliticaDto>>> Analitica(CancellationToken ct)
+        => Ok(await _repo.ListarAnaliticaAsync(NegocioId, ct));
+
+    [HttpGet("cumpleanos-proximos")]
+    public async Task<ActionResult<List<ClienteCumpleanosDto>>> CumpleanosProximos([FromQuery] int dias = 30, CancellationToken ct = default)
+        => Ok(await _repo.ListarCumpleanosProximosAsync(NegocioId, Math.Clamp(dias, 1, 90), ct));
+
     [HttpGet]
     public async Task<ActionResult<List<ClienteDto>>> Buscar(
         [FromQuery] string? texto,
@@ -88,7 +96,8 @@ public class ClientesController : TenantAwareControllerBase
             Dni = dni,
             DocumentoFiscal = documentoFiscal,
             Direccion = direccion,
-            Puntos = dto.Puntos
+            Puntos = dto.Puntos,
+            FechaNacimiento = dto.FechaNacimiento
         }, ct);
 
         var creado = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
@@ -118,6 +127,7 @@ public class ClientesController : TenantAwareControllerBase
         existente.DocumentoFiscal = documentoFiscal;
         existente.Direccion = LimpiarTexto(dto.Direccion);
         existente.Puntos = dto.Puntos;
+        existente.FechaNacimiento = dto.FechaNacimiento;
 
         await _repo.ActualizarAsync(existente, NegocioId, ct);
         return NoContent();
@@ -188,7 +198,8 @@ public class ClientesController : TenantAwareControllerBase
         DocumentoFiscal = c.DocumentoFiscal,
         Direccion = c.Direccion,
         Puntos = c.Puntos,
-        FechaCreacion = c.FechaCreacion
+        FechaCreacion = c.FechaCreacion,
+        FechaNacimiento = c.FechaNacimiento
     };
 
     private static string? LimpiarTexto(string? valor)

@@ -31,8 +31,33 @@
 
         @if (d.fechaCompromiso) {
           <div class="fecha">
-            <span>{{ d.etiquetaFechaCompromiso }}</span>
-            <strong>{{ d.fechaCompromiso | date:'EEE d MMM, h:mm a' }}</strong>
+            <div>
+              <span>{{ d.etiquetaFechaCompromiso }}</span><br />
+              <strong>{{ d.fechaCompromiso | date:'EEE d MMM, h:mm a' }}</strong>
+            </div>
+            @if (d.puedeReprogramar) {
+              <button type="button" class="btn-reprogramar" (click)="abrirReprogramar()">Cambiar</button>
+            }
+          </div>
+        }
+
+        @if (estaEnReparto(d) && d.motorizadoNombre) {
+          <div class="reparto">
+            <div class="reparto__icono">🛵</div>
+            <div class="reparto__texto">
+              <strong>¡Tu pedido va en camino!</strong>
+              <span>Lo lleva <b>{{ d.motorizadoNombre }}</b></span>
+            </div>
+            @if (telMotorizado()) {
+              <a class="reparto__llamar" [href]="'tel:' + telMotorizado()">Llamar</a>
+            }
+          </div>
+        } @else if (d.motorizadoNombre) {
+          <div class="fecha">
+            <div>
+              <span>Repartidor asignado</span><br />
+              <strong>{{ d.motorizadoNombre }}{{ d.motorizadoCelular ? ' · ' + d.motorizadoCelular : '' }}</strong>
+            </div>
           </div>
         }
 
@@ -64,16 +89,16 @@
         @if (d.saldo <= 0.01) {
           <p class="aviso aviso--ok">Tu pedido ya está pagado. Gracias.</p>
         } @else if (d.requierePago) {
-          <button class="btn-pagar" [disabled]="procesando()" (click)="abrirPago()">
+          <button type="button" class="btn-pagar" [disabled]="procesando()" [attr.aria-busy]="procesando()" (click)="abrirPago()">
             {{ procesando() ? 'Procesando...' : 'Pagar S/ ' + d.saldo.toFixed(2) }}
           </button>
-          <p class="hint">Pago seguro con tarjeta. El estado se actualizará aquí mismo al confirmarse.</p>
+          <p class="hint">Pago seguro con {{ metodosPagoDisponibles() }}. El estado se actualizará aquí mismo al confirmarse.</p>
         } @else {
           <p class="aviso">Los pagos online no están disponibles en este momento. Coordina el pago directamente con la lavandería.</p>
         }
 
         @if (mensajeCobro()) {
-          <p class="mensaje-cobro">{{ mensajeCobro() }}</p>
+          <p class="mensaje-cobro" role="status" aria-live="polite">{{ mensajeCobro() }}</p>
         }
 
         @if (d.telefonoNegocio || d.direccionNegocio) {
@@ -86,7 +111,7 @@
               <p><strong>Dirección:</strong> {{ d.direccionNegocio }}</p>
             }
             @if (telefonoWhatsapp()) {
-              <button class="btn-secundario" (click)="abrirWhatsappNegocio()">Escribir por WhatsApp</button>
+              <button type="button" class="btn-secundario" (click)="abrirWhatsappNegocio()">Escribir por WhatsApp</button>
             }
           </div>
         }
@@ -94,3 +119,27 @@
     </div>
   }
 </div>
+
+@if (modalReprogramar()) {
+  <div class="modal-backdrop" (click)="cerrarReprogramar()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>Cambiar fecha</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar" (click)="cerrarReprogramar()">✕</button>
+    </div>
+    <div class="modal__body">
+      <p>Elige la nueva fecha y hora que te acomode. La lavandería verá el cambio de inmediato.</p>
+      <label for="nueva-fecha-entrega">Nueva fecha y hora</label>
+      <input id="nueva-fecha-entrega" type="datetime-local" [(ngModel)]="nuevaFecha" name="nuevaFecha" required />
+      @if (errorReprogramar()) {
+        <p class="modal__error" role="alert">{{ errorReprogramar() }}</p>
+      }
+    </div>
+    <div class="modal__actions">
+      <button type="button" class="btn-secundario" (click)="cerrarReprogramar()">Cancelar</button>
+      <button type="button" class="btn-pagar" [disabled]="reprogramando()" (click)="confirmarReprogramar()">
+        {{ reprogramando() ? 'Guardando…' : 'Confirmar' }}
+      </button>
+    </div>
+  </div>
+}

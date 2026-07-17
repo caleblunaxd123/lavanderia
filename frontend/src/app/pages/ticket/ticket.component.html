@@ -114,6 +114,9 @@
         <strong>CLIENTE</strong>
         <p>{{ p.clienteNombre }}</p>
         @if (p.clienteCelular) { <p>Tel: {{ p.clienteCelular }}</p> }
+        @if (tipoTicket() === 'CLIENTE' && p.clientePuntos != null) {
+          <p class="ticket__puntos">Puntos acumulados: {{ p.clientePuntos }}</p>
+        }
         @if (p.usuarioNombre) { <p>Atendido por: {{ p.usuarioNombre }}</p> }
       </div>
 

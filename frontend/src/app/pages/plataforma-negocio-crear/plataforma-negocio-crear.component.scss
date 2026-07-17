@@ -99,3 +99,74 @@ input {
   .page { padding: 14px; }
   .row-2 { grid-template-columns: 1fr; }
 }
+
+// ---------- Contraseña con botón generar ----------
+.pass-row {
+  display: flex;
+  gap: 6px;
+  input { flex: 1; }
+}
+
+.btn--sm { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+
+.mono { font-family: 'SF Mono', 'Consolas', monospace; }
+
+.link {
+  background: transparent;
+  border: none;
+  color: var(--azul-oscuro, #0b57d0);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  &:hover { text-decoration: underline; }
+}
+
+// ---------- Panel de éxito con credenciales ----------
+.exito {
+  padding: 28px 24px;
+  text-align: center;
+
+  &__icono {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #16a34a;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+  }
+
+  h3 { margin: 0 0 6px; font-size: 18px; color: #1e293b; }
+  > p { margin: 0 auto 18px; color: #64748b; font-size: 13.5px; max-width: 420px; }
+
+  &__acciones {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+}
+
+.cred-box {
+  text-align: left;
+  background: #f8fafc;
+  border: 1px solid var(--gris-borde);
+  border-radius: 10px;
+  padding: 6px 14px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.cred-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gris-borde);
+  font-size: 13.5px;
+  &:last-child { border-bottom: none; }
+
+  span { color: #94a3b8; font-weight: 600; width: 84px; flex-shrink: 0; }
+  b { flex: 1; color: #1e293b; word-break: break-all; }
+}

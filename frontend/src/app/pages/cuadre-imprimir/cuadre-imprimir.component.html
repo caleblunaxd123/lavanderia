@@ -65,12 +65,12 @@
               <td class="right">S/ {{ c.pedidosPagadosEfect | number:'1.2-2' }}</td>
             </tr>
             <tr>
-              <td>− Gastos del día</td>
+              <td>− Gastos en efectivo</td>
               <td class="right">S/ {{ c.gastos | number:'1.2-2' }}</td>
             </tr>
             <tr class="total">
               <td>= En caja debería haber</td>
-              <td class="right">S/ {{ c.cajaFinal | number:'1.2-2' }}</td>
+              <td class="right">S/ {{ (c.cajaInicial + c.pedidosPagadosEfect - c.gastos) | number:'1.2-2' }}</td>
             </tr>
           </table>
         </section>
@@ -84,7 +84,7 @@
             </tr>
             <tr>
               <td>Debería haber</td>
-              <td class="right">S/ {{ c.cajaFinal | number:'1.2-2' }}</td>
+              <td class="right">S/ {{ (c.cajaInicial + c.pedidosPagadosEfect - c.gastos) | number:'1.2-2' }}</td>
             </tr>
             <tr class="total" [class.total--rojo]="c.diferencia < 0" [class.total--naranja]="c.diferencia > 0.01">
               <td>Diferencia</td>
@@ -96,6 +96,44 @@
           </table>
         </section>
       </div>
+
+      <!-- Cierre: corte y caja final -->
+      <section class="bloque">
+        <h3>Cierre de caja</h3>
+        <table>
+          <tr>
+            <td>Corte (efectivo entregado)</td>
+            <td class="right">S/ {{ c.corte | number:'1.2-2' }}</td>
+          </tr>
+          <tr class="total">
+            <td>Caja final (queda para el día siguiente)</td>
+            <td class="right">S/ {{ c.cajaFinal | number:'1.2-2' }}</td>
+          </tr>
+        </table>
+      </section>
+
+      @if (c.ingresosDigital > 0 || c.ingresosTarjeta > 0) {
+        <section class="bloque">
+          <h3>Ingresos digitales <small>(no pasan por la caja física)</small></h3>
+          <table>
+            <tr>
+              <td>Transferencia móvil (Yape / Plin / Transferencia)</td>
+              <td class="right">S/ {{ c.ingresosDigital | number:'1.2-2' }}</td>
+            </tr>
+            <tr>
+              <td>Tarjeta / POS</td>
+              <td class="right">S/ {{ c.ingresosTarjeta | number:'1.2-2' }}</td>
+            </tr>
+          </table>
+        </section>
+      }
+
+      @if (c.nota) {
+        <section class="obs">
+          <h3>Nota</h3>
+          <p>{{ c.nota }}</p>
+        </section>
+      }
 
       @if (c.observaciones) {
         <section class="obs">

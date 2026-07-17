@@ -1,7 +1,11 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, throwError } from 'rxjs';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+
+// El propio login/refresh/logout nunca debe intentar "renovarse a si mismo" en un 401 (login
+// invalido y refresh vencido SI deben responder 401 tal cual, no entrar en un loop).
+const RUTAS_SIN_REINTENTO = ['/auth/login', '/auth/refresh', '/auth/logout'];
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -11,12 +15,27 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : req;
 
+  const esRutaAuth = RUTAS_SIN_REINTENTO.some(r => req.url.includes(r));
+
   return next(clonado).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status === 401) {
-        auth.logout();
+      if (err.status !== 401 || esRutaAuth || !auth.obtenerRefreshToken()) {
+        if (err.status === 401) auth.logout();
+        return throwError(() => err);
       }
-      return throwError(() => err);
+
+      // Access token vencido (dura poco a proposito): se renueva en silencio contra
+      // /auth/refresh y se reintenta esta misma request una sola vez con el token nuevo.
+      return auth.refrescarToken().pipe(
+        switchMap(res => {
+          const reintento = req.clone({ setHeaders: { Authorization: `Bearer ${res.accessToken}` } });
+          return next(reintento);
+        }),
+        catchError(errorRefresh => {
+          auth.logout();
+          return throwError(() => errorRefresh);
+        })
+      );
     })
   );
 };

@@ -6,10 +6,11 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-login',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
@@ -26,6 +27,7 @@ export class LoginComponent implements OnInit {
   password = '';
   cargando = signal(false);
   error = signal<string | null>(null);
+  mostrarPassword = signal(false);
 
   ngOnInit() {
     // Marca de la empresa segun el slug de la URL (/lavixa/login); sin slug, cae al

@@ -16,6 +16,7 @@ public interface IUsuarioRepository
     Task ActualizarAsync(Usuario u, int negocioId, CancellationToken ct = default);
     Task ActualizarPasswordAsync(int id, string passwordHash, int negocioId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int negocioId, CancellationToken ct = default);
+    Task RegistrarUltimoAccesoAsync(int id, CancellationToken ct = default);
 }
 
 public class UsuarioRepository : IUsuarioRepository
@@ -25,7 +26,7 @@ public class UsuarioRepository : IUsuarioRepository
 
     private const string BaseSelect = @"
         SELECT u.Id, u.Usuario, u.NombreCompleto, u.Email, u.PasswordHash,
-               u.RolId, r.Codigo AS RolCodigo, u.Activo, u.NegocioId, u.SedeId, s.Nombre AS SedeNombre
+               u.RolId, r.Codigo AS RolCodigo, u.Activo, u.NegocioId, u.SedeId, s.Nombre AS SedeNombre, u.UltimoAcceso
         FROM dbo.Usuario u
         INNER JOIN dbo.Rol r ON r.Id = u.RolId
         LEFT JOIN dbo.Sede s ON s.Id = u.SedeId";
@@ -42,7 +43,8 @@ public class UsuarioRepository : IUsuarioRepository
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
         NegocioId = r.GetInt32(r.GetOrdinal("NegocioId")),
         SedeId = r.IsDBNull(r.GetOrdinal("SedeId")) ? null : r.GetInt32(r.GetOrdinal("SedeId")),
-        SedeNombre = r.GetNullableString("SedeNombre")
+        SedeNombre = r.GetNullableString("SedeNombre"),
+        UltimoAcceso = r.GetNullableDateTime("UltimoAcceso")
     };
 
     public async Task<Usuario?> BuscarPorUsuarioAsync(string usuario, CancellationToken ct = default)
@@ -158,6 +160,16 @@ public class UsuarioRepository : IUsuarioRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@NegocioId", negocioId);
         cmd.AddParam("@Activo", activo);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task RegistrarUltimoAccesoAsync(int id, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Usuario SET UltimoAcceso = SYSDATETIME() WHERE Id = @Id";
+        cmd.AddParam("@Id", id);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 }

@@ -49,6 +49,8 @@ export class RegistrarComponent implements OnInit {
   documentoIdentidad = '';
   documentoFiscal = '';
   modalidad: ModalidadPedido = 'Tienda';
+  costoDeliveryPedido = 0;
+  observacionesPedido = '';
   buscandoCliente = signal(false);
 
   campoBusquedaCliente: 'Nombre' | 'Celular' | 'DNI' = 'Nombre';
@@ -67,6 +69,14 @@ export class RegistrarComponent implements OnInit {
   descuentoPorcentaje = signal(10);
   esUrgente = signal(false);
   recargoUrgentePorcentaje = signal(20);
+
+  // Canje de puntos (fidelización)
+  puntosACanjear = signal(0);
+  get valorPuntoCanje(): number { return this.config.configuracion().valorPuntoCanje ?? 0; }
+  get maxDescuentoPct(): number { return this.config.configuracion().maxDescuentoPct ?? 0; }
+  get puntosDisponibles(): number { return this.clienteExistente?.puntos ?? 0; }
+  get canjeHabilitado(): boolean { return this.valorPuntoCanje > 0 && this.puntosDisponibles > 0; }
+  get negocioConfig() { return this.config.configuracion(); }
 
   codigoPromo = '';
   readonly validandoPromo = signal(false);
@@ -89,7 +99,28 @@ export class RegistrarComponent implements OnInit {
     this.esUrgente() ? this.subtotal() * (this.recargoUrgentePorcentaje() / 100) : 0
   );
 
-  totalNeto = computed(() => this.subtotal() - this.descuentoMonto() + this.recargoUrgenteMonto());
+  descuentoPuntosMonto = computed(() => {
+    const bruto = this.puntosACanjear() * this.valorPuntoCanje;
+    const disponible = Math.max(0, this.subtotal() - this.descuentoMonto());
+    return Math.min(bruto, disponible);
+  });
+
+  totalNeto = computed(() => this.subtotal() - this.descuentoMonto() - this.descuentoPuntosMonto() + this.recargoUrgenteMonto());
+
+  setPuntosACanjear(v: number) {
+    const n = Math.floor(Number(v) || 0);
+    const maxPorMonto = this.valorPuntoCanje > 0
+      ? Math.floor(Math.max(0, this.subtotal() - this.descuentoMonto()) / this.valorPuntoCanje)
+      : 0;
+    const max = Math.min(this.puntosDisponibles, maxPorMonto);
+    this.puntosACanjear.set(Math.max(0, Math.min(n, max)));
+  }
+
+  setDescuentoPct(v: number) {
+    let n = Number(v) || 0;
+    if (this.maxDescuentoPct > 0) n = Math.min(n, this.maxDescuentoPct);
+    this.descuentoPorcentaje.set(Math.max(0, Math.min(100, n)));
+  }
   totalFinal = computed(() => Math.round(this.totalNeto() * 10) / 10);
   redondeo = computed(() => Math.round((this.totalFinal() - this.totalNeto()) * 100) / 100);
 
@@ -99,6 +130,7 @@ export class RegistrarComponent implements OnInit {
 
   ngOnInit() {
     this.whatsapp.cargar();
+    this.config.cargar().subscribe({ error: () => {} }); // asegura valorPuntoCanje / maxDescuentoPct frescos
     this.pedidosSvc.siguienteNumero().subscribe({
       next: n => this.siguienteNumero.set(n),
       error: () => {}
@@ -160,21 +192,33 @@ export class RegistrarComponent implements OnInit {
     if (!idDelivery) return;
 
     if (this.esDomicilio()) {
-      const costo = this.config.configuracion().costoDelivery;
-      if (costo <= 0) return;
+      if (this.costoDeliveryPedido <= 0) {
+        this.costoDeliveryPedido = Number(this.config.configuracion().costoDelivery) || 0;
+      }
       const yaEsta = this.items().some(i => i.servicioId === idDelivery);
       if (!yaEsta) {
         this.items.update(list => [...list, {
           servicioId: idDelivery,
           nombre: 'Servicio a domicilio',
-          precio: costo,
+          precio: this.costoDeliveryPedido,
           unidad: 'Unidad',
           cantidad: 1,
           descripcion: ''
         }]);
+      } else {
+        this.actualizarCostoDelivery(this.costoDeliveryPedido);
       }
     } else {
       this.items.update(list => list.filter(i => i.servicioId !== idDelivery));
+    }
+  }
+
+  actualizarCostoDelivery(valor: number) {
+    const costo = Math.max(0, Math.min(10000, Number(valor) || 0));
+    this.costoDeliveryPedido = costo;
+    const idDelivery = this.config.configuracion().servicioDeliveryId;
+    if (idDelivery) {
+      this.items.update(list => list.map(i => i.servicioId === idDelivery ? { ...i, precio: costo } : i));
     }
   }
 
@@ -213,6 +257,7 @@ export class RegistrarComponent implements OnInit {
     this.direccion = '';
     this.documentoIdentidad = '';
     this.documentoFiscal = '';
+    this.puntosACanjear.set(0); // los puntos pertenecen al cliente seleccionado
   }
 
   agregarItem() {
@@ -306,6 +351,15 @@ export class RegistrarComponent implements OnInit {
       && !this.registrando();
   }
 
+  get validacionPedido(): string | null {
+    if (!this.nombre.trim()) return 'Indica el nombre del cliente.';
+    if (!this.celular.trim()) return 'Indica un celular de contacto.';
+    if (this.esDomicilio() && !this.direccion.trim()) return 'Indica la dirección para el servicio a domicilio.';
+    if (this.items().length === 0) return 'Agrega al menos un servicio al pedido.';
+    if (this.totalFinal() <= 0) return 'El total del pedido debe ser mayor a cero.';
+    return null;
+  }
+
   registrarOrden() {
     if (!this.puedeRegistrar) return;
 
@@ -329,12 +383,14 @@ export class RegistrarComponent implements OnInit {
         descripcion: i.descripcion.trim() || null
       })),
       descuentoPct: this.aplicaDescuento() ? this.descuentoPorcentaje() : 0,
+      puntosACanjear: this.puntosACanjear() > 0 ? this.puntosACanjear() : null,
       esUrgente: this.esUrgente(),
       recargoUrgentePct: this.recargoUrgentePorcentaje(),
+      costoDelivery: this.esDomicilio() ? this.costoDeliveryPedido : null,
       montoPagado: this.montoPagado,
       metodoPagoInicial: this.metodoPagoInicial,
       fechaEntregaEst: new Date(this.fechaEntregaValor()).toISOString(),
-      observaciones: null,
+      observaciones: this.observacionesPedido.trim() || null,
       areaInicialId: this.areaInicialId,
     };
 
@@ -347,7 +403,7 @@ export class RegistrarComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.registrando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo registrar el pedido.');
+        this.toast.desdeHttp(err, 'No se pudo registrar el pedido.');
       }
     });
   }
@@ -403,14 +459,17 @@ export class RegistrarComponent implements OnInit {
     this.celular = '';
     this.documentoIdentidad = '';
     this.documentoFiscal = '';
+    this.observacionesPedido = '';
     this.textoBusquedaCliente = '';
     this.resultadosBusquedaCliente.set([]);
     this.items.set([]);
     this.aplicaDescuento.set(false);
     this.esUrgente.set(false);
+    this.puntosACanjear.set(0);
     this.montoPagado = 0;
     this.metodoPagoInicial = 'EFECTIVO';
     this.modalidad = 'Tienda';
+    this.costoDeliveryPedido = 0;
   }
 
   private esPedidoDomicilio(p: Pedido) {

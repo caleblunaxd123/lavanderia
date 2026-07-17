@@ -11,6 +11,10 @@
     </button>
   </div>
 
+  @if (!registrado() && validacionPedido; as mensajeValidacion) {
+    <div class="form-status" role="status" aria-live="polite">{{ mensajeValidacion }}</div>
+  }
+
   @if (registrado()) {
     <div class="card confirmacion">
       <div class="confirmacion__ilus">
@@ -90,7 +94,8 @@
           @if (resultadosBusquedaCliente().length > 0) {
             <ul class="resultados-cliente">
               @for (c of resultadosBusquedaCliente(); track c.id) {
-                <li (click)="seleccionarClienteFrecuente(c)">
+                <li (click)="seleccionarClienteFrecuente(c)" (keydown.enter)="seleccionarClienteFrecuente(c)"
+                    role="button" tabindex="0" [attr.aria-label]="'Seleccionar cliente ' + c.nombre">
                   <strong>{{ c.nombre }}</strong>
                   <span>{{ c.celular || 'Sin celular' }}{{ c.dni ? ' · DNI ' + c.dni : '' }}</span>
                   @if (c.puntos > 0) {
@@ -172,6 +177,9 @@
           @if (aplicaDescuento()) {
             <div class="descuento"><span>Descuento ({{ descuentoPorcentaje() }}%):</span> - S/ {{ descuentoMonto().toFixed(2) }}</div>
           }
+          @if (descuentoPuntosMonto() > 0) {
+            <div class="descuento"><span>Canje de puntos ({{ puntosACanjear() }} pts):</span> - S/ {{ descuentoPuntosMonto().toFixed(2) }}</div>
+          }
           @if (esUrgente()) {
             <div class="recargo"><span><app-icon name="fire" [size]="11"></app-icon> Recargo urgente ({{ recargoUrgentePorcentaje() }}%):</span> + S/ {{ recargoUrgenteMonto().toFixed(2) }}</div>
           }
@@ -193,6 +201,23 @@
             }
           </select>
 
+          @if (esDomicilio() && negocioConfig.servicioDeliveryId) {
+            <div class="cargo-domicilio">
+              <div class="cargo-domicilio__head">
+                <label>{{ modalidad === 'Delivery' ? 'Costo de delivery' : 'Costo de recojo' }}</label>
+                <span>Tarifa de este pedido</span>
+              </div>
+              <div class="cargo-domicilio__input">
+                <span>S/</span>
+                <input type="number" min="0" max="10000" step="0.50"
+                       [ngModel]="costoDeliveryPedido"
+                       (ngModelChange)="actualizarCostoDelivery($event)"
+                       aria-label="Costo de delivery del pedido" />
+              </div>
+              <p class="hint">Puedes ajustar el monto según la zona. La sugerencia inicial es S/ {{ negocioConfig.costoDelivery.toFixed(2) }}.</p>
+            </div>
+          }
+
           <label>{{ etiquetaFechaProgramada() }}</label>
           <input type="datetime-local" [ngModel]="fechaEntregaValor()"
                  (ngModelChange)="fechaEntregaValor.set($event)" />
@@ -207,6 +232,11 @@
 
           <p class="hint"><app-icon name="calendar" [size]="13"></app-icon> <strong>{{ fechaEntregaEstimada() | date:'EEEE d MMM, h:mm a' }}</strong></p>
           <p class="hint hint--sub">Si hay demora, luego ajustas la fecha en el detalle del pedido y el cliente recibe el nuevo horario por WhatsApp.</p>
+
+          <label class="label-obs">Observaciones del pedido <small class="hint">(opcional)</small></label>
+          <textarea rows="2" [(ngModel)]="observacionesPedido"
+            placeholder="Indicaciones generales de todo el pedido (ej. entregar solo al titular, no usar suavizante...)"></textarea>
+          <p class="hint hint--sub">Se imprime en el ticket y la ve el personal de producción.</p>
         </div>
 
         <div class="card paso">
@@ -236,8 +266,22 @@
             <button class="switch-btn" [class.is-active]="aplicaDescuento()" (click)="aplicaDescuento.set(true)">SI</button>
           </div>
           @if (aplicaDescuento()) {
-            <label>Porcentaje</label>
-            <input type="number" min="0" max="100" [ngModel]="descuentoPorcentaje()" (ngModelChange)="descuentoPorcentaje.set($event)" />
+            <label>Porcentaje @if (maxDescuentoPct > 0) { <small class="hint">(máx. {{ maxDescuentoPct }}%)</small> }</label>
+            <input type="number" min="0" max="100" [ngModel]="descuentoPorcentaje()" (ngModelChange)="setDescuentoPct($event)" />
+          }
+
+          @if (canjeHabilitado) {
+            <div class="canje">
+              <div class="canje__head">
+                <span>★ Canjear puntos</span>
+                <strong>{{ puntosDisponibles }} pts disponibles</strong>
+              </div>
+              <div class="canje__input">
+                <input type="number" min="0" [ngModel]="puntosACanjear()" (ngModelChange)="setPuntosACanjear($event)" placeholder="0" />
+                <span>pts = <strong>S/ {{ descuentoPuntosMonto().toFixed(2) }}</strong> de descuento</span>
+              </div>
+              <p class="hint">Cada punto vale S/ {{ valorPuntoCanje.toFixed(2) }}.</p>
+            </div>
           }
 
           <label class="label-urgente"><app-icon name="fire" [size]="14"></app-icon> ¿Servicio urgente?</label>

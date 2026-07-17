@@ -15,17 +15,27 @@
     </div>
 
     <form (submit)="submit(); $event.preventDefault()">
-      <label>Usuario</label>
-      <input type="text" [(ngModel)]="usuario" name="usuario" autocomplete="username" placeholder="admin" />
+      <label for="login-usuario">Usuario</label>
+      <input id="login-usuario" type="text" [(ngModel)]="usuario" name="usuario"
+             autocomplete="username" placeholder="admin" required minlength="3" />
 
-      <label>Contraseña</label>
-      <input type="password" [(ngModel)]="password" name="password" autocomplete="current-password" placeholder="••••••••" />
+      <label for="login-password">Contraseña</label>
+      <div class="login__password">
+        <input id="login-password" [type]="mostrarPassword() ? 'text' : 'password'" [(ngModel)]="password"
+               name="password" autocomplete="current-password" placeholder="••••••••" required minlength="4" />
+        <button type="button" class="login__password-toggle" (click)="mostrarPassword.set(!mostrarPassword())"
+                [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                [attr.title]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+          <app-icon [name]="mostrarPassword() ? 'eye-off' : 'eye'" [size]="18"></app-icon>
+        </button>
+      </div>
 
       @if (error()) {
-        <div class="login__error">{{ error() }}</div>
+        <div class="login__error" role="alert">{{ error() }}</div>
       }
 
-      <button type="submit" class="login__btn" [disabled]="cargando()">
+      <button type="submit" class="login__btn" [class.is-loading]="cargando()" [disabled]="cargando()"
+              [attr.aria-busy]="cargando()">
         {{ cargando() ? 'Ingresando…' : 'Ingresar' }}
       </button>
     </form>

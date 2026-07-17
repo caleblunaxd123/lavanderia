@@ -62,6 +62,13 @@ export class ReporteDetalleComponent implements OnInit {
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
 
+  // Acción operativa por fila (donar / reenviar-almacen), si el reporte la ofrece.
+  readonly accion = computed(() => this.resultado()?.accion ?? null);
+  readonly accionLabel = computed(() => ({ 'donar': 'Donar', 'reenviar-almacen': 'A almacén' } as Record<string, string>)[this.accion() ?? ''] ?? '');
+  readonly confirmarDonar = signal<{ id: number; texto: string } | null>(null);
+  readonly ejecutandoAccion = signal(false);
+  readonly exportando = signal(false);
+
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       const clave = params.get('key') as ReporteKey;
@@ -113,6 +120,69 @@ export class ReporteDetalleComponent implements OnInit {
     a.download = `reporte-${this.clave}-${this.desde || 'todo'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // --- Acciones operativas ---
+  onAccion(fila: Record<string, string>) {
+    const id = Number(fila['_id']);
+    if (!id) return;
+    if (this.accion() === 'donar') {
+      this.confirmarDonar.set({ id, texto: fila['Cliente'] ? `${fila['N°']} · ${fila['Cliente']}` : fila['N°'] });
+    } else if (this.accion() === 'reenviar-almacen') {
+      this.reenviarAlmacen(id);
+    }
+  }
+
+  confirmarDonarOk() {
+    const c = this.confirmarDonar();
+    if (!c) return;
+    this.ejecutandoAccion.set(true);
+    this.svc.donarPedido(c.id).subscribe({
+      next: () => {
+        this.ejecutandoAccion.set(false);
+        this.confirmarDonar.set(null);
+        this.toast.exito('Pedido enviado a donación.');
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.ejecutandoAccion.set(false);
+        this.toast.desdeHttp(err, 'No se pudo enviar a donación.');
+      }
+    });
+  }
+
+  private reenviarAlmacen(id: number) {
+    this.ejecutandoAccion.set(true);
+    this.svc.reenviarAlmacen(id).subscribe({
+      next: () => {
+        this.ejecutandoAccion.set(false);
+        this.toast.exito('Pedido reenviado a almacén (listo para recojo).');
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.ejecutandoAccion.set(false);
+        this.toast.desdeHttp(err, 'No se pudo reenviar a almacén.');
+      }
+    });
+  }
+
+  exportarExcel() {
+    if (!this.clave) return;
+    const r = this.resultado();
+    if (!r || r.filas.length === 0) { this.toast.advertencia('No hay datos para exportar.'); return; }
+    this.exportando.set(true);
+    this.svc.exportarExcel(this.clave, this.meta?.usaRango ? this.desde : undefined, this.meta?.usaRango ? this.hasta : undefined).subscribe({
+      next: blob => {
+        this.exportando.set(false);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte-${this.clave}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => { this.exportando.set(false); this.toast.error('No se pudo exportar a Excel.'); }
+    });
   }
 
   volver() { this.router.navigate(['/reportes']); }

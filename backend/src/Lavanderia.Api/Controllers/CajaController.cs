@@ -71,21 +71,59 @@ public class CajaController : TenantAwareControllerBase
     [HttpPost("cuadres")]
     public async Task<ActionResult<CuadreCajaDto>> GuardarCuadre([FromBody] GuardarCuadreRequest req, CancellationToken ct)
     {
+        var sedeId = SedeId!.Value;
+        var usuarioCierreId = req.UsuarioId ?? UsuarioId;
+        if (usuarioCierreId != UsuarioId && !User.IsInRole("ADMIN"))
+            return Forbid();
+
+        if (usuarioCierreId != UsuarioId)
+        {
+            var usuariosSede = await _repo.UsuariosDelDiaAsync(req.Fecha.Date, sedeId, ct);
+            if (!usuariosSede.Any(u => u.Id == usuarioCierreId))
+                return BadRequest(new { mensaje = "El colaborador no pertenece a esta sede o no tiene movimientos en la fecha indicada." });
+        }
+
+        if (req.Corte > req.TotalContado)
+            return BadRequest(new { mensaje = "El corte no puede ser mayor que el efectivo contado." });
+
+        // Los importes derivados se calculan siempre desde los movimientos persistidos. El
+        // navegador solo informa el efectivo contado, la caja inicial y el corte fisico.
+        var movimientos = await _repo.ListarMovimientosAsync(req.Fecha.Date, usuarioCierreId, sedeId, ct);
+        var ingresosEfectivo = movimientos
+            .Where(m => m.Tipo == "INGRESO" && m.MetodoPago == "EFECTIVO")
+            .Sum(m => m.Monto);
+        var gastosEfectivo = movimientos
+            .Where(m => m.Tipo == "GASTO" && m.MetodoPago == "EFECTIVO")
+            .Sum(m => m.Monto);
+        var ingresosDigital = movimientos
+            .Where(m => m.Tipo == "INGRESO" && m.MetodoPago is "YAPE" or "PLIN" or "TRANSFERENCIA")
+            .Sum(m => m.Monto);
+        var ingresosTarjeta = movimientos
+            .Where(m => m.Tipo == "INGRESO" && m.MetodoPago is "POS" or "TARJETA")
+            .Sum(m => m.Monto);
+        var esperado = req.CajaInicial + ingresosEfectivo - gastosEfectivo;
+        var diferencia = req.TotalContado - esperado;
+        var cajaFinal = req.TotalContado - req.Corte;
+
         var cuadre = new CuadreCaja
         {
-            SedeId = SedeId!.Value,
+            SedeId = sedeId,
             Fecha = req.Fecha.Date,
-            UsuarioId = UsuarioId,
+            UsuarioId = usuarioCierreId,
             CajaInicial = req.CajaInicial,
-            PedidosPagadosEfect = req.PedidosPagadosEfect,
-            Gastos = req.Gastos,
+            PedidosPagadosEfect = ingresosEfectivo,
+            Gastos = gastosEfectivo,
             TotalContado = req.TotalContado,
-            Diferencia = req.Diferencia,
-            CajaFinal = req.CajaFinal,
+            Diferencia = diferencia,
+            CajaFinal = cajaFinal,
+            Corte = req.Corte,
+            IngresosDigital = ingresosDigital,
+            IngresosTarjeta = ingresosTarjeta,
+            Nota = req.Nota,
             Observaciones = req.Observaciones
         };
         var id = await _repo.GuardarCuadreAsync(cuadre, ct);
-        var guardado = await _repo.ObtenerCuadreAsync(id, SedeId!.Value, ct);
+        var guardado = await _repo.ObtenerCuadreAsync(id, sedeId, ct);
         return Ok(MapCuadre(guardado!));
     }
 
@@ -114,6 +152,8 @@ public class CajaController : TenantAwareControllerBase
         Monto = m.Monto,
         Descripcion = m.Descripcion,
         PedidoId = m.PedidoId,
+        PedidoNumero = m.PedidoNumero,
+        ClienteNombre = m.ClienteNombre,
         TipoGastoId = m.TipoGastoId,
         TipoGastoNombre = m.TipoGastoNombre
     };
@@ -130,6 +170,10 @@ public class CajaController : TenantAwareControllerBase
         TotalContado = c.TotalContado,
         Diferencia = c.Diferencia,
         CajaFinal = c.CajaFinal,
+        Corte = c.Corte,
+        IngresosDigital = c.IngresosDigital,
+        IngresosTarjeta = c.IngresosTarjeta,
+        Nota = c.Nota,
         Observaciones = c.Observaciones,
         FechaCreacion = c.FechaCreacion
     };

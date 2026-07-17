@@ -14,12 +14,25 @@ public interface INegocioRepository
     Task<bool> ExisteSlugAsync(string slug, CancellationToken ct = default);
     Task<List<NegocioResumenDto>> ListarConConteosAsync(CancellationToken ct = default);
     Task<bool> CambiarEstadoAsync(int id, bool activo, CancellationToken ct = default);
+    Task<PlataformaResumenDto> ObtenerResumenPlataformaAsync(CancellationToken ct = default);
+    Task ActualizarDatosAsync(int id, string nombre, string? ruc, string? titularNombre, string? titularEmail, string? titularCelular, string? notas, CancellationToken ct = default);
+    Task ActualizarSuscripcionAsync(int id, string plan, string estado, decimal monto, DateOnly? proximoPago, CancellationToken ct = default);
+    Task<int> ContarPedidosMesAsync(int negocioId, CancellationToken ct = default);
 }
 
 public class NegocioRepository : INegocioRepository
 {
     private readonly ISqlConnectionFactory _factory;
     public NegocioRepository(ISqlConnectionFactory factory) => _factory = factory;
+
+    private const string Columnas = @"Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, TitularCelular, Activo, FechaCreacion,
+                                      PlanSuscripcion, EstadoSuscripcion, MontoMensual, ProximoPago, NotasInternas";
+
+    private static DateOnly? LeerFechaOpcional(Microsoft.Data.SqlClient.SqlDataReader r, string col)
+    {
+        var ord = r.GetOrdinal(col);
+        return r.IsDBNull(ord) ? null : DateOnly.FromDateTime(r.GetDateTime(ord));
+    }
 
     private static Negocio Map(Microsoft.Data.SqlClient.SqlDataReader r) => new()
     {
@@ -29,8 +42,14 @@ public class NegocioRepository : INegocioRepository
         RucEmpresa = r.GetNullableString("RucEmpresa"),
         TitularNombre = r.GetNullableString("TitularNombre"),
         TitularEmail = r.GetNullableString("TitularEmail"),
+        TitularCelular = r.GetNullableString("TitularCelular"),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
-        FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion"))
+        FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion")),
+        PlanSuscripcion = r.GetString(r.GetOrdinal("PlanSuscripcion")),
+        EstadoSuscripcion = r.GetString(r.GetOrdinal("EstadoSuscripcion")),
+        MontoMensual = r.GetDecimal(r.GetOrdinal("MontoMensual")),
+        ProximoPago = LeerFechaOpcional(r, "ProximoPago"),
+        NotasInternas = r.GetNullableString("NotasInternas")
     };
 
     public async Task<int> CrearAsync(Negocio n, CancellationToken ct = default)
@@ -39,14 +58,15 @@ public class NegocioRepository : INegocioRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Negocio (Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, Activo)
+            INSERT INTO dbo.Negocio (Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, TitularCelular, Activo)
             OUTPUT INSERTED.Id
-            VALUES (@Nombre, @Slug, @RucEmpresa, @TitularNombre, @TitularEmail, @Activo);";
+            VALUES (@Nombre, @Slug, @RucEmpresa, @TitularNombre, @TitularEmail, @TitularCelular, @Activo);";
         cmd.AddParam("@Nombre", n.Nombre);
         cmd.AddParam("@Slug", n.Slug);
         cmd.AddParam("@RucEmpresa", n.RucEmpresa);
         cmd.AddParam("@TitularNombre", n.TitularNombre);
         cmd.AddParam("@TitularEmail", n.TitularEmail);
+        cmd.AddParam("@TitularCelular", n.TitularCelular);
         cmd.AddParam("@Activo", n.Activo);
         return await cmd.ReadScalarAsync<int>(ct);
     }
@@ -57,7 +77,8 @@ public class NegocioRepository : INegocioRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, Activo, FechaCreacion
+            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, TitularCelular, Activo, FechaCreacion,
+                   PlanSuscripcion, EstadoSuscripcion, MontoMensual, ProximoPago, NotasInternas
             FROM dbo.Negocio
             WHERE Id = @Id";
         cmd.AddParam("@Id", id);
@@ -70,7 +91,8 @@ public class NegocioRepository : INegocioRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, Activo, FechaCreacion
+            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, TitularCelular, Activo, FechaCreacion,
+                   PlanSuscripcion, EstadoSuscripcion, MontoMensual, ProximoPago, NotasInternas
             FROM dbo.Negocio
             WHERE Slug = @Slug AND Activo = 1";
         cmd.AddParam("@Slug", slug);
@@ -83,7 +105,8 @@ public class NegocioRepository : INegocioRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, Activo, FechaCreacion
+            SELECT Id, Nombre, Slug, RucEmpresa, TitularNombre, TitularEmail, TitularCelular, Activo, FechaCreacion,
+                   PlanSuscripcion, EstadoSuscripcion, MontoMensual, ProximoPago, NotasInternas
             FROM dbo.Negocio
             WHERE Slug = @Slug";
         cmd.AddParam("@Slug", slug);
@@ -110,15 +133,21 @@ public class NegocioRepository : INegocioRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
+        // Subconsultas en vez de GROUP BY: evita duplicar filas al contar sedes/usuarios/pedidos
+        // por separado, y deja el conteo de pedidos del mes (via Sede) fácil de leer.
         cmd.CommandText = @"
             SELECT n.Id, n.Nombre, n.Slug, n.Activo, n.FechaCreacion,
-                   COUNT(DISTINCT s.Id) AS CantidadSedes,
-                   COUNT(DISTINCT u.Id) AS CantidadUsuarios
+                   n.PlanSuscripcion, n.EstadoSuscripcion, n.MontoMensual, n.ProximoPago,
+                   (SELECT COUNT(*) FROM dbo.Sede s WHERE s.NegocioId = n.Id) AS CantidadSedes,
+                   (SELECT COUNT(*) FROM dbo.Usuario u WHERE u.NegocioId = n.Id) AS CantidadUsuarios,
+                   (SELECT MAX(u.UltimoAcceso) FROM dbo.Usuario u WHERE u.NegocioId = n.Id) AS UltimoAcceso,
+                   (SELECT COUNT(*) FROM dbo.Pedido p
+                      INNER JOIN dbo.Sede s ON s.Id = p.SedeId
+                      WHERE s.NegocioId = n.Id AND p.Anulado = 0
+                        AND YEAR(p.FechaIngreso) = YEAR(GETDATE())
+                        AND MONTH(p.FechaIngreso) = MONTH(GETDATE())) AS PedidosMes
             FROM dbo.Negocio n
-            LEFT JOIN dbo.Sede s ON s.NegocioId = n.Id
-            LEFT JOIN dbo.Usuario u ON u.NegocioId = n.Id
             WHERE n.Slug <> 'plataforma-interna'
-            GROUP BY n.Id, n.Nombre, n.Slug, n.Activo, n.FechaCreacion
             ORDER BY n.FechaCreacion DESC";
         return await cmd.ReadListAsync(r => new NegocioResumenDto(
             r.GetInt32(r.GetOrdinal("Id")),
@@ -127,7 +156,13 @@ public class NegocioRepository : INegocioRepository
             r.GetBoolean(r.GetOrdinal("Activo")),
             r.GetDateTime(r.GetOrdinal("FechaCreacion")),
             r.GetInt32(r.GetOrdinal("CantidadSedes")),
-            r.GetInt32(r.GetOrdinal("CantidadUsuarios"))
+            r.GetInt32(r.GetOrdinal("CantidadUsuarios")),
+            r.GetString(r.GetOrdinal("PlanSuscripcion")),
+            r.GetString(r.GetOrdinal("EstadoSuscripcion")),
+            r.GetDecimal(r.GetOrdinal("MontoMensual")),
+            LeerFechaOpcional(r, "ProximoPago"),
+            r.GetNullableDateTime("UltimoAcceso"),
+            r.GetInt32(r.GetOrdinal("PedidosMes"))
         ), ct);
     }
 
@@ -140,6 +175,94 @@ public class NegocioRepository : INegocioRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@Activo", activo);
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
+    }
+
+    public async Task<PlataformaResumenDto> ObtenerResumenPlataformaAsync(CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        // Todo excluye el negocio reservado. "Ingreso recurrente" solo suma empresas activas y
+        // con suscripcion vigente (no las suspendidas ni vencidas — esas no estan pagando).
+        cmd.CommandText = @"
+            SELECT
+              (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna') AS TotalEmpresas,
+              (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna' AND Activo = 1) AS EmpresasActivas,
+              (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna' AND Activo = 0) AS EmpresasSuspendidas,
+              (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna'
+                 AND YEAR(FechaCreacion) = YEAR(GETDATE()) AND MONTH(FechaCreacion) = MONTH(GETDATE())) AS EmpresasNuevasMes,
+              (SELECT ISNULL(SUM(MontoMensual), 0) FROM dbo.Negocio
+                 WHERE Slug <> 'plataforma-interna' AND Activo = 1 AND EstadoSuscripcion IN ('ACTIVA','PRUEBA')) AS IngresoMensualRecurrente,
+              (SELECT COUNT(*) FROM dbo.Pedido p INNER JOIN dbo.Sede s ON s.Id = p.SedeId
+                 INNER JOIN dbo.Negocio n ON n.Id = s.NegocioId
+                 WHERE n.Slug <> 'plataforma-interna' AND p.Anulado = 0
+                   AND YEAR(p.FechaIngreso) = YEAR(GETDATE()) AND MONTH(p.FechaIngreso) = MONTH(GETDATE())) AS PedidosMesTotal,
+              (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna' AND Activo = 1
+                 AND ProximoPago IS NOT NULL AND ProximoPago BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(DAY, 7, CAST(GETDATE() AS DATE))) AS EmpresasPorVencer,
+              (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna'
+                 AND (EstadoSuscripcion = 'VENCIDA' OR (ProximoPago IS NOT NULL AND ProximoPago < CAST(GETDATE() AS DATE)))) AS EmpresasVencidas";
+        return await cmd.ReadFirstOrDefaultAsync(r => new PlataformaResumenDto(
+            r.GetInt32(r.GetOrdinal("TotalEmpresas")),
+            r.GetInt32(r.GetOrdinal("EmpresasActivas")),
+            r.GetInt32(r.GetOrdinal("EmpresasSuspendidas")),
+            r.GetInt32(r.GetOrdinal("EmpresasNuevasMes")),
+            r.GetDecimal(r.GetOrdinal("IngresoMensualRecurrente")),
+            r.GetInt32(r.GetOrdinal("PedidosMesTotal")),
+            r.GetInt32(r.GetOrdinal("EmpresasPorVencer")),
+            r.GetInt32(r.GetOrdinal("EmpresasVencidas"))
+        ), ct) ?? new PlataformaResumenDto(0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
+    public async Task ActualizarDatosAsync(int id, string nombre, string? ruc, string? titularNombre, string? titularEmail, string? titularCelular, string? notas, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE dbo.Negocio
+               SET Nombre = @Nombre, RucEmpresa = @Ruc, TitularNombre = @TitularNombre,
+                   TitularEmail = @TitularEmail, TitularCelular = @TitularCelular, NotasInternas = @Notas
+             WHERE Id = @Id AND Slug <> 'plataforma-interna'";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@Nombre", nombre);
+        cmd.AddParam("@Ruc", ruc);
+        cmd.AddParam("@TitularNombre", titularNombre);
+        cmd.AddParam("@TitularEmail", titularEmail);
+        cmd.AddParam("@TitularCelular", titularCelular);
+        cmd.AddParam("@Notas", notas);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task ActualizarSuscripcionAsync(int id, string plan, string estado, decimal monto, DateOnly? proximoPago, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            UPDATE dbo.Negocio
+               SET PlanSuscripcion = @Plan, EstadoSuscripcion = @Estado,
+                   MontoMensual = @Monto, ProximoPago = @ProximoPago
+             WHERE Id = @Id AND Slug <> 'plataforma-interna'";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@Plan", plan);
+        cmd.AddParam("@Estado", estado);
+        cmd.AddParam("@Monto", monto);
+        cmd.AddParam("@ProximoPago", proximoPago.HasValue ? proximoPago.Value.ToDateTime(TimeOnly.MinValue) : DBNull.Value);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<int> ContarPedidosMesAsync(int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT COUNT(*) FROM dbo.Pedido p
+            INNER JOIN dbo.Sede s ON s.Id = p.SedeId
+            WHERE s.NegocioId = @NegocioId AND p.Anulado = 0
+              AND YEAR(p.FechaIngreso) = YEAR(GETDATE()) AND MONTH(p.FechaIngreso) = MONTH(GETDATE())";
+        cmd.AddParam("@NegocioId", negocioId);
+        return await cmd.ReadScalarAsync<int>(ct);
     }
 }
 

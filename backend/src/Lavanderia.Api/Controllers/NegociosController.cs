@@ -93,6 +93,7 @@ public class NegociosController : ControllerBase
             RucEmpresa = rucEmpresa,
             TitularNombre = NormalizarOpcional(req.TitularNombre),
             TitularEmail = titularEmail,
+            TitularCelular = NormalizarOpcional(req.TitularCelular),
             Activo = true
         }, ct);
 
@@ -154,6 +155,110 @@ public class NegociosController : ControllerBase
         var actualizado = await _negocios.CambiarEstadoAsync(id, req.Activo, ct);
         if (!actualizado) return NotFound(new { mensaje = "Empresa no encontrada." });
         return NoContent();
+    }
+
+    /// <summary>KPIs del negocio-de-negocios para el tablero del propietario.</summary>
+    [HttpGet("resumen")]
+    public async Task<ActionResult<PlataformaResumenDto>> Resumen(CancellationToken ct)
+        => Ok(await _negocios.ObtenerResumenPlataformaAsync(ct));
+
+    /// <summary>Ficha completa de una empresa: datos, suscripción, sedes, usuarios, actividad.</summary>
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<NegocioDetalleDto>> Detalle(int id, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+
+        var sedes = await _sedes.ListarPorNegocioAsync(id, ct);
+        var usuarios = await _usuarios.ListarTodosAsync(id, ct);
+        var pedidosMes = await _negocios.ContarPedidosMesAsync(id, ct);
+        var admin = usuarios.FirstOrDefault(u => u.RolCodigo == "ADMIN");
+        var ultimoAcceso = usuarios.Where(u => u.UltimoAcceso.HasValue)
+            .Select(u => u.UltimoAcceso!.Value).DefaultIfEmpty().Max();
+
+        return Ok(new NegocioDetalleDto
+        {
+            Id = n.Id,
+            Nombre = n.Nombre,
+            Slug = n.Slug,
+            RucEmpresa = n.RucEmpresa,
+            TitularNombre = n.TitularNombre,
+            TitularEmail = n.TitularEmail,
+            TitularCelular = n.TitularCelular,
+            NotasInternas = n.NotasInternas,
+            Activo = n.Activo,
+            FechaCreacion = n.FechaCreacion,
+            PlanSuscripcion = n.PlanSuscripcion,
+            EstadoSuscripcion = n.EstadoSuscripcion,
+            MontoMensual = n.MontoMensual,
+            ProximoPago = n.ProximoPago,
+            PedidosMes = pedidosMes,
+            UltimoAcceso = ultimoAcceso == default ? null : ultimoAcceso,
+            AdminUsuario = admin?.UsuarioLogin,
+            Sedes = sedes.Select(s => new SedeResumenDto(s.Id, s.Nombre, s.Direccion, s.Activo)).ToList(),
+            Usuarios = usuarios.Select(u => new UsuarioResumenDto(u.Id, u.UsuarioLogin, u.NombreCompleto, u.RolCodigo, u.Activo, u.UltimoAcceso)).ToList()
+        });
+    }
+
+    /// <summary>Editar datos de una empresa (nombre, RUC, titular, notas internas).</summary>
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Editar(int id, [FromBody] EditarNegocioRequest req, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+
+        var ruc = NormalizarOpcional(req.RucEmpresa);
+        if (ruc is not null && !Regex.IsMatch(ruc, "^\\d{11}$"))
+            return BadRequest(new { mensaje = "El RUC debe tener 11 digitos." });
+        var titularEmail = NormalizarOpcional(req.TitularEmail);
+        if (!EmailValido(titularEmail))
+            return BadRequest(new { mensaje = "El email del titular no tiene un formato valido." });
+
+        await _negocios.ActualizarDatosAsync(id, req.Nombre.Trim(), ruc,
+            NormalizarOpcional(req.TitularNombre), titularEmail, NormalizarOpcional(req.TitularCelular), NormalizarOpcional(req.NotasInternas), ct);
+        return NoContent();
+    }
+
+    /// <summary>Cambiar plan, estado, monto y próximo pago de la suscripción.</summary>
+    [HttpPut("{id:int}/suscripcion")]
+    public async Task<IActionResult> CambiarSuscripcion(int id, [FromBody] CambiarSuscripcionRequest req, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+
+        var planes = new[] { "BASICO", "PRO", "PREMIUM" };
+        var estados = new[] { "PRUEBA", "ACTIVA", "VENCIDA", "SUSPENDIDA" };
+        var plan = req.PlanSuscripcion.Trim().ToUpperInvariant();
+        var estado = req.EstadoSuscripcion.Trim().ToUpperInvariant();
+        if (!planes.Contains(plan)) return BadRequest(new { mensaje = "Plan inválido." });
+        if (!estados.Contains(estado)) return BadRequest(new { mensaje = "Estado de suscripción inválido." });
+
+        await _negocios.ActualizarSuscripcionAsync(id, plan, estado, req.MontoMensual, req.ProximoPago, ct);
+        return NoContent();
+    }
+
+    /// <summary>Restablece la contraseña del administrador de la empresa (soporte del propietario).
+    /// Devuelve el nombre de usuario para que el propietario se lo comunique al cliente.</summary>
+    [HttpPost("{id:int}/reset-password-admin")]
+    public async Task<IActionResult> ResetPasswordAdmin(int id, [FromBody] ResetPasswordAdminRequest req, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+
+        if (!Regex.IsMatch(req.NuevaPassword, "^(?=.*[A-Za-z])(?=.*\\d).{8,}$"))
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres, con letras y números." });
+
+        var usuarios = await _usuarios.ListarTodosAsync(id, ct);
+        var admin = usuarios.FirstOrDefault(u => u.RolCodigo == "ADMIN" && u.Activo);
+        if (admin is null)
+            return BadRequest(new { mensaje = "Esta empresa no tiene un administrador activo." });
+
+        await _usuarios.ActualizarPasswordAsync(admin.Id, BCrypt.Net.BCrypt.HashPassword(req.NuevaPassword), id, ct);
+        return Ok(new { usuario = admin.UsuarioLogin });
     }
 
     // Mismos defaults que ya usa Lavixa en produccion (ver 021_propietario_plataforma.sql).

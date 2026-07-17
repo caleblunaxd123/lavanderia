@@ -17,17 +17,21 @@ export const routes: Routes = [
       {
         path: 'nueva',
         loadComponent: () => import('./pages/plataforma-negocio-crear/plataforma-negocio-crear.component').then(m => m.PlataformaNegocioCrearComponent)
+      },
+      {
+        path: 'empresa/:id',
+        loadComponent: () => import('./pages/plataforma-negocio-detalle/plataforma-negocio-detalle.component').then(m => m.PlataformaNegocioDetalleComponent)
       }
     ]
   },
   {
     path: 'ticket/:id',
-    canActivate: [authGuard],
+    canActivate: [authGuard, moduloGuard('PEDIDOS')],
     loadComponent: () => import('./pages/ticket/ticket.component').then(m => m.TicketComponent)
   },
   {
     path: 'cuadre-caja/imprimir/:id',
-    canActivate: [authGuard],
+    canActivate: [authGuard, moduloGuard('CAJA')],
     loadComponent: () => import('./pages/cuadre-imprimir/cuadre-imprimir.component').then(m => m.CuadreImprimirComponent)
   },
   {
@@ -76,6 +80,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/clientes/clientes.component').then(m => m.ClientesComponent)
       },
       {
+        path: 'clientes/crm',
+        canActivate: [moduloGuard('CLIENTES')],
+        loadComponent: () => import('./pages/crm/crm.component').then(m => m.CrmComponent)
+      },
+      {
         path: 'promociones',
         canActivate: [moduloGuard('PROMOCIONES')],
         loadComponent: () => import('./pages/promociones/promociones.component').then(m => m.PromocionesComponent)
@@ -84,6 +93,24 @@ export const routes: Routes = [
         path: 'reportes',
         canActivate: [moduloGuard('REPORTES')],
         loadComponent: () => import('./pages/reportes/reportes.component').then(m => m.ReportesComponent)
+      },
+      {
+        // Debe ir antes de 'reportes/:key' (ruta con parametro) para que Angular no la confunda
+        // con la clave de un reporte generico.
+        path: 'reportes/gerencial',
+        canActivate: [moduloGuard('REPORTES')],
+        loadComponent: () => import('./pages/vista-gerencial/vista-gerencial.component').then(m => m.VistaGerencialComponent)
+      },
+      {
+        path: 'reportes/consolidado',
+        canActivate: [moduloGuard('REPORTES')],
+        loadComponent: () => import('./pages/consolidado/consolidado.component').then(m => m.ConsolidadoComponent)
+      },
+      {
+        // Pantalla dedicada de cuadres diarios (antes de 'reportes/:key').
+        path: 'reportes/cuadres-caja',
+        canActivate: [moduloGuard('REPORTES')],
+        loadComponent: () => import('./pages/reporte-cuadres-diarios/reporte-cuadres-diarios.component').then(m => m.ReporteCuadresDiariosComponent)
       },
       {
         path: 'inventario',
@@ -134,6 +161,11 @@ export const routes: Routes = [
         path: 'ajustes/areas',
         canActivate: [moduloGuard('AJUSTES')],
         loadComponent: () => import('./pages/ajustes-areas/ajustes-areas.component').then(m => m.AjustesAreasComponent)
+      },
+      {
+        path: 'ajustes/motorizados',
+        canActivate: [moduloGuard('AJUSTES')],
+        loadComponent: () => import('./pages/ajustes-motorizados/ajustes-motorizados.component').then(m => m.AjustesMotorizadosComponent)
       },
       {
         path: 'ajustes/personal',

@@ -83,9 +83,11 @@ public class DbInitializer
             Activo = true
         }, ct);
 
+        // No se loguea la contrasena en texto plano: cualquier sistema de recoleccion de logs
+        // quedaria con la clave real del admin. El operador ya la conoce (la puso en config).
         _log.LogWarning(
-            "Usuario admin creado con id={Id} (negocioId={NegocioId}, sedeId={SedeId}). Credenciales por defecto: {Usuario}/{Password}. CAMBIAR EN PRODUCCION.",
-            id, negocioId, sedeId, usuario, password);
+            "Usuario admin '{Usuario}' creado con id={Id} (negocioId={NegocioId}, sedeId={SedeId}) usando la contrasena de SeedAdmin:Password. CAMBIALA apenas inicies sesion.",
+            usuario, id, negocioId, sedeId);
     }
 
     /// <summary>
@@ -131,8 +133,8 @@ public class DbInitializer
         }, ct);
 
         _log.LogWarning(
-            "Usuario propietario creado con id={Id}. Credenciales por defecto: {Usuario}/{Password}. CAMBIAR EN PRODUCCION.",
-            id, usuario, password);
+            "Usuario propietario '{Usuario}' creado con id={Id} usando la contrasena de SeedPropietario:Password. CAMBIALA apenas inicies sesion.",
+            usuario, id);
     }
 
     /// <summary>Slug de URL a partir del nombre del negocio (minusculas, sin acentos ni espacios).</summary>

@@ -28,7 +28,8 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
         cmd.CommandText = @$"
             SELECT TOP 1 Id, NombreNegocio, LogoUrl, ColorPrimario, ColorSecundario, ColorAcento,
                          Direccion, Telefono, Ruc, HorarioAtencion, Igv, MetaMensual, SolesPorPunto,
-                         AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery
+                         AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery,
+                         ValorPuntoCanje, MaxDescuentoPct
             FROM dbo.ConfiguracionNegocio
             {whereNegocio}
             ORDER BY Id";
@@ -52,7 +53,9 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
             MensajePieTicket = r.GetNullableString("MensajePieTicket"),
             CondicionesServicio = r.GetNullableString("CondicionesServicio"),
             NotasProduccion = r.GetNullableString("NotasProduccion"),
-            CostoDelivery = r.GetDecimal(r.GetOrdinal("CostoDelivery"))
+            CostoDelivery = r.GetDecimal(r.GetOrdinal("CostoDelivery")),
+            ValorPuntoCanje = r.GetDecimal(r.GetOrdinal("ValorPuntoCanje")),
+            MaxDescuentoPct = r.GetDecimal(r.GetOrdinal("MaxDescuentoPct"))
         }, ct);
     }
 
@@ -84,15 +87,19 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
                 CondicionesServicio = @CondicionesServicio,
                 NotasProduccion = @NotasProduccion,
                 CostoDelivery = @CostoDelivery,
+                ValorPuntoCanje = @ValorPuntoCanje,
+                MaxDescuentoPct = @MaxDescuentoPct,
                 FechaActualizacion = SYSDATETIME()
             WHEN NOT MATCHED THEN INSERT
                 (NegocioId, NombreNegocio, LogoUrl, ColorPrimario, ColorSecundario, ColorAcento,
                  Direccion, Telefono, Ruc, HorarioAtencion, Igv, MetaMensual, SolesPorPunto,
-                 AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery)
+                 AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery,
+                 ValorPuntoCanje, MaxDescuentoPct)
                 VALUES
                 (@NegocioId, @NombreNegocio, @LogoUrl, @ColorPrimario, @ColorSecundario, @ColorAcento,
                  @Direccion, @Telefono, @Ruc, @HorarioAtencion, @Igv, @MetaMensual, @SolesPorPunto,
-                 @AnchoTicketMm, @MensajePieTicket, @CondicionesServicio, @NotasProduccion, @CostoDelivery);";
+                 @AnchoTicketMm, @MensajePieTicket, @CondicionesServicio, @NotasProduccion, @CostoDelivery,
+                 @ValorPuntoCanje, @MaxDescuentoPct);";
         cmd.AddParam("@NegocioId", negocioId);
         cmd.AddParam("@NombreNegocio", c.NombreNegocio);
         cmd.AddParam("@LogoUrl", c.LogoUrl);

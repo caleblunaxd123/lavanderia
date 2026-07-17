@@ -104,7 +104,7 @@ export class AjustesPersonalComponent implements OnInit {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el empleado.';
         this.errorForm.set(msg);
-        this.toast.error(msg);
+        this.toast.desdeHttp(err, msg);
       }
     });
   }
@@ -124,7 +124,7 @@ export class AjustesPersonalComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo desactivar.');
+        this.toast.desdeHttp(err, 'No se pudo desactivar.');
       }
     });
   }

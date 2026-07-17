@@ -10,6 +10,25 @@ export interface ClienteFrecuente {
   visitas: number;
 }
 
+export interface ClienteAnalitica {
+  clienteId: number;
+  nombre: string;
+  celular: string | null;
+  totalPedidos: number;
+  ticketPromedio: number;
+  ultimaCompra: string;
+  diasSinComprar: number;
+  deudaTotal: number;
+}
+
+export interface ClienteCumpleanos {
+  clienteId: number;
+  nombre: string;
+  celular: string | null;
+  fechaNacimiento: string;
+  diasParaCumpleanos: number;
+}
+
 export interface MovimientoPuntos {
   id: number;
   clienteId: number;
@@ -65,5 +84,13 @@ export class ClientesService {
 
   agregarPuntos(clienteId: number, motivo: string, puntos: number, tipo: 'SUMA' | 'RESTA') {
     return this.http.post<void>(`${this.base}/${clienteId}/puntos`, { motivo, puntos, tipo });
+  }
+
+  analitica() {
+    return this.http.get<ClienteAnalitica[]>(`${this.base}/analitica`);
+  }
+
+  cumpleanosProximos(dias = 30) {
+    return this.http.get<ClienteCumpleanos[]>(`${this.base}/cumpleanos-proximos`, { params: { dias } });
   }
 }

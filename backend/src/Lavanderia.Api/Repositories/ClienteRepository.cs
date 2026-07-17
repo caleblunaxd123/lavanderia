@@ -18,6 +18,12 @@ public interface IClienteRepository
     Task FusionarAsync(int origenId, int destinoId, int negocioId, CancellationToken ct = default);
     Task<List<MovimientoPuntos>> ListarMovimientosPuntosAsync(int clienteId, int negocioId, CancellationToken ct = default);
     Task AgregarMovimientoPuntosAsync(MovimientoPuntos m, int negocioId, CancellationToken ct = default);
+    Task RevertirPuntosPedidoAsync(int pedidoId, int negocioId, int? usuarioId, CancellationToken ct = default);
+    Task<decimal> DeudaTotalAsync(int clienteId, int negocioId, CancellationToken ct = default);
+    /// <summary>Clientes con al menos un pedido, ordenados por los que no compran hace mas
+    /// tiempo primero — la lista base para una campana de "vuelve pronto".</summary>
+    Task<List<ClienteAnaliticaDto>> ListarAnaliticaAsync(int negocioId, CancellationToken ct = default);
+    Task<List<ClienteCumpleanosDto>> ListarCumpleanosProximosAsync(int negocioId, int diasAdelante, CancellationToken ct = default);
 }
 
 public class ClienteRepository : IClienteRepository
@@ -26,7 +32,7 @@ public class ClienteRepository : IClienteRepository
     public ClienteRepository(ISqlConnectionFactory factory) => _factory = factory;
 
     private const string BaseSelect = @"
-        SELECT Id, NegocioId, Nombre, Celular, Dni, DocumentoFiscal, Direccion, Puntos, Activo, FechaCreacion
+        SELECT Id, NegocioId, Nombre, Celular, Dni, DocumentoFiscal, Direccion, Puntos, Activo, FechaCreacion, FechaNacimiento
         FROM dbo.Cliente";
 
     private static Cliente Map(Microsoft.Data.SqlClient.SqlDataReader r) => new()
@@ -39,7 +45,8 @@ public class ClienteRepository : IClienteRepository
         Direccion = r.GetNullableString("Direccion"),
         Puntos = r.GetInt32(r.GetOrdinal("Puntos")),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
-        FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion"))
+        FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion")),
+        FechaNacimiento = r.IsDBNull(r.GetOrdinal("FechaNacimiento")) ? null : DateOnly.FromDateTime(r.GetDateTime(r.GetOrdinal("FechaNacimiento")))
     };
 
     public async Task<List<Cliente>> BuscarAsync(string? texto, string? campo, int limite, int negocioId, CancellationToken ct = default)
@@ -116,9 +123,9 @@ public class ClienteRepository : IClienteRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Cliente (NegocioId, Nombre, Celular, Dni, DocumentoFiscal, Direccion, Puntos)
+            INSERT INTO dbo.Cliente (NegocioId, Nombre, Celular, Dni, DocumentoFiscal, Direccion, Puntos, FechaNacimiento)
             OUTPUT INSERTED.Id
-            VALUES (@NegocioId, @Nombre, @Celular, @Dni, @DocumentoFiscal, @Direccion, @Puntos);";
+            VALUES (@NegocioId, @Nombre, @Celular, @Dni, @DocumentoFiscal, @Direccion, @Puntos, @FechaNacimiento);";
         cmd.AddParam("@NegocioId", c.NegocioId);
         cmd.AddParam("@Nombre", c.Nombre);
         cmd.AddParam("@Celular", c.Celular);
@@ -126,6 +133,7 @@ public class ClienteRepository : IClienteRepository
         cmd.AddParam("@DocumentoFiscal", c.DocumentoFiscal);
         cmd.AddParam("@Direccion", c.Direccion);
         cmd.AddParam("@Puntos", c.Puntos);
+        cmd.AddParam("@FechaNacimiento", c.FechaNacimiento?.ToDateTime(TimeOnly.MinValue));
         return await cmd.ReadScalarAsync<int>(ct);
     }
 
@@ -141,7 +149,8 @@ public class ClienteRepository : IClienteRepository
                    Dni = @Dni,
                    DocumentoFiscal = @DocumentoFiscal,
                    Direccion = @Direccion,
-                   Puntos = @Puntos
+                   Puntos = @Puntos,
+                   FechaNacimiento = @FechaNacimiento
              WHERE Id = @Id AND NegocioId = @NegocioId";
         cmd.AddParam("@Id", c.Id);
         cmd.AddParam("@Nombre", c.Nombre);
@@ -150,6 +159,7 @@ public class ClienteRepository : IClienteRepository
         cmd.AddParam("@DocumentoFiscal", c.DocumentoFiscal);
         cmd.AddParam("@Direccion", c.Direccion);
         cmd.AddParam("@Puntos", c.Puntos);
+        cmd.AddParam("@FechaNacimiento", c.FechaNacimiento?.ToDateTime(TimeOnly.MinValue));
         cmd.AddParam("@NegocioId", negocioId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
@@ -280,7 +290,7 @@ public class ClienteRepository : IClienteRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT m.Id, m.ClienteId, m.Fecha, m.Motivo, m.Puntos, m.Tipo, m.UsuarioId, u.NombreCompleto AS UsuarioNombre
+            SELECT m.Id, m.ClienteId, m.Fecha, m.Motivo, m.Puntos, m.Tipo, m.UsuarioId, m.PedidoId, u.NombreCompleto AS UsuarioNombre
             FROM dbo.MovimientoPuntos m
             INNER JOIN dbo.Cliente c ON c.Id = m.ClienteId
             LEFT JOIN dbo.Usuario u ON u.Id = m.UsuarioId
@@ -297,7 +307,8 @@ public class ClienteRepository : IClienteRepository
             Puntos = r.GetInt32(r.GetOrdinal("Puntos")),
             Tipo = r.GetString(r.GetOrdinal("Tipo")),
             UsuarioId = r.IsDBNull(r.GetOrdinal("UsuarioId")) ? null : r.GetInt32(r.GetOrdinal("UsuarioId")),
-            UsuarioNombre = r.GetNullableString("UsuarioNombre")
+            UsuarioNombre = r.GetNullableString("UsuarioNombre"),
+            PedidoId = r.GetNullableInt("PedidoId")
         }, ct);
     }
 
@@ -312,8 +323,8 @@ public class ClienteRepository : IClienteRepository
             {
                 cmdIns.Transaction = tx;
                 cmdIns.CommandText = @"
-                    INSERT INTO dbo.MovimientoPuntos (NegocioId, ClienteId, Fecha, Motivo, Puntos, Tipo, UsuarioId)
-                    SELECT @NegocioId, @ClienteId, SYSDATETIME(), @Motivo, @Puntos, @Tipo, @UsuarioId
+                    INSERT INTO dbo.MovimientoPuntos (NegocioId, ClienteId, Fecha, Motivo, Puntos, Tipo, UsuarioId, PedidoId)
+                    SELECT @NegocioId, @ClienteId, SYSDATETIME(), @Motivo, @Puntos, @Tipo, @UsuarioId, @PedidoId
                     WHERE EXISTS (
                         SELECT 1 FROM dbo.Cliente WHERE Id = @ClienteId AND NegocioId = @NegocioId
                     )";
@@ -323,6 +334,7 @@ public class ClienteRepository : IClienteRepository
                 cmdIns.AddParam("@Puntos", m.Puntos);
                 cmdIns.AddParam("@Tipo", m.Tipo);
                 cmdIns.AddParam("@UsuarioId", m.UsuarioId);
+                cmdIns.AddParam("@PedidoId", (object?)m.PedidoId ?? DBNull.Value);
                 var filas = await cmdIns.ExecuteNonQueryAsync(ct);
                 if (filas == 0) throw new InvalidOperationException("El cliente no pertenece a este negocio.");
             }
@@ -345,5 +357,158 @@ public class ClienteRepository : IClienteRepository
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+
+    /// <summary>Deshace los puntos (otorgados y/o canjeados) de un pedido que se anula, dejando
+    /// el saldo del cliente como si el pedido nunca hubiera existido. Idempotente: si ya no queda
+    /// nada neto que revertir, no hace cambios.</summary>
+    public async Task RevertirPuntosPedidoAsync(int pedidoId, int negocioId, int? usuarioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (Microsoft.Data.SqlClient.SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            int clienteId = 0, neto = 0;
+            await using (var cmdSum = conn.CreateCommand())
+            {
+                cmdSum.Transaction = tx;
+                cmdSum.CommandText = @"
+                    SELECT TOP 1 ClienteId,
+                           SUM(CASE WHEN Tipo = 'SUMA' THEN Puntos ELSE -Puntos END) AS Neto
+                    FROM dbo.MovimientoPuntos
+                    WHERE PedidoId = @PedidoId AND NegocioId = @NegocioId
+                    GROUP BY ClienteId";
+                cmdSum.AddParam("@PedidoId", pedidoId);
+                cmdSum.AddParam("@NegocioId", negocioId);
+                await using var r = await cmdSum.ExecuteReaderAsync(ct);
+                if (await r.ReadAsync(ct))
+                {
+                    clienteId = r.GetInt32(0);
+                    neto = r.IsDBNull(1) ? 0 : r.GetInt32(1);
+                }
+            }
+
+            if (clienteId == 0 || neto == 0) { await tx.RollbackAsync(ct); return; }
+
+            await using (var cmdIns = conn.CreateCommand())
+            {
+                cmdIns.Transaction = tx;
+                cmdIns.CommandText = @"
+                    INSERT INTO dbo.MovimientoPuntos (NegocioId, ClienteId, Fecha, Motivo, Puntos, Tipo, UsuarioId, PedidoId)
+                    VALUES (@NegocioId, @ClienteId, SYSDATETIME(), @Motivo, @Puntos, @Tipo, @UsuarioId, @PedidoId)";
+                cmdIns.AddParam("@NegocioId", negocioId);
+                cmdIns.AddParam("@ClienteId", clienteId);
+                cmdIns.AddParam("@Motivo", "Reversa de puntos por anulación del pedido");
+                cmdIns.AddParam("@Puntos", Math.Abs(neto));
+                cmdIns.AddParam("@Tipo", neto > 0 ? "RESTA" : "SUMA");
+                cmdIns.AddParam("@UsuarioId", (object?)usuarioId ?? DBNull.Value);
+                cmdIns.AddParam("@PedidoId", pedidoId);
+                await cmdIns.ExecuteNonQueryAsync(ct);
+            }
+
+            await using (var cmdUpd = conn.CreateCommand())
+            {
+                cmdUpd.Transaction = tx;
+                // Clamp a 0: si el cliente ya gastó los puntos que ahora se revierten, no lo dejamos negativo.
+                cmdUpd.CommandText = @"
+                    UPDATE dbo.Cliente
+                       SET Puntos = CASE WHEN Puntos - @Neto < 0 THEN 0 ELSE Puntos - @Neto END
+                     WHERE Id = @ClienteId AND NegocioId = @NegocioId";
+                cmdUpd.AddParam("@Neto", neto);
+                cmdUpd.AddParam("@ClienteId", clienteId);
+                cmdUpd.AddParam("@NegocioId", negocioId);
+                await cmdUpd.ExecuteNonQueryAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+        }
+        catch { await tx.RollbackAsync(ct); throw; }
+    }
+
+    /// <summary>Saldo total que el cliente debe: suma de (Total - MontoPagado) de todos sus
+    /// pedidos no anulados con saldo pendiente, a través de todas las sedes del negocio.</summary>
+    public async Task<decimal> DeudaTotalAsync(int clienteId, int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT ISNULL(SUM(p.Total - p.MontoPagado), 0)
+            FROM dbo.Pedido p
+            INNER JOIN dbo.Cliente c ON c.Id = p.ClienteId
+            WHERE p.ClienteId = @ClienteId AND c.NegocioId = @NegocioId
+              AND p.Anulado = 0 AND p.Total > p.MontoPagado";
+        cmd.AddParam("@ClienteId", clienteId);
+        cmd.AddParam("@NegocioId", negocioId);
+        var val = await cmd.ExecuteScalarAsync(ct);
+        return val is decimal d ? d : 0m;
+    }
+
+    public async Task<List<ClienteAnaliticaDto>> ListarAnaliticaAsync(int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT c.Id AS ClienteId, c.Nombre, c.Celular,
+                   COUNT(p.Id) AS TotalPedidos,
+                   AVG(p.Total) AS TicketPromedio,
+                   MAX(p.FechaIngreso) AS UltimaCompra,
+                   ISNULL(SUM(CASE WHEN p.Total > p.MontoPagado THEN p.Total - p.MontoPagado ELSE 0 END), 0) AS DeudaTotal
+            FROM dbo.Cliente c
+            INNER JOIN dbo.Pedido p ON p.ClienteId = c.Id AND p.Anulado = 0
+            WHERE c.NegocioId = @NegocioId AND c.Activo = 1
+            GROUP BY c.Id, c.Nombre, c.Celular
+            ORDER BY MAX(p.FechaIngreso) ASC";
+        cmd.AddParam("@NegocioId", negocioId);
+        var hoy = DateTime.Today;
+        return await cmd.ReadListAsync(r =>
+        {
+            var ultimaCompra = r.GetDateTime(r.GetOrdinal("UltimaCompra"));
+            return new ClienteAnaliticaDto(
+                r.GetInt32(r.GetOrdinal("ClienteId")),
+                r.GetString(r.GetOrdinal("Nombre")),
+                r.GetNullableString("Celular"),
+                r.GetInt32(r.GetOrdinal("TotalPedidos")),
+                r.GetDecimal(r.GetOrdinal("TicketPromedio")),
+                ultimaCompra,
+                (int)(hoy - ultimaCompra.Date).TotalDays,
+                r.GetDecimal(r.GetOrdinal("DeudaTotal"))
+            );
+        }, ct);
+    }
+
+    public async Task<List<ClienteCumpleanosDto>> ListarCumpleanosProximosAsync(int negocioId, int diasAdelante, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        // DATEADD (no DATEFROMPARTS) para que un cumpleanos 29-feb no rompa la consulta en anios
+        // no bisiestos: SQL Server lo recorta a 28-feb en vez de lanzar error de fecha invalida.
+        cmd.CommandText = @"
+            ;WITH ProximoCumple AS (
+                SELECT Id, Nombre, Celular, FechaNacimiento,
+                       DATEADD(YEAR,
+                           DATEDIFF(YEAR, FechaNacimiento, GETDATE())
+                               + CASE WHEN DATEADD(YEAR, DATEDIFF(YEAR, FechaNacimiento, GETDATE()), FechaNacimiento) < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END,
+                           FechaNacimiento) AS ProximaFecha
+                FROM dbo.Cliente
+                WHERE NegocioId = @NegocioId AND Activo = 1 AND FechaNacimiento IS NOT NULL
+            )
+            SELECT Id AS ClienteId, Nombre, Celular, FechaNacimiento,
+                   DATEDIFF(DAY, CAST(GETDATE() AS DATE), ProximaFecha) AS DiasParaCumpleanos
+            FROM ProximoCumple
+            WHERE DATEDIFF(DAY, CAST(GETDATE() AS DATE), ProximaFecha) <= @DiasAdelante
+            ORDER BY ProximaFecha";
+        cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@DiasAdelante", diasAdelante);
+        return await cmd.ReadListAsync(r => new ClienteCumpleanosDto(
+            r.GetInt32(r.GetOrdinal("ClienteId")),
+            r.GetString(r.GetOrdinal("Nombre")),
+            r.GetNullableString("Celular"),
+            DateOnly.FromDateTime(r.GetDateTime(r.GetOrdinal("FechaNacimiento"))),
+            r.GetInt32(r.GetOrdinal("DiasParaCumpleanos"))
+        ), ct);
     }
 }

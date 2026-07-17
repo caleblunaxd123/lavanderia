@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { CajaService, UsuarioDelDia } from '../../core/services/caja.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -22,6 +23,7 @@ export class CuadreCajaComponent implements OnInit {
   private readonly cajaSvc = inject(CajaService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
 
   fecha = new Date().toISOString().slice(0, 10);
   guardado = false;
@@ -46,7 +48,11 @@ export class CuadreCajaComponent implements OnInit {
     { valor: 0.1, cantidad: 0 },
   ]);
 
-  cajaInicial = 0;
+  cajaInicial = signal(0);  // signal para que enCajaDeberiaHaber/diferencia recalculen al tipear
+  corte = 0;        // efectivo que se entrega/retira al cierre
+  nota = '';        // observación libre del cuadre
+  // false = solo los movimientos del colaborador seleccionado; true = toda la caja del día (todos).
+  readonly verTodos = signal(false);
   readonly sugerenciaCajaInicial = signal<{ monto: number; usuarioNombre?: string; fecha: string } | null>(null);
 
   readonly movimientos = signal<MovimientoCaja[]>([]);
@@ -62,6 +68,9 @@ export class CuadreCajaComponent implements OnInit {
   guardandoGasto = signal(false);
 
   ngOnInit() {
+    // Si venimos del reporte con ?fecha=YYYY-MM-DD, cuadrar ese día.
+    const fechaQp = this.route.snapshot.queryParamMap.get('fecha');
+    if (fechaQp) this.fecha = fechaQp;
     this.cajaSvc.tiposGasto().subscribe(t => this.tiposGasto.set(t));
     // Por defecto, el usuario actualmente logueado es el seleccionado
     this.usuarioSeleccionadoId.set(this.auth.usuario()?.id ?? null);
@@ -98,7 +107,9 @@ export class CuadreCajaComponent implements OnInit {
   seleccionarUsuario(id: number) {
     if (this.usuarioSeleccionadoId() === id) return;
     this.usuarioSeleccionadoId.set(id);
-    this.cajaInicial = 0;
+    this.cajaInicial.set(0);
+    this.corte = 0;
+    this.nota = '';
     this.guardado = false;
     this.cargarMovimientos();
     this.cargarCuadreExistente();
@@ -109,7 +120,9 @@ export class CuadreCajaComponent implements OnInit {
     if (!uid) return;
     this.cajaSvc.cuadreDelUsuario(this.fecha, uid).subscribe({
       next: c => {
-        this.cajaInicial = c.cajaInicial;
+        this.cajaInicial.set(c.cajaInicial);
+        this.corte = c.corte ?? 0;
+        this.nota = c.nota ?? '';
         this.guardado = true;
       },
       error: () => { this.guardado = false; }
@@ -126,12 +139,17 @@ export class CuadreCajaComponent implements OnInit {
 
   usarSugerenciaCajaInicial() {
     const s = this.sugerenciaCajaInicial();
-    if (s) this.cajaInicial = s.monto;
+    if (s) this.cajaInicial.set(s.monto);
+  }
+
+  alternarVerTodos() {
+    this.verTodos.set(!this.verTodos());
+    this.cargarMovimientos();
   }
 
   cargarMovimientos() {
     this.cargandoMovimientos.set(true);
-    const uid = this.usuarioSeleccionadoId() ?? undefined;
+    const uid = this.verTodos() ? undefined : (this.usuarioSeleccionadoId() ?? undefined);
     this.cajaSvc.movimientos(this.fecha, uid).subscribe({
       next: list => { this.movimientos.set(list); this.cargandoMovimientos.set(false); },
       error: () => this.cargandoMovimientos.set(false)
@@ -140,6 +158,10 @@ export class CuadreCajaComponent implements OnInit {
 
   gastosDelDia = computed(() => this.movimientos().filter(m => m.tipo === 'GASTO'));
   gastosTotal = computed(() => this.gastosDelDia().reduce((acc, m) => acc + m.monto, 0));
+  // Solo los gastos EN EFECTIVO salen del cajón físico; los digitales (Yape/Plin) no.
+  gastosEfectivo = computed(() =>
+    this.gastosDelDia().filter(m => m.metodoPago === 'EFECTIVO').reduce((acc, m) => acc + m.monto, 0)
+  );
 
   ingresosDelDia = computed(() => this.movimientos().filter(m => m.tipo === 'INGRESO'));
   ingresosTotal = computed(() => this.ingresosDelDia().reduce((acc, m) => acc + m.monto, 0));
@@ -153,9 +175,55 @@ export class CuadreCajaComponent implements OnInit {
     return Array.from(acc.entries()).map(([metodo, v]) => ({ metodo, monto: v.monto, cantidad: v.cantidad }));
   });
 
+  // Tabla "Movimientos Digitales": por cada método NO efectivo, cuánto se pagó y cuánto se gastó.
+  readonly metodosDigitales = ['YAPE', 'PLIN', 'TRANSFERENCIA', 'POS'];
+  movimientosDigitales = computed(() => {
+    const acc = new Map<string, { pago: number; gasto: number }>();
+    for (const m of this.movimientos()) {
+      if (m.metodoPago === 'EFECTIVO') continue;
+      const cur = acc.get(m.metodoPago) ?? { pago: 0, gasto: 0 };
+      if (m.tipo === 'INGRESO') cur.pago += m.monto; else cur.gasto += m.monto;
+      acc.set(m.metodoPago, cur);
+    }
+    return Array.from(acc.entries()).map(([metodo, v]) => ({ metodo, pago: v.pago, gasto: v.gasto }));
+  });
+
+  // Detalle pago por pago de los INGRESOS digitales (Yape/Plin/Transferencia/POS/Tarjeta),
+  // ordenado por hora — el operador puede reconciliar cada pago contra su app.
+  ingresosDigitalesDetalle = computed(() =>
+    this.ingresosDelDia()
+      .filter(m => m.metodoPago !== 'EFECTIVO')
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  );
+  ingresosDigitalesTotal = computed(() =>
+    this.ingresosDigitalesDetalle().reduce((acc, m) => acc + m.monto, 0)
+  );
+
+  // Ingresos digitales agrupados para el reporte: transferencia móvil (Yape/Plin/Transferencia) vs tarjeta (POS).
+  ingresosTransferenciaMovil = computed(() =>
+    this.ingresosDelDia().filter(m => ['YAPE', 'PLIN', 'TRANSFERENCIA'].includes(m.metodoPago)).reduce((a, m) => a + m.monto, 0)
+  );
+  ingresosTarjeta = computed(() =>
+    this.ingresosDelDia().filter(m => ['POS', 'TARJETA'].includes(m.metodoPago)).reduce((a, m) => a + m.monto, 0)
+  );
+
   pagosDigitalesTotal = computed(() =>
     this.ingresosPorMetodo().filter(i => i.metodo !== 'EFECTIVO').reduce((acc, i) => acc + i.cantidad, 0)
   );
+
+  // Detalle itemizado de pagos, agrupado por método (para las tablas al pie del cuadre).
+  detalleIngresos = computed(() => {
+    const orden = ['EFECTIVO', 'YAPE', 'PLIN', 'TRANSFERENCIA', 'POS', 'TARJETA'];
+    const grupos = new Map<string, MovimientoCaja[]>();
+    for (const m of this.ingresosDelDia()) {
+      const lista = grupos.get(m.metodoPago) ?? [];
+      lista.push(m);
+      grupos.set(m.metodoPago, lista);
+    }
+    return Array.from(grupos.entries())
+      .map(([metodo, items]) => ({ metodo, items, total: items.reduce((a, x) => a + x.monto, 0) }))
+      .sort((a, b) => orden.indexOf(a.metodo) - orden.indexOf(b.metodo));
+  });
 
   pedidosPagadosEfectivo = computed(() =>
     this.ingresosDelDia().filter(m => m.metodoPago === 'EFECTIVO').reduce((acc, m) => acc + m.monto, 0)
@@ -190,9 +258,9 @@ export class CuadreCajaComponent implements OnInit {
         this.toast.exito('Gasto registrado');
         this.cargarMovimientos();
       },
-      error: () => {
+      error: err => {
         this.guardandoGasto.set(false);
-        this.toast.error('No se pudo registrar el gasto.');
+        this.toast.desdeHttp(err, 'No se pudo registrar el gasto.');
       }
     });
   }
@@ -208,10 +276,13 @@ export class CuadreCajaComponent implements OnInit {
   );
 
   enCajaDeberiaHaber = computed(() =>
-    this.cajaInicial + this.pedidosPagadosEfectivo() - this.gastosTotal()
+    this.cajaInicial() + this.pedidosPagadosEfectivo() - this.gastosEfectivo()
   );
 
   diferencia = computed(() => this.totalContado() - this.enCajaDeberiaHaber());
+
+  // Remanente físico que queda tras entregar el corte (getter: depende del campo plano `corte`).
+  get cajaFinalRemanente(): number { return this.totalContado() - this.corte; }
 
   estadoCaja = computed<'SOBRA' | 'CUADRA' | 'FALTA'>(() => {
     const d = this.diferencia();
@@ -243,12 +314,17 @@ export class CuadreCajaComponent implements OnInit {
 
     this.cajaSvc.guardarCuadre({
       fecha: this.fecha,
-      cajaInicial: this.cajaInicial,
+      usuarioId: this.usuarioSeleccionadoId() ?? undefined,
+      cajaInicial: this.cajaInicial(),
       pedidosPagadosEfect: this.pedidosPagadosEfectivo(),
-      gastos: this.gastosTotal(),
+      gastos: this.gastosEfectivo(),
       totalContado: this.totalContado(),
       diferencia: this.diferencia(),
-      cajaFinal: this.enCajaDeberiaHaber(),
+      cajaFinal: this.cajaFinalRemanente,
+      corte: this.corte,
+      ingresosDigital: this.ingresosTransferenciaMovil(),
+      ingresosTarjeta: this.ingresosTarjeta(),
+      nota: this.nota.trim() || undefined,
       observaciones: undefined,
     }).subscribe({
       next: guardado => {
@@ -258,9 +334,9 @@ export class CuadreCajaComponent implements OnInit {
         // Abre la vista imprimible en pestaña nueva (auto-lanza print)
         window.open(`/cuadre-caja/imprimir/${guardado.id}`, '_blank');
       },
-      error: () => {
+      error: err => {
         this.guardando.set(false);
-        this.toast.error('No se pudo guardar el cuadre.');
+        this.toast.desdeHttp(err, 'No se pudo guardar el cuadre.');
       }
     });
   }

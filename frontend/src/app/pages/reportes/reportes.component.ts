@@ -191,6 +191,8 @@ export class ReportesComponent {
 
   constructor(private sanitizer: DomSanitizer) {
     this.reportes = [
+      { nombre: 'Vista Gerencial', clave: 'gerencial', icono: this.svg('chart'), color: '#e8f1ff' },
+      { nombre: 'Consolidado de sedes', clave: 'consolidado', icono: this.svg('chart'), color: '#eef0ff' },
       { nombre: 'Órdenes Pendientes', clave: 'ordenes-pendientes', icono: this.svg('clipboard'), color: '#e8f1ff' },
       { nombre: 'Gastos', clave: 'gastos', icono: this.svg('receipt'), color: '#fde8e8' },
       { nombre: 'General', clave: 'general', icono: this.svg('chart'), color: '#fff4e0' },

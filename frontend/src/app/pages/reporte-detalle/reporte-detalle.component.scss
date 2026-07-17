@@ -99,3 +99,33 @@
   .page { padding: 14px; }
   .page__header .btn { width: 100%; }
 }
+
+/* Botones de exportar */
+.page__acciones { display: flex; gap: 8px; }
+
+/* Columna de acción operativa */
+.col-accion { text-align: center; white-space: nowrap; }
+.btn--donar {
+  border-color: #f59e0b !important;
+  color: #b45309 !important;
+  &:hover { background: #fffbeb !important; }
+}
+
+/* Modal de confirmación (autocontenido) */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 40;
+}
+.modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: #fff; border-radius: 14px; z-index: 41; width: 420px; max-width: calc(100vw - 32px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+  &--sm { width: 380px; }
+  &__header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 18px; border-bottom: 1px solid #eef0f4;
+    h3 { margin: 0; font-size: 16px; color: #1a202c; }
+  }
+  &__close { background: none; border: none; cursor: pointer; color: #94a3b8; padding: 4px; }
+  &__body { padding: 18px; p { margin: 0 0 14px; color: #475569; font-size: 14px; line-height: 1.5; } }
+  &__actions { display: flex; justify-content: flex-end; gap: 10px; }
+}

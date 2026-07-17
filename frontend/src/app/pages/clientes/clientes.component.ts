@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import { Cliente, Pedido } from '../../core/models/models';
 import { ClienteFrecuente, ClientesService, MovimientoPuntos } from '../../core/services/clientes.service';
@@ -13,7 +14,7 @@ import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-clientes',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
@@ -84,7 +85,7 @@ export class ClientesComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.fusionando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo fusionar.');
+        this.toast.desdeHttp(err, 'No se pudo fusionar.');
       }
     });
   }
@@ -206,7 +207,7 @@ export class ClientesComponent implements OnInit {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el cliente.';
         this.errorNuevo.set(msg);
-        this.toast.error(msg);
+        this.toast.desdeHttp(err, msg);
       }
     });
   }
@@ -235,7 +236,7 @@ export class ClientesComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo eliminar.');
+        this.toast.desdeHttp(err, 'No se pudo eliminar.');
       }
     });
   }
@@ -307,7 +308,7 @@ export class ClientesComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoPunto.set(false);
-        this.toast.error(err.error?.mensaje ?? 'No se pudo agregar el registro.');
+        this.toast.desdeHttp(err, 'No se pudo agregar el registro.');
       }
     });
   }
