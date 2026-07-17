@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { MovimientoCaja, TipoGasto } from '../../core/models/models';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface Denominacion {
   valor: number;
@@ -15,7 +16,7 @@ interface Denominacion {
 
 @Component({
   selector: 'app-cuadre-caja',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent],
   templateUrl: './cuadre-caja.component.html',
   styleUrl: './cuadre-caja.component.scss'
 })

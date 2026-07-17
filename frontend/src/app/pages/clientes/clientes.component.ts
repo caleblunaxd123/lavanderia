@@ -11,10 +11,11 @@ import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-clientes',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })

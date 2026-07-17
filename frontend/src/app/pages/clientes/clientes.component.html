@@ -1,14 +1,9 @@
 <div class="page">
-  <div class="page__header">
-    <div class="page__title">
-      <h2>Clientes</h2>
-      <p>{{ clientes().length }} resultado{{ clientes().length === 1 ? '' : 's' }}</p>
-    </div>
-    <div class="page__acciones">
-      <a class="btn btn--ghost" routerLink="/clientes/crm">CRM</a>
-      <button class="btn btn--primario" (click)="abrirModal()">+ Nuevo cliente</button>
-    </div>
-  </div>
+  <app-page-header icono="users" color="cian" titulo="Clientes"
+    [subtitulo]="clientes().length + (clientes().length === 1 ? ' resultado' : ' resultados')">
+    <a class="btn btn--ghost" routerLink="/clientes/crm">CRM</a>
+    <button class="btn btn--primario" (click)="abrirModal()">+ Nuevo cliente</button>
+  </app-page-header>
 
   <div class="tabs">
     <button class="tabs__item" [class.is-active]="tab()==='buscar'" (click)="cambiarTab('buscar')">Buscar</button>

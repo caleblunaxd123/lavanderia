@@ -1,11 +1,8 @@
 <div class="page">
-  <div class="page__toolbar">
-    <div class="page__title">
-      <h2>Promociones</h2>
-      <p>{{ promociones().length }} configurada{{ promociones().length === 1 ? '' : 's' }}</p>
-    </div>
+  <app-page-header icono="tag" color="rojo" titulo="Promociones"
+    [subtitulo]="promociones().length + (promociones().length === 1 ? ' configurada' : ' configuradas')">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nueva promoción</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

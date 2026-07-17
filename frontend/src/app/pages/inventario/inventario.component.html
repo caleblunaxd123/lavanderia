@@ -1,13 +1,10 @@
 <div class="page">
-  <div class="page__header">
-    <div class="page__title">
-      <h2>Inventario</h2>
-      <p>Stock de consumibles: detergente, bolsas, suavizante, etc.</p>
-    </div>
+  <app-page-header icono="package" color="morado" titulo="Inventario"
+    subtitulo="Stock de consumibles: detergente, bolsas, suavizante, etc.">
     @if (tab() === 'insumos') {
       <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
     }
-  </div>
+  </app-page-header>
 
   <div class="tabs">
     <button class="tabs__item" [class.is-active]="tab()==='insumos'" (click)="cambiarTab('insumos')">Insumos</button>

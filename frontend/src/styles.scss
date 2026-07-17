@@ -109,9 +109,21 @@ input, select, textarea {
 
 /* Tarjetas/filas que son clicables (listas, pedidos, reportes) */
 a.card:hover,
-.card--clickable:hover,
+.card--clickable:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
 .tabla tbody tr.tabla__row:hover {
   box-shadow: var(--shadow-card-hover);
+}
+
+/* Input de fecha dentro del encabezado de módulo */
+.ph-fecha {
+  padding: 7px 10px;
+  border: 1px solid var(--gris-borde);
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
 }
 
 /* Scrollbar sutil (Chrome/Edge) */

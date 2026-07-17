@@ -1,14 +1,9 @@
 <div class="page">
-  <div class="page__toolbar">
-    <div class="page__title">
-      <h2>Pedidos</h2>
-      <p>{{ total() }} pedido{{ total() === 1 ? '' : 's' }} en este filtro</p>
-    </div>
-    <div class="page__acciones">
-      <a routerLink="/registro-antiguo" class="btn btn--ghost">Registro Antiguos</a>
-      <a routerLink="/registrar" class="btn btn--primario">+ Nuevo Pedido</a>
-    </div>
-  </div>
+  <app-page-header icono="clipboard" color="azul" titulo="Pedidos"
+    [subtitulo]="total() + (total() === 1 ? ' pedido en este filtro' : ' pedidos en este filtro')">
+    <a routerLink="/registro-antiguo" class="btn btn--ghost">Registro Antiguos</a>
+    <a routerLink="/registrar" class="btn btn--primario">+ Nuevo Pedido</a>
+  </app-page-header>
 
   @if (abandonados().length > 0 && mostrarAbandonados()) {
     <div class="alerta-abandonados">

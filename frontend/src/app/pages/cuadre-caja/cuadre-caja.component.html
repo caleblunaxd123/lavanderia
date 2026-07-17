@@ -1,13 +1,11 @@
 <div class="page">
-  <div class="card page__header">
-    <div>
-      <h2>Cuadre Diario {{ usuarioSeleccionadoNombre() ? '"' + usuarioSeleccionadoNombre() + '"' : '' }}</h2>
-      <input type="date" [ngModel]="fecha" (ngModelChange)="cambiarFecha($event)" />
-    </div>
+  <app-page-header icono="cash" color="verde" titulo="Cuadre Diario"
+    [subtitulo]="usuarioSeleccionadoNombre() || 'Cierre de caja del día'">
+    <input type="date" class="ph-fecha" [ngModel]="fecha" (ngModelChange)="cambiarFecha($event)" />
     <span class="estado-pill" [class]="'estado-pill--' + guardado">
       {{ guardado ? 'Cuadre guardado' : 'Cuadre no guardado' }}
     </span>
-  </div>
+  </app-page-header>
 
   <div class="usuarios-dia" [class.usuarios-dia--vacio]="usuariosDelDia().length === 0">
     @if (cargandoUsuarios()) {

@@ -9,12 +9,13 @@ import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 type FormPromocion = Partial<Promocion> & { servicioId: number | null };
 
 @Component({
   selector: 'app-promociones',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent],
   templateUrl: './promociones.component.html',
   styleUrl: './promociones.component.scss'
 })

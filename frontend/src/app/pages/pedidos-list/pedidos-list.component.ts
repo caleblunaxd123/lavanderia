@@ -14,6 +14,7 @@ import { WhatsappService } from '../../core/services/whatsapp.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 
 type Filtro = 'pendientes' | 'otros' | 'ultimos' | 'fecha';
@@ -21,7 +22,7 @@ type TipoFecha = 'ingreso' | 'entrega';
 
 @Component({
   selector: 'app-pedidos-list',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, SkeletonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, SkeletonComponent, PageHeaderComponent],
   templateUrl: './pedidos-list.component.html',
   styleUrl: './pedidos-list.component.scss'
 })

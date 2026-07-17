@@ -9,10 +9,11 @@ import { TipoGasto } from '../../core/models/models';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-inventario',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent],
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })

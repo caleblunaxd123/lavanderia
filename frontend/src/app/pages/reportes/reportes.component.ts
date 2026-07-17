@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface Reporte {
   nombre: string;
@@ -182,7 +183,7 @@ const ILUSTRACIONES: Record<string, string> = {
 
 @Component({
   selector: 'app-reportes',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PageHeaderComponent],
   templateUrl: './reportes.component.html',
   styleUrl: './reportes.component.scss'
 })
