@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Requisitos — Dominio y Hosting · Lavixa</title>
+<style>
+  :root {
+    --paper:#ffffff; --card:#ffffff; --ink:#14213a; --ink-soft:#4a5878; --ink-faint:#8896b4;
+    --line:#e2e8f4; --brand:#0b57d0; --brand-deep:#0c447c; --brand-wash:#eaf1fd;
+    --pay:#0e7c86; --pay-wash:#e2f5f6; --pay-deep:#0b5a62;
+    --tech:#6d3fd1; --tech-wash:#efe9fc; --tech-deep:#4c2a97;
+    --good:#1a7a45; --good-wash:#e6f6ec; --warn:#9a6008; --warn-wash:#fdf3e2;
+    --radius:14px;
+    --serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--paper); }
+  body { color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.6; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wrap { max-width:720px; margin:0 auto; padding:40px 34px 56px; }
+
+  .eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); font-weight:700; margin:0 0 12px; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:30px; line-height:1.15; letter-spacing:-.015em; margin:0 0 14px; color:var(--ink); }
+  .lede { font-size:16px; color:var(--ink-soft); margin:0 0 8px; }
+  .lede strong { color:var(--ink); font-weight:600; }
+  .divider { height:1px; background:var(--line); border:0; margin:30px 0; }
+
+  .sec { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin:20px 0; }
+  .sec__head { padding:20px 24px 16px; border-bottom:1px solid var(--line); }
+  .sec__tag { display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:5px 11px; border-radius:999px; background:var(--brand-wash); color:var(--brand-deep); margin-bottom:11px; }
+  .sec--pay .sec__tag { background:var(--pay-wash); color:var(--pay-deep); }
+  .sec--tech .sec__tag { background:var(--tech-wash); color:var(--tech-deep); }
+  .sec__title { font-family:var(--serif); font-size:23px; font-weight:600; margin:0 0 6px; letter-spacing:-.01em; }
+  .sec__what { font-size:14.5px; color:var(--ink-soft); margin:0; }
+  .sec__body { padding:6px 24px 20px; }
+
+  .req { display:flex; gap:15px; padding:16px 0; border-bottom:1px solid var(--line); }
+  .req:last-child { border-bottom:0; }
+  .req__num { flex-shrink:0; width:29px; height:29px; border-radius:9px; background:var(--brand-wash); color:var(--brand-deep); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+  .sec--pay .req__num { background:var(--pay-wash); color:var(--pay-deep); }
+  .sec--tech .req__num { background:var(--tech-wash); color:var(--tech-deep); }
+  .req__title { font-size:16px; font-weight:600; margin:2px 0 5px; color:var(--ink); }
+  .req__desc { font-size:14px; color:var(--ink-soft); margin:0 0 6px; }
+  .req__where { font-size:13px; color:var(--ink-faint); margin:0; }
+  .req__where b { color:var(--ink-soft); font-weight:600; }
+
+  .badge { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.04em; padding:2px 9px; border-radius:999px; margin-left:6px; vertical-align:middle; }
+  .badge--free { background:var(--good-wash); color:var(--good); }
+  .badge--year { background:var(--brand-wash); color:var(--brand-deep); }
+  .badge--month { background:var(--pay-wash); color:var(--pay-deep); }
+
+  .handoff { margin:16px 24px 22px; padding:15px 17px; border-radius:11px; background:var(--brand-wash); border:1px solid var(--line); }
+  .sec--pay .handoff { background:var(--pay-wash); }
+  .sec--tech .handoff { background:var(--tech-wash); }
+  .handoff__label { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--brand-deep); margin:0 0 8px; }
+  .sec--pay .handoff__label { color:var(--pay-deep); }
+  .sec--tech .handoff__label { color:var(--tech-deep); }
+  .handoff ul { margin:0; padding-left:18px; }
+  .handoff li { font-size:14px; color:var(--ink); margin:4px 0; }
+  .handoff code, .req__desc code { font-family:ui-monospace,"Cascadia Code",Menlo,monospace; font-size:12.5px; background:#f1f5fb; padding:1px 6px; border-radius:5px; border:1px solid var(--line); }
+
+  .specs { width:100%; border-collapse:collapse; margin:4px 0 2px; }
+  .specs td { padding:9px 0; border-bottom:1px solid var(--line); font-size:14px; vertical-align:top; }
+  .specs tr:last-child td { border-bottom:0; }
+  .specs td:first-child { color:var(--ink-soft); width:42%; font-weight:600; }
+  .specs td:last-child { color:var(--ink); }
+
+  .avoid { margin:6px 24px 20px; padding:14px 17px; border-radius:11px; background:#fdeeee; border:1px solid #f2cccc; }
+  .avoid__label { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#b1382f; margin:0 0 7px; }
+  .avoid p { margin:0; font-size:13.5px; color:var(--ink); }
+  .avoid b { color:#b1382f; }
+
+  .note { display:flex; gap:12px; padding:15px 17px; border-radius:11px; background:var(--warn-wash); border:1px solid #f0d9ad; margin:24px 0; }
+  .note__mark { flex-shrink:0; color:var(--warn); font-weight:800; font-size:17px; }
+  .note p { margin:0; font-size:14px; color:var(--ink); }
+  .note strong { color:var(--warn); }
+
+  .faq { margin:28px 0 0; }
+  .faq h3 { font-family:var(--serif); font-size:19px; font-weight:600; margin:0 0 4px; }
+  .faq__q { font-weight:600; font-size:14.5px; margin:15px 0 3px; color:var(--ink); }
+  .faq__a { font-size:14px; color:var(--ink-soft); margin:0; }
+
+  .foot { margin-top:36px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-faint); }
+  .foot strong { color:var(--ink-soft); }
+
+  @page { size:A4; margin:14mm; }
+  @media print {
+    .wrap { padding:0; max-width:none; }
+    .sec, .handoff, .note, .req, .avoid { break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Lavixa · Guía para el propietario del negocio</p>
+  <h1>Requisitos para publicar el sistema: dominio y hosting</h1>
+  <p class="lede">Para que la <strong>facturación electrónica</strong>, el <strong>pago con tarjeta</strong> y el <strong>seguimiento del repartidor en vivo</strong> funcionen de verdad, el sistema tiene que estar publicado en internet de forma segura. Para eso se necesitan dos cosas: un <strong>dominio</strong> (el nombre web) y un <strong>hosting</strong> (el servidor donde vive el sistema).</p>
+
+  <hr class="divider" />
+
+  <section class="sec">
+    <div class="sec__head">
+      <span class="sec__tag">Parte 1 — Dominio</span>
+      <h2 class="sec__title">El nombre web del sistema <span class="badge badge--year">Pago 1 vez al año</span></h2>
+      <p class="sec__what">Es la dirección por la que se entra al sistema y por la que tus clientes abren el link de seguimiento (ej. <code>lavixa.pe</code>).</p>
+    </div>
+    <div class="sec__body">
+      <div class="req"><div class="req__num">1</div><div><p class="req__title">Elegir el nombre</p><p class="req__desc">Decide cómo quieres que se llame la web de tu negocio. Puede ser el nombre de la lavandería. Ejemplos: <code>lavixa.pe</code>, <code>lavanderia-lavixa.com</code>, <code>mi-lavanderia.pe</code>.</p><p class="req__where"><b>Tú solo eliges el nombre;</b> del registro técnico se encarga el equipo.</p></div></div>
+      <div class="req"><div class="req__num">2</div><div><p class="req__title">La terminación (.com o .pe)</p><p class="req__desc">Las dos sirven. <b>.com</b> es la más conocida y económica; <b>.pe</b> transmite que es un negocio peruano.</p><p class="req__where"><b>Costo referencial:</b> <code>.com</code> ~S/ 40–60 al año · <code>.pe</code> ~S/ 80–130 al año.</p></div></div>
+      <div class="req"><div class="req__num">3</div><div><p class="req__title">A nombre de quién queda</p><p class="req__desc">Se recomienda registrarlo <b>a tu nombre / de tu negocio</b>, para que el dominio sea siempre tuyo y no dependas de nadie.</p><p class="req__where"><b>Dónde se compra:</b> registradores como Namecheap, GoDaddy, Hostinger, o proveedores locales. Cualquiera sirve; funciona con cualquier hosting.</p></div></div>
+    </div>
+    <div class="handoff"><p class="handoff__label">Lo que necesito de ti</p><ul><li>El <b>nombre</b> que quieres para la web.</li><li>Tu preferencia de terminación (<b>.com</b> o <b>.pe</b>) — o lo recomiendo yo.</li></ul></div>
+  </section>
+
+  <section class="sec sec--pay">
+    <div class="sec__head">
+      <span class="sec__tag">Parte 2 — Hosting</span>
+      <h2 class="sec__title">El servidor donde vive el sistema <span class="badge badge--month">Pago mensual</span></h2>
+      <p class="sec__what">Es como el “local alquilado” en internet: una computadora prendida 24/7 que corre el sistema para que esté siempre disponible.</p>
+    </div>
+    <div class="sec__body">
+      <div class="req"><div class="req__num">1</div><div><p class="req__title">Aprobar el costo mensual</p><p class="req__desc">El hosting se paga todos los meses. Para una lavandería con una o pocas sedes, un servidor pequeño alcanza de sobra.</p><p class="req__where"><b>Costo referencial:</b> ~S/ 40–150 al mes. Se empieza con el plan más pequeño y se agranda solo si hace falta.</p></div></div>
+      <div class="req"><div class="req__num">2</div><div><p class="req__title">El candado de seguridad (HTTPS) <span class="badge badge--free">GRATIS</span></p><p class="req__desc">Es el candado que aparece al lado de la dirección web y que da seguridad. <b>No se compra:</b> se instala gratis. Sin él, ni la facturación ni el pago con tarjeta ni el mapa del repartidor funcionan.</p><p class="req__where"><b>Se encarga el equipo</b> al momento de publicar; no es un trámite tuyo.</p></div></div>
+      <div class="req"><div class="req__num">3</div><div><p class="req__title">A nombre de quién queda</p><p class="req__desc">Igual que el dominio: lo ideal es que la cuenta del hosting esté <b>a tu nombre</b>, para que el servicio y los datos del negocio sean tuyos.</p><p class="req__where"><b>Se decide contigo</b> si lo pagas directo o me lo reembolsas.</p></div></div>
+    </div>
+    <div class="handoff"><p class="handoff__label">Lo que necesito de ti</p><ul><li>Aprobar el <b>costo mensual</b> del hosting (con el plan pequeño arrancamos).</li><li>Decidir si la cuenta va <b>a tu nombre</b> y quién la paga.</li></ul></div>
+  </section>
+
+  <section class="sec sec--tech">
+    <div class="sec__head">
+      <span class="sec__tag">Parte 3 — Recomendaciones</span>
+      <h2 class="sec__title">Qué comprar para que sea compatible</h2>
+      <p class="sec__what">No cualquier hosting sirve: el sistema usa <b>.NET</b>, base de datos <b>SQL Server</b> y una web en <b>Angular</b>. Esta parte es para que elijas (o le muestres a quien te venda el hosting) lo correcto y no gastes en algo que no funcione.</p>
+    </div>
+    <div class="sec__body">
+      <div class="req"><div class="req__num">1</div><div><p class="req__title">Tipo de servicio: un “VPS” o servidor en la nube</p><p class="req__desc">Necesitas un <b>servidor propio (VPS o cloud)</b>, no un hosting compartido. En un VPS podemos instalar <b>.NET</b> y <b>SQL Server</b>, que es lo que este sistema requiere.</p><p class="req__where"><b>Proveedores que sirven:</b> DigitalOcean, Contabo, Hostinger (plan VPS), Microsoft Azure, AWS Lightsail, o un proveedor local que ofrezca “VPS Windows”.</p></div></div>
+      <div class="req"><div class="req__num">2</div><div><p class="req__title">Características mínimas a pedir</p><p class="req__desc">Muéstrale esta tabla al proveedor. Con esto corre el sistema, la base de datos y la web sin problemas para empezar:</p>
+        <table class="specs">
+          <tr><td>Sistema operativo</td><td><b>Windows Server</b> (2019 o 2022). Es lo más directo para SQL Server.</td></tr>
+          <tr><td>Memoria (RAM)</td><td><b>4 GB como mínimo</b> (8 GB recomendado si crece).</td></tr>
+          <tr><td>Procesador</td><td><b>2 núcleos (vCPU)</b> o más.</td></tr>
+          <tr><td>Disco</td><td><b>80 GB SSD</b> o más (rápido, tipo SSD/NVMe).</td></tr>
+          <tr><td>Base de datos</td><td>Compatible con <b>SQL Server</b> (sirve la versión gratuita <b>SQL Server Express</b>).</td></tr>
+          <tr><td>Extras</td><td><b>IP fija</b> incluida y respaldos/backups automáticos.</td></tr>
+        </table>
+      </div></div>
+      <div class="req"><div class="req__num">3</div><div><p class="req__title">Sobre la base de datos (SQL Server)</p><p class="req__desc">El sistema guarda todo (pedidos, clientes, caja) en <b>SQL Server</b>. Para empezar alcanza <b>SQL Server Express, que es gratuito</b>; solo si el negocio crece mucho se evalúa una versión mayor. No necesitas comprar licencia de base de datos al inicio.</p><p class="req__where"><b>Se instala en el mismo servidor,</b> no hay que contratarlo aparte.</p></div></div>
+      <div class="req"><div class="req__num">4</div><div><p class="req__title">Alternativa “sin mantenimiento” (opcional)</p><p class="req__desc">Si prefieres olvidarte de administrar el servidor, existe la opción de una nube administrada (por ejemplo <b>Microsoft Azure</b> con “App Service” + “Azure SQL”). Es más cómoda pero suele costar más al mes.</p><p class="req__where"><b>Recomendación:</b> para arrancar, el <b>VPS Windows</b> es lo más económico y suficiente.</p></div></div>
+    </div>
+    <div class="avoid"><p class="avoid__label">Qué NO comprar</p><p><b>Evita el “hosting compartido” tipo cPanel</b> (los planes baratos pensados para páginas WordPress/PHP). <b>No pueden correr .NET ni SQL Server</b>, así que el sistema no funcionaría ahí. Si el proveedor solo ofrece eso, no es el adecuado.</p></div>
+    <div class="handoff"><p class="handoff__label">Resumen para pedirle al proveedor</p><ul><li>“Quiero un <b>VPS con Windows Server</b>, <b>4 GB de RAM</b>, <b>2 vCPU</b>, <b>80 GB SSD</b>, con <b>IP fija</b>.”</li><li>“Debe permitir instalar <b>.NET</b> y <b>SQL Server Express</b>.”</li><li>“<b>No</b> me sirve hosting compartido / cPanel.”</li></ul></div>
+  </section>
+
+  <div class="note"><span class="note__mark">!</span><p><strong>Los montos son referenciales</strong> (mercado peruano, aproximados). Conviene cotizar 2 o 3 proveedores antes de decidir. Toda la configuración técnica (instalar el sistema, la base de datos y el candado de seguridad) la hace el equipo; de tu lado solo es elegir el nombre y aprobar el hosting.</p></div>
+
+  <div class="faq">
+    <h3>Preguntas frecuentes</h3>
+    <p class="faq__q">¿Por qué necesito esto si el sistema ya funciona?</p>
+    <p class="faq__a">Hoy funciona en la red local del negocio. Para que los clientes abran el link de seguimiento desde su casa, y para que la facturación y el pago con tarjeta operen, el sistema debe estar publicado en internet con el candado de seguridad. Eso requiere dominio + hosting.</p>
+    <p class="faq__q">¿El dominio y el hosting son lo mismo?</p>
+    <p class="faq__a">No. El <b>dominio</b> es el nombre (se paga una vez al año). El <b>hosting</b> es el servidor donde vive el sistema (se paga cada mes). Se usan juntos.</p>
+    <p class="faq__q">¿Cuánto gasto en total al inicio?</p>
+    <p class="faq__a">Aproximado: el dominio una vez al año (S/ 40–130) y el hosting mensual (desde ~S/ 40). El candado de seguridad es gratis. Son montos referenciales.</p>
+    <p class="faq__q">¿Puedo elegir cualquier proveedor barato?</p>
+    <p class="faq__a">No cualquiera: tiene que permitir <b>.NET</b> y <b>SQL Server</b> (un VPS, no hosting compartido). En la Parte 3 está exactamente qué pedir para no equivocarte.</p>
+  </div>
+
+  <p class="foot">Sistema <strong>Lavixa</strong> · Guía de publicación. Una vez con el dominio y el hosting listos, se activan la facturación SUNAT, el pago con tarjeta y el seguimiento en vivo del repartidor.</p>
+</div>
+</body>
+</html>
