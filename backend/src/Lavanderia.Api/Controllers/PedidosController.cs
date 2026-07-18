@@ -11,10 +11,12 @@ public class PedidosController : TenantAwareControllerBase
 {
     private readonly IPedidoService _service;
     private readonly IPromocionRepository _promociones;
-    public PedidosController(IPedidoService service, IPromocionRepository promociones)
+    private readonly IRutaRepartoRepository _rutas;
+    public PedidosController(IPedidoService service, IPromocionRepository promociones, IRutaRepartoRepository rutas)
     {
         _service = service;
         _promociones = promociones;
+        _rutas = rutas;
     }
 
     [HttpGet]
@@ -276,6 +278,21 @@ public class PedidosController : TenantAwareControllerBase
         {
             return BadRequest(new { mensaje = ex.Message });
         }
+    }
+
+    /// <summary>Devuelve el token del link que el repartidor abre en su celular para compartir
+    /// su ubicación en vivo. Solo aplica a pedidos Delivery.</summary>
+    [HttpGet("{id:int}/link-repartidor")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<LinkRepartidorDto>> LinkRepartidor(int id, CancellationToken ct)
+    {
+        var ruta = await _rutas.ObtenerPorPedidoAsync(id, SedeId!.Value, ct);
+        if (ruta is null) return NotFound(new { mensaje = "Pedido no encontrado." });
+        if (!string.Equals(ruta.Modalidad, "Delivery", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { mensaje = "El seguimiento del repartidor solo aplica a pedidos Delivery." });
+
+        var token = await _rutas.AsegurarTokenAsync(id, SedeId!.Value, ct);
+        return Ok(new LinkRepartidorDto(token));
     }
 
     [HttpPost("{id:int}/anular")]

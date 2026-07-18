@@ -467,6 +467,49 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     return `https://www.openstreetmap.org/?mlat=${p.latitudEntrega}&mlon=${p.longitudEntrega}#map=18/${p.latitudEntrega}/${p.longitudEntrega}`;
   }
 
+  // ---------- Seguimiento en vivo del repartidor ----------
+  readonly generandoLinkRepartidor = signal(false);
+
+  private conLinkRepartidor(p: Pedido, accion: (url: string) => void) {
+    if (this.generandoLinkRepartidor()) return;
+    this.generandoLinkRepartidor.set(true);
+    this.service.linkRepartidor(p.id).subscribe({
+      next: ({ token }) => {
+        this.generandoLinkRepartidor.set(false);
+        accion(`${window.location.origin}/repartidor/${token}`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.generandoLinkRepartidor.set(false);
+        this.toast.desdeHttp(err, 'No se pudo generar el enlace del repartidor.');
+      }
+    });
+  }
+
+  /** Manda al repartidor (por WhatsApp) el link donde comparte su ubicación en vivo. */
+  enviarLinkRepartidor(p: Pedido) {
+    if (!p.motorizadoId) { this.toast.advertencia('Primero asigna un repartidor al pedido.'); return; }
+    this.conLinkRepartidor(p, url => {
+      const cliente = (p.clienteNombre || 'el cliente').trim();
+      const destino = [p.direccionEntrega, p.distritoEntrega].filter(Boolean).join(', ');
+      const mensaje = `🛵 *Reparto — Pedido #${p.numero}*\n\nCliente: ${cliente}\nDirección: ${destino || 'ver en el mapa'}\n\nAbre este enlace en tu celular para compartir tu ubicación en vivo y marcar la entrega:\n${url}`;
+      if (p.motorizadoCelular) {
+        this.whatsapp.enviar(p.motorizadoCelular, mensaje);
+      } else {
+        this.copiarTexto(url, 'El repartidor no tiene celular. Copié el enlace para que se lo pases.');
+      }
+    });
+  }
+
+  copiarLinkRepartidor(p: Pedido) {
+    this.conLinkRepartidor(p, url => this.copiarTexto(url, 'Enlace del repartidor copiado.'));
+  }
+
+  private copiarTexto(texto: string, ok: string) {
+    navigator.clipboard?.writeText(texto)
+      .then(() => this.toast.exito(ok))
+      .catch(() => this.toast.advertencia('No se pudo copiar. Enlace: ' + texto));
+  }
+
   enviarLinkPago(p: Pedido) {
     if (this.enviandoLinkPago() || !p.clienteCelular) {
       if (!p.clienteCelular) this.toast.advertencia('Este cliente no tiene celular registrado.');

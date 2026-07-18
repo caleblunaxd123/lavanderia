@@ -3,15 +3,17 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { PagoPublicoService, SeguimientoPedido } from '../../core/services/pago-publico.service';
+import { EstadoRuta, PagoPublicoService, SeguimientoPedido } from '../../core/services/pago-publico.service';
+import { MapaSeguimientoComponent } from '../../shared/mapa-seguimiento/mapa-seguimiento.component';
 
 declare const CulqiCheckout: any;
 
-const INTERVALO_AUTO_REFRESH_MS = 30_000;
+const INTERVALO_NORMAL_MS = 30_000;
+const INTERVALO_EN_RUTA_MS = 10_000;
 
 @Component({
   selector: 'app-seguimiento-pago',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MapaSeguimientoComponent],
   templateUrl: './seguimiento-pago.component.html',
   styleUrl: './seguimiento-pago.component.scss'
 })
@@ -23,6 +25,8 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   private culqiListo = false;
   private culqiCheckout: any | null = null;
   private timerId?: ReturnType<typeof setInterval>;
+  private intervaloActualMs = INTERVALO_NORMAL_MS;
+  private estadoRutaPrevio: EstadoRuta | null = null;
 
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
@@ -38,11 +42,18 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.token = this.route.snapshot.paramMap.get('token') ?? '';
     this.cargar();
-    this.timerId = setInterval(() => this.cargar(true), INTERVALO_AUTO_REFRESH_MS);
+    this.reprogramarTimer(INTERVALO_NORMAL_MS);
   }
 
   ngOnDestroy() {
     if (this.timerId) clearInterval(this.timerId);
+  }
+
+  private reprogramarTimer(ms: number) {
+    if (this.timerId && this.intervaloActualMs === ms) return;
+    if (this.timerId) clearInterval(this.timerId);
+    this.intervaloActualMs = ms;
+    this.timerId = setInterval(() => this.cargar(true), ms);
   }
 
   cargar(silencioso = false) {
@@ -55,6 +66,7 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
         this.data.set(d);
         this.cargando.set(false);
         this.aplicarTema(d);
+        this.procesarEstadoRuta(d);
         if (d.requierePago && d.publicKeyCulqi) this.cargarScriptCulqi(d.publicKeyCulqi);
       },
       error: (err: HttpErrorResponse) => {
@@ -210,6 +222,66 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
     return d.modalidad === 'Delivery'
       && !d.anulado
       && d.pasos.some(p => p.codigo === 'LISTO' && p.actual);
+  }
+
+  /** El repartidor ya arrancó y podemos mostrar el mapa/estado en vivo. */
+  enRutaVivo(d: SeguimientoPedido): boolean {
+    return d.modalidad === 'Delivery' && !d.anulado
+      && (d.estadoRuta === 'EN_RUTA' || d.estadoRuta === 'CERCA' || d.estadoRuta === 'LLEGO');
+  }
+
+  tituloRutaVivo(d: SeguimientoPedido): string {
+    switch (d.estadoRuta) {
+      case 'CERCA': return '¡Tu repartidor está cerca!';
+      case 'LLEGO': return '¡Tu repartidor llegó!';
+      default: return '¡Tu pedido va en camino!';
+    }
+  }
+
+  subtituloRutaVivo(d: SeguimientoPedido): string {
+    if (d.estadoRuta === 'LLEGO') return 'Ya está en la puerta. ¡Prepárate para recibirlo!';
+    const dist = this.textoDistancia(d);
+    if (dist && d.etaMinutos) return `A ${dist} · llega en ~${d.etaMinutos} min`;
+    if (dist) return `A ${dist} de tu dirección`;
+    return d.motorizadoNombre ? `Lo lleva ${d.motorizadoNombre}` : 'Sigue su recorrido en el mapa';
+  }
+
+  textoDistancia(d: SeguimientoPedido): string | null {
+    const m = d.distanciaMetros;
+    if (m == null) return null;
+    return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`;
+  }
+
+  /** Notifica al cliente en el navegador cuando el reparto cambia de hito (va en camino / cerca /
+   *  llegó / entregado). Solo si dio permiso; nunca reclama permiso de forma intrusiva al abrir. */
+  private procesarEstadoRuta(d: SeguimientoPedido) {
+    const nuevo = d.estadoRuta;
+    this.reprogramarTimer(this.enRutaVivo(d) ? INTERVALO_EN_RUTA_MS : INTERVALO_NORMAL_MS);
+
+    // Al entrar en ruta por primera vez, pedimos permiso de notificación (una sola vez).
+    if (this.enRutaVivo(d) && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => undefined);
+    }
+
+    const previo = this.estadoRutaPrevio;
+    this.estadoRutaPrevio = nuevo;
+    if (previo === null || previo === nuevo) return; // primera carga o sin cambio: no notificar
+
+    const negocio = d.nombreNegocio;
+    switch (nuevo) {
+      case 'EN_RUTA': this.notificar('🛵 Tu pedido va en camino', `${negocio} salió a entregar tu pedido #${d.numeroPedido}.`); break;
+      case 'CERCA': this.notificar('📍 Tu repartidor está cerca', 'Ya casi llega a tu dirección.'); break;
+      case 'LLEGO': this.notificar('🎯 Tu repartidor llegó', 'Está en la puerta con tu pedido.'); break;
+      case 'ENTREGADO': this.notificar('✅ Pedido entregado', '¡Gracias por tu preferencia!'); break;
+    }
+  }
+
+  private notificar(titulo: string, cuerpo: string) {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(titulo, { body: cuerpo, icon: this.data()?.logoUrl ?? undefined });
+      }
+    } catch { /* algunos navegadores móviles limitan Notification fuera de un SW; se ignora */ }
   }
 
   telMotorizado() {

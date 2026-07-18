@@ -36,7 +36,17 @@ export interface SeguimientoPedido {
   motorizadoNombre?: string | null;
   motorizadoCelular?: string | null;
   puedeReprogramar: boolean;
+  // Seguimiento en vivo del reparto (tipo Uber)
+  estadoRuta: EstadoRuta;
+  rutaIniciadaEn?: string | null;
+  motorizadoLat?: number | null;
+  motorizadoLng?: number | null;
+  motorizadoUbicadoEn?: string | null;
+  distanciaMetros?: number | null;
+  etaMinutos?: number | null;
 }
+
+export type EstadoRuta = 'SIN_RUTA' | 'EN_RUTA' | 'CERCA' | 'LLEGO' | 'ENTREGADO';
 
 export interface ResultadoCobro {
   exito: boolean;

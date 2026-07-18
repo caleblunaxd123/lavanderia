@@ -173,6 +173,10 @@ export class PedidosService {
     return this.http.get<{ token: string }>(`${this.base}/${id}/link-seguimiento`);
   }
 
+  linkRepartidor(id: number) {
+    return this.http.get<{ token: string }>(`${this.base}/${id}/link-repartidor`);
+  }
+
   asignarMotorizado(id: number, motorizadoId: number | null) {
     return this.http.put<void>(`${this.base}/${id}/motorizado`, { motorizadoId });
   }

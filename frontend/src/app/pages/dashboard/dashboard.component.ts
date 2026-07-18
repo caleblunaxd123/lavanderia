@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
+import { ClientesService, ClienteCumpleanos } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Dashboard, PedidosService } from '../../core/services/pedidos.service';
 import { PersonalService } from '../../core/services/personal.service';
@@ -44,6 +45,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly catalogos = inject(CatalogosService);
   private readonly personalSvc = inject(PersonalService);
   private readonly suscripcionSvc = inject(SuscripcionService);
+  private readonly clientesSvc = inject(ClientesService);
+
+  // Clientes que cumplen años dentro de la semana (para alerta de fidelización).
+  readonly cumpleanos = signal<ClienteCumpleanos[]>([]);
 
   readonly data = signal<Dashboard | null>(null);
   readonly cargando = signal(false);
@@ -142,7 +147,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
     }
 
-    return alertas.slice(0, 5);
+    const cumple = this.cumpleanos();
+    if (this.tieneModulo('CLIENTES') && cumple.length > 0) {
+      const hoy = cumple.filter(c => c.diasParaCumpleanos === 0).length;
+      alertas.push({
+        clave: 'cumpleanos',
+        titulo: `${cumple.length} cliente${cumple.length === 1 ? '' : 's'} de cumpleaños esta semana`,
+        detalle: hoy > 0
+          ? `${hoy} cumple${hoy === 1 ? '' : 'n'} hoy — buen momento para saludar o dar una promo.`
+          : `El más próximo: ${cumple[0].nombre} en ${cumple[0].diasParaCumpleanos} día${cumple[0].diasParaCumpleanos === 1 ? '' : 's'}.`,
+        accion: 'Ver clientes',
+        ruta: '/clientes',
+        nivel: 'informativa',
+        icono: 'users'
+      });
+    }
+
+    return alertas.slice(0, 6);
   });
 
   readonly saludo = computed(() => {
@@ -172,6 +193,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: s => this.suscripcion.set(s),
       error: () => undefined
     });
+    if (this.tieneModulo('CLIENTES')) {
+      this.clientesSvc.cumpleanosProximos(7).subscribe({
+        next: cs => this.cumpleanos.set(
+          [...cs].sort((a, b) => a.diasParaCumpleanos - b.diasParaCumpleanos)),
+        error: () => undefined
+      });
+    }
     this.timerId = setInterval(() => this.cargar(true), 30_000);
   }
 

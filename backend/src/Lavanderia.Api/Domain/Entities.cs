@@ -227,6 +227,15 @@ public class Pedido
     public int? MotorizadoId { get; set; }
     public string? MotorizadoNombre { get; set; }
     public string? MotorizadoCelular { get; set; }
+    // Seguimiento en vivo del reparto (tipo Uber).
+    public DateTime? RutaIniciadaEn { get; set; }
+    public decimal? MotorizadoLat { get; set; }
+    public decimal? MotorizadoLng { get; set; }
+    public DateTime? MotorizadoUbicadoEn { get; set; }
+    public Guid? TokenRuta { get; set; }
+    public bool NotifRutaEnviada { get; set; }
+    public bool NotifCercaEnviada { get; set; }
+    public bool NotifLlegadaEnviada { get; set; }
     public List<PedidoItem> Items { get; set; } = new();
 }
 

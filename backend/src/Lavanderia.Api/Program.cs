@@ -106,6 +106,7 @@ builder.Services.AddTransient<IPagosRepository, PagosRepository>();
 builder.Services.AddTransient<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddTransient<IGerencialRepository, GerencialRepository>();
 builder.Services.AddTransient<IMotorizadoRepository, MotorizadoRepository>();
+builder.Services.AddTransient<IRutaRepartoRepository, RutaRepartoRepository>();
 
 // Facturacion electronica (SUNAT directo) + Pagos online: SecretProtector cifra credenciales
 // reales (clave SOL, password del certificado .pfx, secret key de Culqi) con las llaves de
@@ -153,6 +154,18 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    // El celular del repartidor reporta su GPS cada ~12s; damos holgura para varios repartidores
+    // detrás de la misma IP (red del local) sin permitir un abuso desmedido.
+    options.AddPolicy("repartidor-gps", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 60,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
             AutoReplenishment = true

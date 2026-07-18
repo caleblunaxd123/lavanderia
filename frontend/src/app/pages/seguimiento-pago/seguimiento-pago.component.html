@@ -53,12 +53,35 @@
           </div>
         }
 
-        @if (estaEnReparto(d) && d.motorizadoNombre) {
+        @if (enRutaVivo(d)) {
+          <div class="vivo" [class.vivo--cerca]="d.estadoRuta === 'CERCA'" [class.vivo--llego]="d.estadoRuta === 'LLEGO'">
+            <div class="vivo__cab">
+              <span class="vivo__punto"></span>
+              <div>
+                <strong>{{ tituloRutaVivo(d) }}</strong>
+                <span>{{ subtituloRutaVivo(d) }}</span>
+              </div>
+            </div>
+            @if (d.latitudEntrega != null && d.longitudEntrega != null) {
+              <div class="vivo__mapa">
+                <app-mapa-seguimiento
+                  [destinoLat]="d.latitudEntrega" [destinoLng]="d.longitudEntrega"
+                  [motoLat]="d.motorizadoLat ?? null" [motoLng]="d.motorizadoLng ?? null"
+                  [colorMoto]="d.colorPrimario">
+                </app-mapa-seguimiento>
+              </div>
+            }
+            <div class="vivo__pie">
+              @if (d.motorizadoNombre) { <span>🛵 Lo lleva <b>{{ d.motorizadoNombre }}</b></span> }
+              @if (telMotorizado()) { <a class="reparto__llamar" [href]="'tel:' + telMotorizado()">Llamar</a> }
+            </div>
+          </div>
+        } @else if (estaEnReparto(d) && d.motorizadoNombre) {
           <div class="reparto">
             <div class="reparto__icono">🛵</div>
             <div class="reparto__texto">
-              <strong>¡Tu pedido va en camino!</strong>
-              <span>Lo lleva <b>{{ d.motorizadoNombre }}</b></span>
+              <strong>¡Tu pedido está listo para salir!</strong>
+              <span>Lo llevará <b>{{ d.motorizadoNombre }}</b></span>
             </div>
             @if (telMotorizado()) {
               <a class="reparto__llamar" [href]="'tel:' + telMotorizado()">Llamar</a>

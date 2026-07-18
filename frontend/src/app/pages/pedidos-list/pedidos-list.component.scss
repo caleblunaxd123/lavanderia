@@ -1509,3 +1509,11 @@
     to   { transform: translateY(0); opacity: 1; }
   }
 }
+
+/* Seguimiento en vivo del repartidor */
+.repartidor-links {
+  margin-top: 10px;
+  .hint--vivo { color: #0f766e; background: #f0fdfa; border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.4; }
+  &__botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  &__botones .btn { flex: 1; min-width: 150px; }
+}

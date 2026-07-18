@@ -19,6 +19,7 @@ public class PagoPublicoController : ControllerBase
     private readonly IPedidoRepository _pedidos;
     private readonly IPedidoService _pedidoService;
     private readonly IConfiguracionNegocioRepository _configNegocio;
+    private readonly IRutaRepartoRepository _rutas;
     private readonly CulqiService _culqi;
     private readonly SecretProtector _secretos;
     private readonly ILogger<PagoPublicoController> _log;
@@ -28,6 +29,7 @@ public class PagoPublicoController : ControllerBase
         IPedidoRepository pedidos,
         IPedidoService pedidoService,
         IConfiguracionNegocioRepository configNegocio,
+        IRutaRepartoRepository rutas,
         CulqiService culqi,
         SecretProtector secretos,
         ILogger<PagoPublicoController> log)
@@ -36,6 +38,7 @@ public class PagoPublicoController : ControllerBase
         _pedidos = pedidos;
         _pedidoService = pedidoService;
         _configNegocio = configNegocio;
+        _rutas = rutas;
         _culqi = culqi;
         _secretos = secretos;
         _log = log;
@@ -60,6 +63,11 @@ public class PagoPublicoController : ControllerBase
             && solicitud.FechaExpiracion > DateTime.Now
             && (pagosConfig?.Activo ?? false)
             && !string.IsNullOrWhiteSpace(pagosConfig?.PublicKey);
+
+        // Seguimiento en vivo del reparto: posición del repartidor, estado de ruta y ETA.
+        var ruta = await _rutas.ObtenerPorPedidoAsync(pedido.Id, solicitud.SedeId, ct);
+        var distancia = ruta is null ? null : SeguimientoRutaCalculo.DistanciaAlDestino(ruta);
+        var estadoRuta = ruta is null ? "SIN_RUTA" : SeguimientoRutaCalculo.DeterminarEstado(ruta, distancia);
 
         return Ok(new SeguimientoPedidoDto
         {
@@ -90,7 +98,14 @@ public class PagoPublicoController : ControllerBase
             PublicKeyCulqi = puedePagar ? pagosConfig!.PublicKey : null,
             MotorizadoNombre = pedido.MotorizadoNombre,
             MotorizadoCelular = pedido.MotorizadoCelular,
-            PuedeReprogramar = !pedido.Anulado && pedido.EstadoProceso != "ENTREGADO"
+            PuedeReprogramar = !pedido.Anulado && pedido.EstadoProceso != "ENTREGADO",
+            EstadoRuta = estadoRuta,
+            RutaIniciadaEn = ruta?.RutaIniciadaEn,
+            MotorizadoLat = ruta?.MotorizadoLat,
+            MotorizadoLng = ruta?.MotorizadoLng,
+            MotorizadoUbicadoEn = ruta?.MotorizadoUbicadoEn,
+            DistanciaMetros = distancia,
+            EtaMinutos = SeguimientoRutaCalculo.EtaMinutos(distancia)
         });
     }
 

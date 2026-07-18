@@ -763,9 +763,57 @@ public class SeguimientoPedidoDto
     public string? MotorizadoNombre { get; set; }
     public string? MotorizadoCelular { get; set; }
     public bool PuedeReprogramar { get; set; }
+
+    // ---- Seguimiento en vivo del reparto (tipo Uber) ----
+    /// <summary>SIN_RUTA · EN_RUTA · CERCA · LLEGO · ENTREGADO. Guia el mensaje y el mapa
+    /// del cliente; el frontend dispara la notificacion del navegador al cambiar.</summary>
+    public string EstadoRuta { get; set; } = "SIN_RUTA";
+    public DateTime? RutaIniciadaEn { get; set; }
+    public decimal? MotorizadoLat { get; set; }
+    public decimal? MotorizadoLng { get; set; }
+    public DateTime? MotorizadoUbicadoEn { get; set; }
+    /// <summary>Distancia en metros del repartidor al destino (cuando hay GPS reciente).</summary>
+    public int? DistanciaMetros { get; set; }
+    /// <summary>Minutos estimados de llegada (heuristica a 18 km/h urbano).</summary>
+    public int? EtaMinutos { get; set; }
 }
 
 public record SeguimientoPedidoItemDto(string Nombre, decimal Cantidad);
+
+/// <summary>Vista que ve el repartidor al abrir su link publico de reparto.</summary>
+public class RepartidorPedidoDto
+{
+    public string NombreNegocio { get; set; } = "";
+    public string ColorPrimario { get; set; } = "#0b57d0";
+    public int NumeroPedido { get; set; }
+    public string ClienteNombre { get; set; } = "";
+    public string? ClienteCelular { get; set; }
+    public string? DireccionEntrega { get; set; }
+    public string? DistritoEntrega { get; set; }
+    public string? ReferenciaEntrega { get; set; }
+    public decimal? LatitudEntrega { get; set; }
+    public decimal? LongitudEntrega { get; set; }
+    public decimal Saldo { get; set; }
+    public bool Anulado { get; set; }
+    public bool Entregado { get; set; }
+    public string EstadoRuta { get; set; } = "SIN_RUTA";
+    public DateTime? RutaIniciadaEn { get; set; }
+}
+
+public class UbicacionRepartidorRequest
+{
+    [Range(-90, 90)] public decimal Lat { get; set; }
+    [Range(-180, 180)] public decimal Lng { get; set; }
+}
+
+public record LinkRepartidorDto(Guid Token);
+
+public class UbicacionRepartidorResultDto
+{
+    public string EstadoRuta { get; set; } = "SIN_RUTA";
+    public int? DistanciaMetros { get; set; }
+    public int? EtaMinutos { get; set; }
+}
 
 public record ReprogramarPedidoPublicoRequest([Required] DateTime NuevaFecha);
 

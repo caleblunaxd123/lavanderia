@@ -437,6 +437,21 @@
           @if (p.motorizadoCelular) {
             <p class="hint">Celular: {{ p.motorizadoCelular }}</p>
           }
+          @if (p.motorizadoId) {
+            <div class="repartidor-links">
+              <p class="hint hint--vivo">🛰️ Seguimiento en vivo — el repartidor comparte su ubicación y el cliente la ve en tiempo real.</p>
+              <div class="repartidor-links__botones">
+                <button type="button" class="btn btn--outline-primary btn--sm"
+                        [disabled]="generandoLinkRepartidor()" (click)="enviarLinkRepartidor(p)">
+                  <app-icon name="whatsapp" [size]="13"></app-icon> Enviar link al repartidor
+                </button>
+                <button type="button" class="btn btn--ghost btn--sm"
+                        [disabled]="generandoLinkRepartidor()" (click)="copiarLinkRepartidor(p)">
+                  <app-icon name="clipboard" [size]="13"></app-icon> Copiar link
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
 

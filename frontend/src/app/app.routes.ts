@@ -45,6 +45,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/seguimiento-pago/seguimiento-pago.component').then(m => m.SeguimientoPagoComponent)
   },
   {
+    // Publica: el repartidor la abre en su celular desde el link que le pasa el negocio.
+    path: 'repartidor/:token',
+    loadComponent: () => import('./pages/repartidor/repartidor.component').then(m => m.RepartidorComponent)
+  },
+  {
     path: '',
     canActivate: [authGuard],
     children: [
