@@ -91,7 +91,9 @@ public class ClienteDto
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)]
     public string Nombre { get; set; } = "";
-    [StringLength(20)] public string? Celular { get; set; }
+    [StringLength(20)]
+    [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
+    public string? Celular { get; set; }
     [StringLength(15)] public string? Dni { get; set; }
     [StringLength(20)] public string? DocumentoFiscal { get; set; }
     [StringLength(200)] public string? Direccion { get; set; }
@@ -361,7 +363,9 @@ public class MotorizadoDto
 {
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
-    [StringLength(20)] public string? Celular { get; set; }
+    [StringLength(20)]
+    [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
+    public string? Celular { get; set; }
     public bool Activo { get; set; } = true;
 }
 
@@ -381,7 +385,9 @@ public class EmpleadoDto
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
     [StringLength(15)] public string? Dni { get; set; }
-    [StringLength(20)] public string? Celular { get; set; }
+    [StringLength(20)]
+    [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
+    public string? Celular { get; set; }
     [StringLength(60)] public string? Cargo { get; set; }
     public DateOnly? FechaIngreso { get; set; }
     public bool Activo { get; set; } = true;

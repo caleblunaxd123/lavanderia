@@ -8,14 +8,16 @@ import { Cliente, Pedido } from '../../core/models/models';
 import { ClienteFrecuente, ClientesService, MovimientoPuntos } from '../../core/services/clientes.service';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { ToastService } from '../../core/services/toast.service';
+import { esCelularValido } from '../../core/util/telefono';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 
 @Component({
   selector: 'app-clientes',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
@@ -184,6 +186,10 @@ export class ClientesComponent implements OnInit {
   guardar() {
     if (!this.nuevoCliente.nombre?.trim()) {
       this.errorNuevo.set('El nombre es obligatorio.');
+      return;
+    }
+    if (!esCelularValido(this.nuevoCliente.celular)) {
+      this.errorNuevo.set('El celular debe tener 9 dígitos y empezar con 9 (o déjalo vacío).');
       return;
     }
     this.guardando.set(true);

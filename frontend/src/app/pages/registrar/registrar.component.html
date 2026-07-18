@@ -113,7 +113,8 @@
         <input type="text" placeholder="Nombre completo" [(ngModel)]="nombre" />
 
         <label>Celular *</label>
-        <input type="text" placeholder="9XXXXXXXX" [(ngModel)]="celular" />
+        <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
+               placeholder="9XXXXXXXX" [(ngModel)]="celular" />
         <p class="hint">Necesario para avisar por WhatsApp y compartir el seguimiento del pedido.</p>
 
         <label>Dirección habitual @if (modalidad === 'Recojo') { <small class="hint">*</small> }</label>

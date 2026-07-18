@@ -92,7 +92,8 @@
         <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Juan Pérez" />
 
         <label>Celular</label>
-        <input type="text" [(ngModel)]="form.celular" name="celular" placeholder="Ej: 987654321" />
+        <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
+               [(ngModel)]="form.celular" name="celular" placeholder="Ej: 987654321" />
 
         <label class="checkbox-row">
           <input type="checkbox" [(ngModel)]="form.activo" name="activo" />

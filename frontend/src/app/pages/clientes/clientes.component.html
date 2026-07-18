@@ -194,7 +194,8 @@
       <input type="text" [(ngModel)]="nuevoCliente.nombre" name="nombre" placeholder="Nombre completo" />
 
       <label>Celular</label>
-      <input type="text" [(ngModel)]="nuevoCliente.celular" name="celular" placeholder="9XXXXXXXX" />
+      <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
+             [(ngModel)]="nuevoCliente.celular" name="celular" placeholder="9XXXXXXXX" />
 
       <label>DNI</label>
       <input type="text" [(ngModel)]="nuevoCliente.dni" name="dni" placeholder="DNI" />

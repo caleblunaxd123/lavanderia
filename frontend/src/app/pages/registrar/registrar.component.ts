@@ -12,7 +12,9 @@ import { PedidosService } from '../../core/services/pedidos.service';
 import { PromocionValida } from '../../core/services/promociones.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
+import { esCelularObligatorioValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
 
 interface ItemAgregado {
@@ -26,7 +28,7 @@ interface ItemAgregado {
 
 @Component({
   selector: 'app-registrar',
-  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent],
+  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, SoloDigitosDirective],
   templateUrl: './registrar.component.html',
   styleUrl: './registrar.component.scss'
 })
@@ -381,7 +383,7 @@ export class RegistrarComponent implements OnInit {
 
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
-      && this.celular.trim().length > 0
+      && esCelularObligatorioValido(this.celular)
       && (this.modalidad !== 'Recojo' || this.direccion.trim().length > 0)
       && (this.modalidad !== 'Delivery' || (
         this.direccionEntrega.trim().length > 0 && this.distritoEntrega.trim().length > 0
@@ -394,6 +396,7 @@ export class RegistrarComponent implements OnInit {
   get validacionPedido(): string | null {
     if (!this.nombre.trim()) return 'Indica el nombre del cliente.';
     if (!this.celular.trim()) return 'Indica un celular de contacto.';
+    if (!esCelularObligatorioValido(this.celular)) return 'El celular debe tener 9 dígitos y empezar con 9.';
     if (this.modalidad === 'Recojo' && !this.direccion.trim()) return 'Indica la dirección donde se recogerá el pedido.';
     if (this.modalidad === 'Delivery' && !this.direccionEntrega.trim()) return 'Indica la dirección exacta de entrega.';
     if (this.modalidad === 'Delivery' && !this.distritoEntrega.trim()) return 'Selecciona el distrito de entrega.';

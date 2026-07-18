@@ -8,7 +8,9 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { ToastService } from '../../core/services/toast.service';
+import { esCelularObligatorioValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 
 interface ItemAgregado {
   servicioId: number;
@@ -21,7 +23,7 @@ interface ItemAgregado {
 
 @Component({
   selector: 'app-registro-antiguo',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, SoloDigitosDirective],
   templateUrl: './registro-antiguo.component.html',
   styleUrl: './registro-antiguo.component.scss'
 })
@@ -151,7 +153,7 @@ export class RegistroAntiguoComponent implements OnInit {
 
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
-      && this.celular.trim().length > 0
+      && esCelularObligatorioValido(this.celular)
       && this.items().length > 0
       && this.subtotal() > 0
       && !this.registrando();

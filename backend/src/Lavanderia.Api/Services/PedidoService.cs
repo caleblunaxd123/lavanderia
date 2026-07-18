@@ -802,6 +802,8 @@ public class PedidoService : IPedidoService
         // (WhatsApp de "listo para recoger", link de pago, etc.).
         if (string.IsNullOrWhiteSpace(celular))
             throw new InvalidOperationException("El cliente debe tener un celular registrado para crear el pedido.");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(celular.Trim(), @"^9\d{8}$"))
+            throw new InvalidOperationException("El celular debe tener 9 dígitos y empezar con 9.");
         if (modalidad == "Recojo" && string.IsNullOrWhiteSpace(direccion))
             throw new InvalidOperationException("Para pedidos a domicilio debes registrar la dirección del cliente.");
     }

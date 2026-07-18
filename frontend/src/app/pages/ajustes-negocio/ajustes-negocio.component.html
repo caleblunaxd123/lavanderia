@@ -79,7 +79,7 @@
              placeholder="Av. Ejemplo 123, Lima" />
 
       <label>Teléfono</label>
-      <input type="text" [ngModel]="form().telefono" maxlength="30"
+      <input type="tel" inputmode="tel" [ngModel]="form().telefono" maxlength="30"
              (ngModelChange)="actualizarCampo('telefono', $event)"
              placeholder="+51 9XX XXX XXX" />
 
