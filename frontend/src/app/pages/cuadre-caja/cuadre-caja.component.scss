@@ -524,6 +524,43 @@
   }
 }
 
+.metodos-resumen {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.metodo-resumen {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #dce3ec;
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: #fff;
+
+  span, strong, small { display: block; }
+  span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #526275;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  strong { margin-top: 6px; color: #172b45; font-size: 16px; font-variant-numeric: tabular-nums; }
+  small { margin-top: 2px; color: #7a8796; font-size: 9.5px; }
+
+  &--efectivo { border-left-color: #20a166; }
+  &--billetera { border-left-color: #7c3fb5; }
+  &--transferencia { border-left-color: #1685b8; }
+  &--tarjeta { border-left-color: #d18a16; }
+}
+
+@media (max-width: 760px) {
+  .metodos-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .digital-tabla {
   width: 100%;
   border-collapse: collapse;

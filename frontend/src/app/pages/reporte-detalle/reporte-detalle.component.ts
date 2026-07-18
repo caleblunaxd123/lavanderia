@@ -8,6 +8,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface ReporteMeta {
   titulo: string;
@@ -31,7 +32,7 @@ const REPORTES: Record<ReporteKey, ReporteMeta> = {
 
 @Component({
   selector: 'app-reporte-detalle',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
   templateUrl: './reporte-detalle.component.html',
   styleUrl: './reporte-detalle.component.scss'
 })

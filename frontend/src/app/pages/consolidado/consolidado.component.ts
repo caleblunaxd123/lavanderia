@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ConsolidadoSede, ReportesService } from '../../core/services/reportes.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-consolidado',
-  imports: [CommonModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule],
   templateUrl: './consolidado.component.html',
   styleUrl: './consolidado.component.scss'
 })

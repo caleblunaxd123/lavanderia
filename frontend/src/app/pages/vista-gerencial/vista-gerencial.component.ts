@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReportesService, TableroSla, VistaGerencial } from '../../core/services/reportes.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-vista-gerencial',
-  imports: [CommonModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule],
   templateUrl: './vista-gerencial.component.html',
   styleUrl: './vista-gerencial.component.scss'
 })

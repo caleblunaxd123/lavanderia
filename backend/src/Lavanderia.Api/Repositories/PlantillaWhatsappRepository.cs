@@ -29,7 +29,7 @@ public class PlantillaWhatsappRepository : IPlantillaWhatsappRepository
 
     private static readonly (string Evento, string Mensaje)[] Defaults =
     [
-        ("INGRESO", "Hola {cliente}! Recibimos tu pedido #{numero} en {negocio}. Total: S/ {total}. Entrega estimada: {entrega}. Gracias!"),
+        ("INGRESO", "¡Hola *{cliente}*!\nLe saluda la lavandería *{negocio}*. Su orden es la *{numero}* con los siguientes ítems:\n\n{items}\n\nMonto total a pagar *S/{total}*, del cual falta pagar *S/{saldo}*.\nFecha de entrega: *{entrega}*.\n\nNuestro horario de atención es:\n{horario}\n\n{seguimiento}\n\n*CONDICIONES DEL SERVICIO - {negocio}*\n{condiciones}"),
         ("CAMBIO_AREA", "Hola {cliente}, tu pedido #{numero} ya esta en la etapa: {area}. Tiempo estimado restante: {tiempoRestante}."),
         ("LISTO", "Hola {cliente}! Tu pedido #{numero} esta LISTO para recoger en {negocio}. Te esperamos!"),
         ("DEMORA", "Hola {cliente}, tu pedido #{numero} tendra una demora. Nueva hora estimada: {entrega}. Disculpa las molestias."),

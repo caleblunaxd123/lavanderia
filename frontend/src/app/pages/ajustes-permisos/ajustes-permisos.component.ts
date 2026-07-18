@@ -5,11 +5,11 @@ import { Router } from '@angular/router';
 import { PermisoItem, PermisosService } from '../../core/services/permisos.service';
 import { Rol, UsuariosService } from '../../core/services/usuarios.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-permisos',
-  imports: [CommonModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule],
   templateUrl: './ajustes-permisos.component.html',
   styleUrl: './ajustes-permisos.component.scss'
 })

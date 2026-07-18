@@ -13,7 +13,8 @@ public interface IPedidoService
     Task AvanzarAreaAsync(int pedidoId, AvanzarAreaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task AvanzarSiguienteAreaAsync(int pedidoId, int usuarioId, int sedeId, string? recibidoPor = null, CancellationToken ct = default);
-    Task<DashboardDto> DashboardAsync(int sedeId, CancellationToken ct = default);
+    Task<DashboardDto> DashboardAsync(int negocioId, int sedeId, CancellationToken ct = default);
+    Task<PedidoContadoresDto> ContadoresAsync(int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, RegistrarPagoRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task AgregarItemAsync(int pedidoId, AgregarItemRequest req, int negocioId, int sedeId, CancellationToken ct = default);
     Task AnularAsync(int pedidoId, string motivo, int usuarioId, int negocioId, int sedeId, CancellationToken ct = default);
@@ -22,7 +23,7 @@ public interface IPedidoService
     Task CambiarFechaEntregaAsync(int pedidoId, CambiarFechaEntregaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoAbandonadoDto>> ListarAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
     Task<int> SiguienteNumeroAsync(int sedeId, CancellationToken ct = default);
-    Task ConvertirADeliveryAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default);
+    Task ConvertirADeliveryAsync(int pedidoId, ConvertirDeliveryRequest req, int negocioId, int sedeId, CancellationToken ct = default);
     Task<Guid?> ObtenerOCrearLinkPagoAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default);
     Task AsignarMotorizadoAsync(int pedidoId, int? motorizadoId, int sedeId, CancellationToken ct = default);
 }
@@ -38,6 +39,7 @@ public class PedidoService : IPedidoService
     private readonly IPagosRepository _pagos;
     private readonly IMotorizadoRepository _motorizados;
     private readonly IConfiguracionNegocioRepository _configNegocio;
+    private readonly IGerencialRepository _gerencial;
     private readonly ILogger<PedidoService> _log;
 
     public PedidoService(
@@ -48,6 +50,7 @@ public class PedidoService : IPedidoService
         IPagosRepository pagos,
         IMotorizadoRepository motorizados,
         IConfiguracionNegocioRepository configNegocio,
+        IGerencialRepository gerencial,
         ILogger<PedidoService> log)
     {
         _pedidos = pedidos;
@@ -57,6 +60,7 @@ public class PedidoService : IPedidoService
         _pagos = pagos;
         _motorizados = motorizados;
         _configNegocio = configNegocio;
+        _gerencial = gerencial;
         _log = log;
     }
 
@@ -71,6 +75,11 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException("Modalidad inválida.");
         if (!EsPedidoDomicilio(modalidad) && req.CostoDelivery is > 0)
             throw new InvalidOperationException("El costo de domicilio solo aplica a pedidos de Recojo o Delivery.");
+
+        var direccionEntrega = LimpiarTexto(req.DireccionEntrega);
+        var distritoEntrega = LimpiarTexto(req.DistritoEntrega);
+        var referenciaEntrega = LimpiarTexto(req.ReferenciaEntrega);
+        ValidarDestinoDelivery(modalidad, direccionEntrega, distritoEntrega, req.LatitudEntrega, req.LongitudEntrega);
 
         var fechaIngreso = req.FechaIngreso ?? DateTime.Now;
         if (fechaIngreso > DateTime.Now.AddMinutes(5))
@@ -129,6 +138,7 @@ public class PedidoService : IPedidoService
         if (costoDelivery < 0)
             throw new InvalidOperationException("El costo de domicilio no puede ser negativo.");
         var incluyoCargoDomicilio = false;
+        var incluyoServicioLavanderia = false;
         decimal subtotal = 0m;
         foreach (var it in req.Items)
         {
@@ -146,6 +156,10 @@ public class PedidoService : IPedidoService
                     throw new InvalidOperationException("El pedido no puede tener más de un cargo de domicilio.");
                 incluyoCargoDomicilio = true;
             }
+            else
+            {
+                incluyoServicioLavanderia = true;
+            }
 
             var precioUnitario = servicio.EsCargoDelivery ? costoDelivery : servicio.Precio;
             var totalItem = Math.Round(precioUnitario * it.Cantidad, 2);
@@ -159,6 +173,9 @@ public class PedidoService : IPedidoService
                 Descripcion = it.Descripcion
             });
         }
+
+        if (!incluyoServicioLavanderia)
+            throw new InvalidOperationException("Agrega al menos un servicio de lavandería; la tarifa de domicilio no cuenta como servicio.");
 
         // El servidor agrega el cargo si el navegador omite el ítem. El precio histórico
         // queda en PedidoItem, aunque luego cambie la tarifa general del negocio.
@@ -234,6 +251,11 @@ public class PedidoService : IPedidoService
             FechaIngreso = fechaIngreso,
             FechaEntregaEst = req.FechaEntregaEst,
             Modalidad = modalidad,
+            DireccionEntrega = modalidad == "Delivery" ? direccionEntrega : null,
+            DistritoEntrega = modalidad == "Delivery" ? distritoEntrega : null,
+            ReferenciaEntrega = modalidad == "Delivery" ? referenciaEntrega : null,
+            LatitudEntrega = modalidad == "Delivery" ? req.LatitudEntrega : null,
+            LongitudEntrega = modalidad == "Delivery" ? req.LongitudEntrega : null,
             Subtotal = subtotal,
             Descuento = descuento,
             EsUrgente = req.EsUrgente,
@@ -294,7 +316,7 @@ public class PedidoService : IPedidoService
         }
     }
 
-    public async Task ConvertirADeliveryAsync(int pedidoId, int negocioId, int sedeId, CancellationToken ct = default)
+    public async Task ConvertirADeliveryAsync(int pedidoId, ConvertirDeliveryRequest req, int negocioId, int sedeId, CancellationToken ct = default)
     {
         var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
             ?? throw new InvalidOperationException("Pedido no encontrado.");
@@ -303,16 +325,25 @@ public class PedidoService : IPedidoService
         if (pedido.EstadoProceso == "ENTREGADO")
             throw new InvalidOperationException("El pedido ya fue entregado, no se puede convertir a Delivery.");
 
-        if (pedido.Modalidad != "Delivery")
-        {
-            var cliente = await _clientes.ObtenerPorIdAsync(pedido.ClienteId, negocioId, ct)
-                ?? throw new InvalidOperationException("El cliente del pedido no existe.");
-            ValidarDatosContacto(cliente.Celular, cliente.Direccion, "Delivery");
+        var clienteDestino = await _clientes.ObtenerPorIdAsync(pedido.ClienteId, negocioId, ct)
+            ?? throw new InvalidOperationException("El cliente del pedido no existe.");
+        ValidarDatosContacto(clienteDestino.Celular, clienteDestino.Direccion, "Delivery");
 
-            var actualizado = await _pedidos.CambiarModalidadAsync(pedidoId, "Delivery", sedeId, ct);
-            if (!actualizado) throw new InvalidOperationException("Pedido no encontrado.");
-            pedido.Modalidad = "Delivery";
-        }
+        var direccion = LimpiarTexto(req.DireccionEntrega);
+        var distrito = LimpiarTexto(req.DistritoEntrega);
+        var referencia = LimpiarTexto(req.ReferenciaEntrega);
+        ValidarDestinoDelivery("Delivery", direccion, distrito, req.LatitudEntrega, req.LongitudEntrega);
+
+        var destinoActualizado = await _pedidos.ActualizarDestinoDeliveryAsync(
+            pedidoId, direccion!, distrito!, referencia, req.LatitudEntrega, req.LongitudEntrega, sedeId, ct);
+        if (!destinoActualizado) throw new InvalidOperationException("Pedido no encontrado.");
+        pedido.DireccionEntrega = direccion;
+        pedido.DistritoEntrega = distrito;
+        pedido.ReferenciaEntrega = referencia;
+        pedido.LatitudEntrega = req.LatitudEntrega;
+        pedido.LongitudEntrega = req.LongitudEntrega;
+
+        pedido.Modalidad = "Delivery";
 
         await AsegurarLinkPagoAsync(pedidoId, pedido, negocioId, sedeId, ct);
     }
@@ -354,10 +385,11 @@ public class PedidoService : IPedidoService
     {
         if (pedido.Anulado || !EsPedidoDomicilio(pedido.Modalidad)) return null;
         var saldo = Math.Max(0m, pedido.Total - pedido.MontoPagado);
-        if (saldo <= 0.01m) return null;
 
-        var vigente = await _pagos.ObtenerVigentePorPedidoAsync(pedidoId, ct);
-        if (vigente is not null) return vigente.Token;
+        var ultima = await _pagos.ObtenerUltimaPorPedidoAsync(pedidoId, ct);
+        if (ultima is not null && (saldo <= 0.01m ||
+            (ultima.Estado == "PENDIENTE" && ultima.FechaExpiracion > DateTime.Now)))
+            return ultima.Token;
 
         var nueva = await _pagos.CrearSolicitudAsync(negocioId, sedeId, pedidoId, saldo, ct);
         return nueva.Token;
@@ -415,32 +447,29 @@ public class PedidoService : IPedidoService
 
     public async Task AvanzarAreaAsync(int pedidoId, AvanzarAreaRequest req, int usuarioId, int sedeId, CancellationToken ct = default)
     {
-        // "ANULADO" queda fuera adrede: anular tiene su propio flujo (AnularAsync) que exige
-        // motivo y marca el flag Pedido.Anulado; dejarlo pasar por aca dejaria un pedido con
-        // EstadoProceso = ANULADO pero Anulado = 0, invisible para los filtros/reportes que
-        // confian en ese flag.
-        var estadosValidos = new[] { "PENDIENTE", "EN_PROCESO", "LISTO", "ENTREGADO" };
-        if (!estadosValidos.Contains(req.NuevoEstado))
-            throw new InvalidOperationException($"Estado invalido: {req.NuevoEstado}");
-
         var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
             ?? throw new InvalidOperationException("Pedido no encontrado.");
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso == "ENTREGADO")
-            throw new InvalidOperationException("El pedido ya fue entregado.");
-        if (req.NuevoEstado == "ENTREGADO" && pedido.MontoPagado + 0.01m < pedido.Total)
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está en un estado final y no puede reiniciar el flujo.");
+
+        var areas = (await _areas.ListarActivasAsync(sedeId, ct)).OrderBy(a => a.Orden).ToList();
+        var siguiente = CalcularSiguientePaso(pedido, areas);
+        var estadoSolicitado = (req.NuevoEstado ?? "").Trim().ToUpperInvariant();
+
+        if (estadoSolicitado != siguiente.Estado || req.NuevaAreaId != siguiente.AreaId)
+            throw new InvalidOperationException(
+                $"Transición inválida. El siguiente paso permitido es '{siguiente.Estado}' en el área indicada por el flujo.");
+
+        if (siguiente.Estado == "ENTREGADO" && pedido.MontoPagado + 0.01m < pedido.Total)
             throw new InvalidOperationException(
                 $"El pedido tiene saldo pendiente de S/ {pedido.Total - pedido.MontoPagado:F2}. Registra el pago antes de entregar.");
 
-        if (req.NuevaAreaId is int areaId)
-        {
-            var area = await _areas.ObtenerPorIdAsync(areaId, sedeId, ct)
-                ?? throw new InvalidOperationException("El área no pertenece a esta sede.");
-            if (!area.Activa)
-                throw new InvalidOperationException("El área no está activa.");
-        }
-        await _pedidos.AvanzarAreaAsync(pedidoId, req.NuevaAreaId, req.NuevoEstado, usuarioId, req.Nota, sedeId, ct);
+        await _pedidos.AvanzarAreaAsync(
+            pedidoId, pedido.AreaActualId, pedido.EstadoProceso,
+            siguiente.AreaId, siguiente.Estado, usuarioId,
+            string.IsNullOrWhiteSpace(req.Nota) ? siguiente.Nota : req.Nota.Trim(), sedeId, ct);
     }
 
     public async Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default)
@@ -465,55 +494,26 @@ public class PedidoService : IPedidoService
 
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso == "ENTREGADO")
-            throw new InvalidOperationException("El pedido ya fue entregado.");
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está en un estado final y no puede reiniciar el flujo.");
 
         var areas = (await _areas.ListarActivasAsync(sedeId, ct)).OrderBy(a => a.Orden).ToList();
-        if (areas.Count == 0)
-            throw new InvalidOperationException("No hay áreas de lavado configuradas.");
+        var siguiente = CalcularSiguientePaso(pedido, areas);
 
-        int? proximaAreaId;
-        string proximoEstado;
-        string nota;
-
-        if (pedido.EstadoProceso == "LISTO")
+        if (siguiente.Estado == "ENTREGADO")
         {
             if (pedido.MontoPagado + 0.01m < pedido.Total)
                 throw new InvalidOperationException(
                     $"El pedido tiene saldo pendiente de S/ {pedido.Total - pedido.MontoPagado:F2}. Registra el pago antes de entregar.");
 
-            proximaAreaId = pedido.AreaActualId;
-            proximoEstado = "ENTREGADO";
-            nota = !string.IsNullOrWhiteSpace(recibidoPor)
+            siguiente = siguiente with { Nota = !string.IsNullOrWhiteSpace(recibidoPor)
                 ? $"Entregado a {recibidoPor.Trim()} (recogido por tercero, no el titular)"
-                : "Entregado al cliente";
-        }
-        else if (pedido.AreaActualId is null)
-        {
-            proximaAreaId = areas[0].Id;
-            proximoEstado = "EN_PROCESO";
-            nota = $"Ingresa a: {areas[0].Nombre}";
-        }
-        else
-        {
-            var idxActual = areas.FindIndex(a => a.Id == pedido.AreaActualId);
-
-            if (idxActual == -1 || idxActual == areas.Count - 1)
-            {
-                proximaAreaId = pedido.AreaActualId;
-                proximoEstado = "LISTO";
-                nota = RequiereEntregaDomicilio(pedido.Modalidad) ? "Listo para salir a ruta" : "Listo para recojo";
-            }
-            else
-            {
-                var siguiente = areas[idxActual + 1];
-                proximaAreaId = siguiente.Id;
-                proximoEstado = "EN_PROCESO";
-                nota = $"Avanza a: {siguiente.Nombre}";
-            }
+                : "Entregado al cliente" };
         }
 
-        await _pedidos.AvanzarAreaAsync(pedidoId, proximaAreaId, proximoEstado, usuarioId, nota, sedeId, ct);
+        await _pedidos.AvanzarAreaAsync(
+            pedidoId, pedido.AreaActualId, pedido.EstadoProceso,
+            siguiente.AreaId, siguiente.Estado, usuarioId, siguiente.Nota, sedeId, ct);
     }
 
     public async Task RegistrarPagoAsync(int pedidoId, RegistrarPagoRequest req, int usuarioId, int sedeId, CancellationToken ct = default)
@@ -523,8 +523,12 @@ public class PedidoService : IPedidoService
 
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está finalizado y no admite nuevos pagos.");
 
         var saldo = pedido.Total - pedido.MontoPagado;
+        if (saldo <= 0.01m)
+            throw new InvalidOperationException("El pedido ya está pagado por completo.");
         if (req.Monto <= 0)
             throw new InvalidOperationException("El monto debe ser mayor a 0.");
         if (req.Monto > saldo + 0.01m)
@@ -612,19 +616,28 @@ public class PedidoService : IPedidoService
             a.Total, a.MontoPagado, a.FechaListo, a.DiasEsperando)).ToList();
     }
 
-    public async Task<DashboardDto> DashboardAsync(int sedeId, CancellationToken ct = default)
+    public async Task<DashboardDto> DashboardAsync(int negocioId, int sedeId, CancellationToken ct = default)
     {
-        var estados = await _pedidos.ContadoresPorEstadoAsync(sedeId, ct);
-        var porArea = await _pedidos.ConteoPorAreaAsync(sedeId, ct);
-        var areas = await _areas.ListarActivasAsync(sedeId, ct);
-        var ventas = await _pedidos.VentasDelDiaAsync(DateTime.Today, sedeId, ct);
-        var pedidosDelMes = await _pedidos.PedidosDelMesAsync(DateTime.Today, sedeId, ct);
+        var hoy = DateTime.Today;
+        var estadosTask = _pedidos.ContadoresPorEstadoAsync(sedeId, ct);
+        var porAreaTask = _pedidos.ConteoPorAreaAsync(sedeId, ct);
+        var areasTask = _areas.ListarActivasAsync(sedeId, ct);
+        var pedidosDelMesTask = _pedidos.PedidosDelMesAsync(hoy, sedeId, ct);
+        var gerencialTask = _gerencial.ObtenerVistaGerencialAsync(negocioId, sedeId, ct);
+        var slaTask = _gerencial.ObtenerTableroSlaAsync(sedeId, hoy.AddDays(-30), hoy, ct);
+        var abandonadosTask = ListarAbandonadosAsync(3, sedeId, ct);
+        var configuracionTask = _configNegocio.ObtenerAsync(negocioId, ct);
 
-        var totPendientes = estados.GetValueOrDefault("PENDIENTE", 0)
-                          + estados.GetValueOrDefault("EN_PROCESO", 0)
-                          + estados.GetValueOrDefault("LISTO", 0);
-        var (_, totOtros) = await _pedidos.ListarPaginadoAsync("otros", null, null, null, null, 1, 1, sedeId, ct);
-        var (_, totUltimos) = await _pedidos.ListarPaginadoAsync("ultimos", null, null, null, null, 1, 1, sedeId, ct);
+        await Task.WhenAll(
+            estadosTask, porAreaTask, areasTask, pedidosDelMesTask,
+            gerencialTask, slaTask, abandonadosTask, configuracionTask);
+
+        var estados = await estadosTask;
+        var porArea = await porAreaTask;
+        var areas = await areasTask;
+        var gerencial = await gerencialTask;
+        var sla = await slaTask;
+        var abandonados = await abandonadosTask;
 
         return new DashboardDto
         {
@@ -632,14 +645,51 @@ public class PedidoService : IPedidoService
             PedidosPorArea = areas
                 .Select(a => new AreaConteoDto(a.Id, a.Nombre, porArea.GetValueOrDefault(a.Id, 0)))
                 .ToList(),
-            VentasDelDia = ventas,
+            VentasDelDia = gerencial.VentasHoy,
+            CobradoDelDia = gerencial.CobradoHoy,
+            SaldoPorCobrar = gerencial.SaldoPorCobrar,
+            CajaEsperadaHoy = gerencial.CajaEsperadaHoy,
+            PedidosEntregadosHoy = gerencial.PedidosEntregadosHoy,
+            PedidosEntregadosTiendaHoy = gerencial.PedidosEntregadosTiendaHoy,
+            PedidosEntregadosDomicilioHoy = gerencial.PedidosEntregadosDomicilioHoy,
+            PedidosEntregadosSemana = gerencial.PedidosEntregadosSemana,
+            PedidosEntregadosMes = gerencial.PedidosEntregadosMes,
             TotalPendientes = estados.GetValueOrDefault("PENDIENTE", 0),
             TotalEnProceso = estados.GetValueOrDefault("EN_PROCESO", 0),
             TotalListos = estados.GetValueOrDefault("LISTO", 0),
-            PedidosDelMes = pedidosDelMes,
-            TotalPendientesTab = totPendientes,
-            TotalOtrosTab = totOtros,
-            TotalUltimosTab = totUltimos
+            PedidosDelMes = await pedidosDelMesTask,
+            MetaMensual = (await configuracionTask)?.MetaMensual ?? 0,
+            InsumosBajoStock = gerencial.InsumosBajoStock,
+            ComprobantesPendientes = gerencial.ComprobantesPendientes,
+            ComprobantesRechazados = gerencial.ComprobantesRechazados,
+            SlaPorArea = sla.Areas,
+            TotalPedidosEstancados = sla.Estancados.Count,
+            PedidosEstancados = sla.Estancados.Take(5).ToList(),
+            TotalPedidosAbandonados = abandonados.Count,
+            PedidosAbandonados = abandonados.Take(5).ToList(),
+            ActualizadoEn = DateTime.Now
+        };
+    }
+
+    public async Task<PedidoContadoresDto> ContadoresAsync(int sedeId, CancellationToken ct = default)
+    {
+        var estadosTask = _pedidos.ContadoresPorEstadoAsync(sedeId, ct);
+        var otrosTask = _pedidos.ListarPaginadoAsync("otros", null, null, null, null, 1, 1, sedeId, ct);
+        var ultimosTask = _pedidos.ListarPaginadoAsync("ultimos", null, null, null, null, 1, 1, sedeId, ct);
+        var mesTask = _pedidos.PedidosDelMesAsync(DateTime.Today, sedeId, ct);
+        await Task.WhenAll(estadosTask, otrosTask, ultimosTask, mesTask);
+
+        var estados = await estadosTask;
+        var (_, totalOtros) = await otrosTask;
+        var (_, totalUltimos) = await ultimosTask;
+        return new PedidoContadoresDto
+        {
+            PedidosDelMes = await mesTask,
+            TotalPendientes = estados.GetValueOrDefault("PENDIENTE", 0)
+                              + estados.GetValueOrDefault("EN_PROCESO", 0)
+                              + estados.GetValueOrDefault("LISTO", 0),
+            TotalOtros = totalOtros,
+            TotalUltimos = totalUltimos
         };
     }
 
@@ -658,6 +708,11 @@ public class PedidoService : IPedidoService
         FechaIngreso = p.FechaIngreso,
         FechaEntregaEst = p.FechaEntregaEst,
         Modalidad = p.Modalidad,
+        DireccionEntrega = p.DireccionEntrega,
+        DistritoEntrega = p.DistritoEntrega,
+        ReferenciaEntrega = p.ReferenciaEntrega,
+        LatitudEntrega = p.LatitudEntrega,
+        LongitudEntrega = p.LongitudEntrega,
         Subtotal = p.Subtotal,
         Descuento = p.Descuento,
         EsUrgente = p.EsUrgente,
@@ -681,6 +736,7 @@ public class PedidoService : IPedidoService
             Id = i.Id,
             ServicioId = i.ServicioId,
             ServicioNombre = i.ServicioNombre,
+            ServicioUnidad = i.ServicioUnidad,
             Cantidad = i.Cantidad,
             PrecioUnit = i.PrecioUnit,
             Total = i.Total,
@@ -705,14 +761,63 @@ public class PedidoService : IPedidoService
     private static bool RequiereEntregaDomicilio(string? modalidad)
         => string.Equals(modalidad, "Delivery", StringComparison.OrdinalIgnoreCase);
 
+    private static SiguientePaso CalcularSiguientePaso(Pedido pedido, List<AreaLavado> areas)
+    {
+        if (pedido.EstadoProceso == "LISTO")
+            return new SiguientePaso(pedido.AreaActualId, "ENTREGADO", "Entregado al cliente");
+
+        if (pedido.EstadoProceso is not ("PENDIENTE" or "EN_PROCESO"))
+            throw new InvalidOperationException($"El estado '{pedido.EstadoProceso}' no permite avanzar el pedido.");
+
+        if (areas.Count == 0)
+            throw new InvalidOperationException("No hay áreas de lavado configuradas para esta sede.");
+
+        if (pedido.EstadoProceso == "EN_PROCESO" && pedido.AreaActualId is null)
+            throw new InvalidOperationException(
+                "El pedido está EN PROCESO pero no tiene un área actual. Corrige la incidencia antes de continuar; no se reinició el flujo.");
+
+        if (pedido.AreaActualId is null)
+            return new SiguientePaso(areas[0].Id, "EN_PROCESO", $"Ingresa a: {areas[0].Nombre}");
+
+        var indiceActual = areas.FindIndex(a => a.Id == pedido.AreaActualId.Value);
+        if (indiceActual < 0)
+            throw new InvalidOperationException(
+                "El área actual del pedido no está activa o no pertenece a esta sede. Corrige la configuración antes de avanzar.");
+
+        if (indiceActual == areas.Count - 1)
+        {
+            var nota = RequiereEntregaDomicilio(pedido.Modalidad) ? "Listo para salir a ruta" : "Listo para recojo";
+            return new SiguientePaso(pedido.AreaActualId, "LISTO", nota);
+        }
+
+        var proximaArea = areas[indiceActual + 1];
+        return new SiguientePaso(proximaArea.Id, "EN_PROCESO", $"Avanza a: {proximaArea.Nombre}");
+    }
+
+    private sealed record SiguientePaso(int? AreaId, string Estado, string Nota);
+
     private static void ValidarDatosContacto(string? celular, string? direccion, string modalidad)
     {
         // El celular es obligatorio en TODO pedido: es el canal para avisar al cliente
         // (WhatsApp de "listo para recoger", link de pago, etc.).
         if (string.IsNullOrWhiteSpace(celular))
             throw new InvalidOperationException("El cliente debe tener un celular registrado para crear el pedido.");
-        if (EsPedidoDomicilio(modalidad) && string.IsNullOrWhiteSpace(direccion))
+        if (modalidad == "Recojo" && string.IsNullOrWhiteSpace(direccion))
             throw new InvalidOperationException("Para pedidos a domicilio debes registrar la dirección del cliente.");
+    }
+
+    private static void ValidarDestinoDelivery(
+        string modalidad, string? direccion, string? distrito, decimal? latitud, decimal? longitud)
+    {
+        if (modalidad != "Delivery") return;
+        if (string.IsNullOrWhiteSpace(direccion))
+            throw new InvalidOperationException("Indica la dirección exacta de entrega para el Delivery.");
+        if (string.IsNullOrWhiteSpace(distrito))
+            throw new InvalidOperationException("Selecciona el distrito de entrega para el Delivery.");
+        if (latitud.HasValue != longitud.HasValue)
+            throw new InvalidOperationException("La ubicación del mapa está incompleta. Vuelve a marcar el punto de entrega.");
+        if (latitud is < -90 or > 90 || longitud is < -180 or > 180)
+            throw new InvalidOperationException("Las coordenadas del punto de entrega no son válidas.");
     }
 
     private static string? LimpiarTexto(string? valor)

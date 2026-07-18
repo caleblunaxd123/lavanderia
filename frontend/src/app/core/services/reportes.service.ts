@@ -26,6 +26,7 @@ export interface PedidoEstancado {
   pedidoId: number;
   numero: number;
   clienteNombre: string;
+  areaId: number;
   areaNombre: string;
   minutosEnArea: number;
   tiempoEstMinutos: number;
@@ -38,7 +39,13 @@ export interface TableroSla {
 
 export interface VistaGerencial {
   ventasHoy: number;
+  cobradoHoy: number;
   ventasMes: number;
+  pedidosEntregadosHoy: number;
+  pedidosEntregadosTiendaHoy: number;
+  pedidosEntregadosDomicilioHoy: number;
+  pedidosEntregadosSemana: number;
+  pedidosEntregadosMes: number;
   saldoPorCobrar: number;
   gastosMes: number;
   utilidadMes: number;

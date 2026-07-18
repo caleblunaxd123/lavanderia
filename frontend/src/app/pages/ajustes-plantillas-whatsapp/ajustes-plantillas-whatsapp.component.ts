@@ -5,12 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PlantillaWhatsappEditable, PlantillasWhatsappAdminService } from '../../core/services/plantillas-whatsapp-admin.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface EventoInfo { titulo: string; descripcion: string; placeholders: string[]; }
 
 const EVENTOS: Record<string, EventoInfo> = {
-  'INGRESO': { titulo: 'Pedido registrado', descripcion: 'Se envía al crear un pedido nuevo.', placeholders: ['cliente', 'numero', 'negocio', 'total', 'entrega'] },
+  'INGRESO': { titulo: 'Pedido registrado', descripcion: 'Incluye detalle, saldo, horario, condiciones y seguimiento cuando corresponde.', placeholders: ['cliente', 'numero', 'negocio', 'items', 'total', 'saldo', 'entrega', 'destino', 'horario', 'seguimiento', 'condiciones'] },
   'CAMBIO_AREA': { titulo: 'Cambio de etapa', descripcion: 'Se envía cuando el pedido avanza de área en el proceso de lavado.', placeholders: ['cliente', 'numero', 'area', 'tiempoRestante'] },
   'LISTO': { titulo: 'Pedido listo para recoger', descripcion: 'Se envía cuando el pedido termina el proceso.', placeholders: ['cliente', 'numero', 'negocio'] },
   'DEMORA': { titulo: 'Cambio de fecha de entrega', descripcion: 'Se envía al reprogramar la hora de entrega o recojo.', placeholders: ['cliente', 'numero', 'entrega'] },
@@ -19,7 +19,7 @@ const EVENTOS: Record<string, EventoInfo> = {
 
 @Component({
   selector: 'app-ajustes-plantillas-whatsapp',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule],
   templateUrl: './ajustes-plantillas-whatsapp.component.html',
   styleUrl: './ajustes-plantillas-whatsapp.component.scss'
 })

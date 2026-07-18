@@ -1,12 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Servicios y precios</h2>
-      <p>Gestiona el catálogo de servicios que ofreces al cliente.</p>
-    </div>
+  <app-page-header icono="tag" color="morado" titulo="Servicios y precios" subtitulo="Gestiona el catálogo de servicios que ofreces al cliente." volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo servicio</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

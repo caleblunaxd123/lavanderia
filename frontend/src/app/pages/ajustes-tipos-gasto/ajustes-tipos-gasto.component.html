@@ -1,12 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Tipos de gasto</h2>
-      <p>Registra los tipos de gasto recurrente de tu negocio (detergente, luz, alquiler, etc.)</p>
-    </div>
+  <app-page-header icono="cash" color="rojo" titulo="Tipos de gasto" subtitulo="Registra los tipos de gasto recurrente de tu negocio (detergente, luz, alquiler, etc.)" volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo tipo de gasto</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

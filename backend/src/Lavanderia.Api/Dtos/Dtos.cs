@@ -74,7 +74,7 @@ public class ConfiguracionNegocioDto
     [Range(0.01, 100000)] public decimal SolesPorPunto { get; set; } = 1m;
     [Range(50, 120)] public int AnchoTicketMm { get; set; } = 80;
     [StringLength(300)] public string? MensajePieTicket { get; set; }
-    [StringLength(2000)] public string? CondicionesServicio { get; set; }
+    [StringLength(6000)] public string? CondicionesServicio { get; set; }
     [StringLength(500)] public string? NotasProduccion { get; set; }
     [Range(0, 1000)] public decimal CostoDelivery { get; set; }
     [Range(0, 100)] public decimal ValorPuntoCanje { get; set; }   // S/ que vale 1 punto al canjear (0 = off)
@@ -140,6 +140,7 @@ public class PedidoItemDto
     public int Id { get; set; }
     [Range(1, int.MaxValue)] public int ServicioId { get; set; }
     public string? ServicioNombre { get; set; }
+    public string? ServicioUnidad { get; set; }
     [Range(0.01, 10000)] public decimal Cantidad { get; set; }
     public decimal PrecioUnit { get; set; }
     public decimal Total { get; set; }
@@ -151,6 +152,11 @@ public class CrearPedidoRequest
     public int? ClienteId { get; set; }
     public ClienteDto? ClienteNuevo { get; set; }
     [Required] public string Modalidad { get; set; } = "Tienda";
+    [StringLength(250)] public string? DireccionEntrega { get; set; }
+    [StringLength(100)] public string? DistritoEntrega { get; set; }
+    [StringLength(250)] public string? ReferenciaEntrega { get; set; }
+    [Range(-90d, 90d)] public decimal? LatitudEntrega { get; set; }
+    [Range(-180d, 180d)] public decimal? LongitudEntrega { get; set; }
     [Required, MinLength(1)] public List<PedidoItemDto> Items { get; set; } = new();
     [Range(0, 100)] public decimal DescuentoPct { get; set; }
     [Range(0, 100000)] public int? PuntosACanjear { get; set; }
@@ -181,6 +187,11 @@ public class PedidoDto
     public DateTime FechaIngreso { get; set; }
     public DateTime? FechaEntregaEst { get; set; }
     public string Modalidad { get; set; } = "";
+    public string? DireccionEntrega { get; set; }
+    public string? DistritoEntrega { get; set; }
+    public string? ReferenciaEntrega { get; set; }
+    public decimal? LatitudEntrega { get; set; }
+    public decimal? LongitudEntrega { get; set; }
     public decimal Subtotal { get; set; }
     public decimal Descuento { get; set; }
     public bool EsUrgente { get; set; }
@@ -220,13 +231,36 @@ public class DashboardDto
     public Dictionary<string, int> PedidosPorEstado { get; set; } = new();
     public List<AreaConteoDto> PedidosPorArea { get; set; } = new();
     public decimal VentasDelDia { get; set; }
+    public decimal? CobradoDelDia { get; set; }
+    public decimal? SaldoPorCobrar { get; set; }
+    public decimal? CajaEsperadaHoy { get; set; }
+    public int PedidosEntregadosHoy { get; set; }
+    public int PedidosEntregadosTiendaHoy { get; set; }
+    public int PedidosEntregadosDomicilioHoy { get; set; }
+    public int PedidosEntregadosSemana { get; set; }
+    public int PedidosEntregadosMes { get; set; }
     public int TotalPendientes { get; set; }
     public int TotalListos { get; set; }
     public int TotalEnProceso { get; set; }
     public int PedidosDelMes { get; set; }
-    public int TotalPendientesTab { get; set; }
-    public int TotalOtrosTab { get; set; }
-    public int TotalUltimosTab { get; set; }
+    public decimal MetaMensual { get; set; }
+    public int? InsumosBajoStock { get; set; }
+    public int? ComprobantesPendientes { get; set; }
+    public int? ComprobantesRechazados { get; set; }
+    public List<SlaAreaDto> SlaPorArea { get; set; } = new();
+    public int TotalPedidosEstancados { get; set; }
+    public List<PedidoEstancadoDto> PedidosEstancados { get; set; } = new();
+    public int TotalPedidosAbandonados { get; set; }
+    public List<PedidoAbandonadoDto> PedidosAbandonados { get; set; } = new();
+    public DateTime ActualizadoEn { get; set; }
+}
+
+public class PedidoContadoresDto
+{
+    public int PedidosDelMes { get; set; }
+    public int TotalPendientes { get; set; }
+    public int TotalOtros { get; set; }
+    public int TotalUltimos { get; set; }
 }
 
 public record AreaConteoDto(int AreaId, string AreaNombre, int Cantidad);
@@ -376,7 +410,7 @@ public class ReporteResultDto
 
 // ---------- Tablero SLA / cuellos de botella ----------
 public record SlaAreaDto(int AreaId, string AreaNombre, int Orden, int TiempoEstMinutos, double MinutosPromedioReal, int PedidosProcesados);
-public record PedidoEstancadoDto(int PedidoId, int Numero, string ClienteNombre, string AreaNombre, int MinutosEnArea, int TiempoEstMinutos);
+public record PedidoEstancadoDto(int PedidoId, int Numero, string ClienteNombre, int AreaId, string AreaNombre, int MinutosEnArea, int TiempoEstMinutos);
 
 public class TableroSlaDto
 {
@@ -388,7 +422,13 @@ public class TableroSlaDto
 public class VistaGerencialDto
 {
     public decimal VentasHoy { get; set; }
+    public decimal CobradoHoy { get; set; }
     public decimal VentasMes { get; set; }
+    public int PedidosEntregadosHoy { get; set; }
+    public int PedidosEntregadosTiendaHoy { get; set; }
+    public int PedidosEntregadosDomicilioHoy { get; set; }
+    public int PedidosEntregadosSemana { get; set; }
+    public int PedidosEntregadosMes { get; set; }
     public decimal SaldoPorCobrar { get; set; }
     public decimal GastosMes { get; set; }
     public decimal UtilidadMes { get; set; }
@@ -682,7 +722,14 @@ public class ConfiguracionPagosDto
     public bool TieneSecretKey { get; set; }
 }
 
-public record ConvertirDeliveryRequest();
+public class ConvertirDeliveryRequest
+{
+    [Required, StringLength(250)] public string DireccionEntrega { get; set; } = "";
+    [Required, StringLength(100)] public string DistritoEntrega { get; set; } = "";
+    [StringLength(250)] public string? ReferenciaEntrega { get; set; }
+    [Range(-90d, 90d)] public decimal? LatitudEntrega { get; set; }
+    [Range(-180d, 180d)] public decimal? LongitudEntrega { get; set; }
+}
 
 public record LinkSeguimientoDto(Guid Token);
 
@@ -697,6 +744,11 @@ public class SeguimientoPedidoDto
     public string? DireccionNegocio { get; set; }
     public int NumeroPedido { get; set; }
     public string Modalidad { get; set; } = "";
+    public string? DireccionEntrega { get; set; }
+    public string? DistritoEntrega { get; set; }
+    public string? ReferenciaEntrega { get; set; }
+    public decimal? LatitudEntrega { get; set; }
+    public decimal? LongitudEntrega { get; set; }
     public string ResumenEstado { get; set; } = "";
     public DateTime? FechaCompromiso { get; set; }
     public string EtiquetaFechaCompromiso { get; set; } = "";

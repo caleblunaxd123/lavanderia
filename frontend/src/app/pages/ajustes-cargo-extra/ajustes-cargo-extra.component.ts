@@ -6,12 +6,12 @@ import { Router } from '@angular/router';
 import { ConfiguracionNegocio } from '../../core/models/models';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
 import { InfoTooltipComponent } from '../../shared/info-tooltip/info-tooltip.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-cargo-extra',
-  imports: [CommonModule, FormsModule, IconComponent, InfoTooltipComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, InfoTooltipComponent],
   templateUrl: './ajustes-cargo-extra.component.html',
   styleUrl: './ajustes-cargo-extra.component.scss'
 })

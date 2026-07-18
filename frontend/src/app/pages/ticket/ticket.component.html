@@ -70,7 +70,7 @@
           @if (negocio().direccion) { <p>{{ negocio().direccion }}</p> }
           @if (negocio().telefono) { <p>Tel: {{ negocio().telefono }}</p> }
           @if (negocio().ruc) { <p>RUC: {{ negocio().ruc }}</p> }
-          @if (negocio().horarioAtencion) { <p>{{ negocio().horarioAtencion }}</p> }
+          @if (negocio().horarioAtencion) { <p class="ticket__horario">{{ negocio().horarioAtencion }}</p> }
         </header>
 
         <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
@@ -119,6 +119,18 @@
         }
         @if (p.usuarioNombre) { <p>Atendido por: {{ p.usuarioNombre }}</p> }
       </div>
+
+      @if (p.modalidad === 'Delivery' && p.direccionEntrega) {
+        <div class="ticket__destino">
+          <strong>DESTINO DE ENTREGA</strong>
+          <p>{{ p.direccionEntrega }}</p>
+          @if (p.distritoEntrega) { <p>{{ p.distritoEntrega }}</p> }
+          @if (p.referenciaEntrega) { <p>Ref.: {{ p.referenciaEntrega }}</p> }
+          @if (p.latitudEntrega != null && p.longitudEntrega != null) {
+            <p>GPS: {{ p.latitudEntrega }}, {{ p.longitudEntrega }}</p>
+          }
+        </div>
+      }
 
       <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
 
@@ -177,6 +189,13 @@
 
       <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
 
+      <div class="ticket__pago-estado" [class.ticket__pago-estado--ok]="saldo() <= 0.01">
+        <strong>{{ saldo() > 0.01 ? 'PAGO PENDIENTE' : 'PAGO COMPLETO' }}</strong>
+        <span>{{ saldo() > 0.01 ? ('S/ ' + (saldo() | number:'1.2-2')) : 'S/ 0.00' }}</span>
+      </div>
+
+      <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
+
       <!-- Estado -->
       <div class="ticket__estado">
         <strong>Estado:</strong> {{ p.estadoProceso === 'PENDIENTE' ? 'INGRESADO' : p.estadoProceso.replace('_', ' ') }}
@@ -208,12 +227,14 @@
         @if (condicionesLista().length > 0) {
           <div class="ticket__divider">- - - - - - - - - - - - - - - - - - -</div>
           <div class="ticket__condiciones">
-            <strong>CONDICIONES DEL SERVICIO</strong>
+            <strong>CONDICIONES DEL SERVICIO - {{ marcaCorta() }}</strong>
+            <p class="ticket__condiciones-intro">Su confianza es nuestro compromiso. Le invitamos a conocer las siguientes condiciones que garantizan un servicio seguro y transparente para usted.</p>
             <ol>
               @for (c of condicionesLista(); track $index) {
                 <li>{{ c }}</li>
               }
             </ol>
+            <p class="ticket__condiciones-cierre">Al recibir este comprobante, usted declara conocer y aceptar íntegramente las presentes condiciones de servicio. Gracias por confiar en {{ marcaCorta() }}.</p>
           </div>
         }
       } @else {

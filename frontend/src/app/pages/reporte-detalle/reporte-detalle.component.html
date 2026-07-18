@@ -1,19 +1,13 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Reportes</button>
-    <div>
-      <h2>{{ meta?.titulo }}</h2>
-      <p>{{ meta?.descripcion }}</p>
-    </div>
-    <div class="page__acciones">
-      <button class="btn btn--secundario" (click)="exportarCsv()" [disabled]="cargando() || !resultado()?.filas?.length">
-        <app-icon name="download" [size]="15"></app-icon> CSV
-      </button>
-      <button class="btn btn--primario" (click)="exportarExcel()" [disabled]="exportando() || cargando() || !resultado()?.filas?.length">
-        <app-icon name="download" [size]="15"></app-icon> {{ exportando() ? 'Generando…' : 'Excel (.xlsx)' }}
-      </button>
-    </div>
-  </div>
+  <app-page-header icono="chart" color="naranja" [titulo]="meta?.titulo ?? 'Reporte'"
+    [subtitulo]="meta?.descripcion" volverTexto="Reportes" (volver)="volver()">
+    <button class="btn btn--secundario" (click)="exportarCsv()" [disabled]="cargando() || !resultado()?.filas?.length">
+      <app-icon name="download" [size]="15"></app-icon> CSV
+    </button>
+    <button class="btn btn--primario" (click)="exportarExcel()" [disabled]="exportando() || cargando() || !resultado()?.filas?.length">
+      <app-icon name="download" [size]="15"></app-icon> {{ exportando() ? 'Generando…' : 'Excel (.xlsx)' }}
+    </button>
+  </app-page-header>
 
   @if (meta?.usaRango) {
     <div class="card filtros">

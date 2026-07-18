@@ -14,6 +14,13 @@ interface Denominacion {
   cantidad: number;
 }
 
+function fechaLocalIso(fecha: Date): string {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
 @Component({
   selector: 'app-cuadre-caja',
   imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent],
@@ -26,7 +33,7 @@ export class CuadreCajaComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
 
-  fecha = new Date().toISOString().slice(0, 10);
+  fecha = fechaLocalIso(new Date());
   guardado = false;
 
   // Cuadre por colaborador
@@ -200,6 +207,14 @@ export class CuadreCajaComponent implements OnInit {
     this.ingresosDigitalesDetalle().reduce((acc, m) => acc + m.monto, 0)
   );
 
+  ingresosBilleteras = computed(() =>
+    this.ingresosDelDia().filter(m => ['YAPE', 'PLIN'].includes(m.metodoPago)).reduce((a, m) => a + m.monto, 0)
+  );
+
+  ingresosTransferencia = computed(() =>
+    this.ingresosDelDia().filter(m => m.metodoPago === 'TRANSFERENCIA').reduce((a, m) => a + m.monto, 0)
+  );
+
   // Ingresos digitales agrupados para el reporte: transferencia móvil (Yape/Plin/Transferencia) vs tarjeta (POS).
   ingresosTransferenciaMovil = computed(() =>
     this.ingresosDelDia().filter(m => ['YAPE', 'PLIN', 'TRANSFERENCIA'].includes(m.metodoPago)).reduce((a, m) => a + m.monto, 0)
@@ -233,7 +248,7 @@ export class CuadreCajaComponent implements OnInit {
   gananciaNeta = computed(() => this.ingresosTotal() - this.gastosTotal());
 
   readonly etiquetasMetodo: Record<string, string> = {
-    EFECTIVO: 'Efectivo', YAPE: 'Yape', PLIN: 'Plin', TRANSFERENCIA: 'Transferencia', POS: 'POS/Tarjeta'
+    EFECTIVO: 'Efectivo', YAPE: 'Yape', PLIN: 'Plin', TRANSFERENCIA: 'Transferencia', POS: 'POS/Tarjeta', TARJETA: 'Tarjeta'
   };
 
   abrirModalGasto() {

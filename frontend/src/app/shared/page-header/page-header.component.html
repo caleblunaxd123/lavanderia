@@ -1,3 +1,8 @@
+@if (volverTexto) {
+  <button type="button" class="ph__volver" (click)="volver.emit()">
+    <app-icon name="arrow-left" [size]="14"></app-icon> {{ volverTexto }}
+  </button>
+}
 <header class="ph" [attr.data-color]="color">
   @if (icono) {
     <div class="ph__chip"><app-icon [name]="icono" [size]="24"></app-icon></div>

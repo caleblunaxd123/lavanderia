@@ -87,31 +87,33 @@
   }
 }
 
-// ---------- Badge de sede: siempre visible, fijo en la parte inferior ----------
+// ---------- Contexto de sede: visible sin cubrir el contenido ----------
 .sede-badge {
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 30;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  margin: -38px 24px 0 auto;
+  z-index: 19;
 
   &__btn {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(90deg, var(--azul-oscuro), var(--azul-claro));
-    border: none;
-    color: #fff;
-    border-radius: 999px;
-    padding: 9px 18px;
+    background: #fff;
+    border: 1px solid #cbd7e5;
+    color: #315c91;
+    border-radius: 8px;
+    padding: 7px 12px;
     font-size: 12.5px;
     font-weight: 700;
     letter-spacing: .02em;
     cursor: pointer;
     white-space: nowrap;
-    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    box-shadow: 0 2px 7px rgba(23,49,83,.09);
 
-    &:not(.is-fijo):hover { filter: brightness(1.1); }
+    &:not(.is-fijo):hover { background: #f4f8fc; border-color: #9eb4cf; }
     &.is-fijo { cursor: default; }
     &:disabled { opacity: .6; cursor: not-allowed; }
   }
@@ -149,15 +151,7 @@
   .sede-badge {
     position: sticky;
     top: 56px;
-    left: auto;
-    bottom: auto;
-    transform: none;
-    display: flex;
-    justify-content: center;
-    width: max-content;
-    max-width: calc(100vw - 24px);
     margin: 8px auto 0;
-    z-index: 19;
   }
 
   .sede-badge__menu {

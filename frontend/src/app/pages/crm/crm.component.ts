@@ -5,10 +5,11 @@ import { ClienteAnalitica, ClienteCumpleanos, ClientesService } from '../../core
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-crm',
-  imports: [CommonModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, IconComponent],
   templateUrl: './crm.component.html',
   styleUrl: './crm.component.scss'
 })

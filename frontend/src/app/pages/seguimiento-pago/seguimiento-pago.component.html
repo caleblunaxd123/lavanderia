@@ -41,6 +41,18 @@
           </div>
         }
 
+        @if (d.modalidad === 'Delivery' && d.direccionEntrega) {
+          <div class="destino">
+            <span class="destino__etiqueta">Destino de entrega</span>
+            <strong>{{ d.direccionEntrega }}</strong>
+            @if (d.distritoEntrega) { <span>{{ d.distritoEntrega }}</span> }
+            @if (d.referenciaEntrega) { <small>Referencia: {{ d.referenciaEntrega }}</small> }
+            @if (urlMapaEntrega(d); as urlMapa) {
+              <a [href]="urlMapa" target="_blank" rel="noopener noreferrer">Ver punto exacto en el mapa</a>
+            }
+          </div>
+        }
+
         @if (estaEnReparto(d) && d.motorizadoNombre) {
           <div class="reparto">
             <div class="reparto__icono">🛵</div>

@@ -17,9 +17,11 @@
     "@angular/platform-browser": "^20.3.26",
     "@angular/platform-browser-dynamic": "^20.3.26",
     "@angular/router": "^20.3.26",
+    "@types/leaflet": "^1.9.21",
     "html2canvas": "^1.4.1",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
+    "leaflet": "^1.9.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

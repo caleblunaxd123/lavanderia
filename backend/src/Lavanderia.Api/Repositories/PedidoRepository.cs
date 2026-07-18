@@ -13,7 +13,10 @@ public interface IPedidoRepository
     Task<(List<Pedido> Items, int Total)> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task<int> SiguienteNumeroAsync(int sedeId, CancellationToken ct = default);
     Task RegistrarHistorialAsync(PedidoHistorial h, SqlConnection conn, SqlTransaction tx, CancellationToken ct = default);
-    Task AvanzarAreaAsync(int pedidoId, int? nuevaAreaId, string nuevoEstado, int usuarioId, string? nota, int sedeId, CancellationToken ct = default);
+    Task AvanzarAreaAsync(
+        int pedidoId, int? areaEsperada, string estadoEsperado,
+        int? nuevaAreaId, string nuevoEstado, int usuarioId, string? nota,
+        int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorial>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task<Dictionary<string, int>> ContadoresPorEstadoAsync(int sedeId, CancellationToken ct = default);
     Task<Dictionary<int, int>> ConteoPorAreaAsync(int sedeId, CancellationToken ct = default);
@@ -26,7 +29,8 @@ public interface IPedidoRepository
     Task ReenviarAlmacenAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
     Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int usuarioId, string? motivo, int sedeId, CancellationToken ct = default);
     Task<List<PedidoAbandonado>> ListarListosAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
-    Task<bool> CambiarModalidadAsync(int pedidoId, string modalidad, int sedeId, CancellationToken ct = default);
+    Task<bool> ActualizarDestinoDeliveryAsync(int pedidoId, string direccion, string distrito, string? referencia,
+        decimal? latitud, decimal? longitud, int sedeId, CancellationToken ct = default);
     /// <summary>motorizadoId en null desasigna. No valida aqui que el motorizado pertenezca a
     /// la sede — eso lo valida el controller, que ya tiene el objeto Motorizado cargado.</summary>
     Task<bool> AsignarMotorizadoAsync(int pedidoId, int? motorizadoId, int sedeId, CancellationToken ct = default);
@@ -61,12 +65,14 @@ public class PedidoRepository : IPedidoRepository
             cmd.CommandText = @"
                 INSERT INTO dbo.Pedido (
                     SedeId, Numero, ClienteId, UsuarioId, FechaIngreso, FechaEntregaEst, Modalidad,
+                    DireccionEntrega, DistritoEntrega, ReferenciaEntrega, LatitudEntrega, LongitudEntrega,
                     Subtotal, Descuento, EsUrgente, RecargoUrgente, Redondeo, Total, MontoPagado, EstadoPago, EstadoProceso,
                     AreaActualId, Observaciones, CodigoAntiguo
                 )
                 OUTPUT INSERTED.Id
                 VALUES (
                     @SedeId, @Numero, @ClienteId, @UsuarioId, @FechaIngreso, @FechaEntregaEst, @Modalidad,
+                    @DireccionEntrega, @DistritoEntrega, @ReferenciaEntrega, @LatitudEntrega, @LongitudEntrega,
                     @Subtotal, @Descuento, @EsUrgente, @RecargoUrgente, @Redondeo, @Total, @MontoPagado, @EstadoPago, @EstadoProceso,
                     @AreaActualId, @Observaciones, @CodigoAntiguo
                 );";
@@ -77,6 +83,11 @@ public class PedidoRepository : IPedidoRepository
             cmd.AddParam("@FechaIngreso", p.FechaIngreso);
             cmd.AddParam("@FechaEntregaEst", p.FechaEntregaEst);
             cmd.AddParam("@Modalidad", p.Modalidad);
+            cmd.AddParam("@DireccionEntrega", p.DireccionEntrega);
+            cmd.AddParam("@DistritoEntrega", p.DistritoEntrega);
+            cmd.AddParam("@ReferenciaEntrega", p.ReferenciaEntrega);
+            cmd.AddParam("@LatitudEntrega", p.LatitudEntrega);
+            cmd.AddParam("@LongitudEntrega", p.LongitudEntrega);
             cmd.AddParam("@Subtotal", p.Subtotal);
             cmd.AddParam("@Descuento", p.Descuento);
             cmd.AddParam("@EsUrgente", p.EsUrgente);
@@ -175,6 +186,7 @@ public class PedidoRepository : IPedidoRepository
         cmd.CommandText = @"
             SELECT p.Id, p.SedeId, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni, c.Puntos AS ClientePuntos,
                    p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
+                   p.DireccionEntrega, p.DistritoEntrega, p.ReferenciaEntrega, p.LatitudEntrega, p.LongitudEntrega,
                    p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                    p.AreaActualId, a.Nombre AS AreaActualNombre,
                    p.Observaciones, p.FechaEntregaReal, p.Anulado, p.MotivoAnulacion, p.CodigoAntiguo
@@ -210,7 +222,7 @@ public class PedidoRepository : IPedidoRepository
 
         await using var cmdItems = conn.CreateCommand();
         cmdItems.CommandText = @"
-            SELECT i.Id, i.PedidoId, i.ServicioId, s.Nombre AS ServicioNombre,
+            SELECT i.Id, i.PedidoId, i.ServicioId, s.Nombre AS ServicioNombre, s.Unidad AS ServicioUnidad,
                    i.Cantidad, i.PrecioUnit, i.Total, i.Descripcion
             FROM dbo.PedidoItem i
             INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
@@ -275,6 +287,7 @@ public class PedidoRepository : IPedidoRepository
             SELECT
                 p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni, c.Puntos AS ClientePuntos,
                 p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
+                p.DireccionEntrega, p.DistritoEntrega, p.ReferenciaEntrega, p.LatitudEntrega, p.LongitudEntrega,
                 p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                 p.AreaActualId, a.Nombre AS AreaActualNombre,
                 p.Observaciones, p.FechaEntregaReal, p.Anulado, p.MotivoAnulacion, p.CodigoAntiguo,
@@ -321,6 +334,7 @@ public class PedidoRepository : IPedidoRepository
             SELECT
                 p.Id, p.Numero, p.ClienteId, c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular, c.Dni AS ClienteDni, c.Puntos AS ClientePuntos,
                 p.UsuarioId, u.NombreCompleto AS UsuarioNombre, p.FechaIngreso, p.FechaEntregaEst, p.Modalidad,
+                p.DireccionEntrega, p.DistritoEntrega, p.ReferenciaEntrega, p.LatitudEntrega, p.LongitudEntrega,
                 p.Subtotal, p.Descuento, p.EsUrgente, p.RecargoUrgente, p.Redondeo, p.Total, p.MontoPagado, p.EstadoPago, p.EstadoProceso,
                 p.AreaActualId, a.Nombre AS AreaActualNombre,
                 p.Observaciones, p.FechaEntregaReal, p.Anulado, p.MotivoAnulacion, p.CodigoAntiguo,
@@ -385,28 +399,36 @@ public class PedidoRepository : IPedidoRepository
         }, ct);
     }
 
-    public async Task AvanzarAreaAsync(int pedidoId, int? nuevaAreaId, string nuevoEstado, int usuarioId, string? nota, int sedeId, CancellationToken ct = default)
+    public async Task AvanzarAreaAsync(
+        int pedidoId, int? areaEsperada, string estadoEsperado,
+        int? nuevaAreaId, string nuevoEstado, int usuarioId, string? nota,
+        int sedeId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
         try
         {
-            // 1. Leer estado actual para detectar no-op y prevenir duplicados en el historial
+            // El bloqueo serializa dobles clics y evita dos entradas de historial para el mismo paso.
             await using var cmdActual = conn.CreateCommand();
             cmdActual.Transaction = tx;
-            cmdActual.CommandText = "SELECT AreaActualId, EstadoProceso FROM dbo.Pedido WHERE Id = @Id AND SedeId = @SedeId";
+            cmdActual.CommandText = @"
+                SELECT AreaActualId, EstadoProceso, Anulado
+                  FROM dbo.Pedido WITH (UPDLOCK, ROWLOCK)
+                 WHERE Id = @Id AND SedeId = @SedeId";
             cmdActual.AddParam("@Id", pedidoId);
             cmdActual.AddParam("@SedeId", sedeId);
 
             int? areaActualDb = null;
             string? estadoActualDb = null;
+            var anuladoDb = false;
             await using (var r = await cmdActual.ExecuteReaderAsync(ct))
             {
                 if (await r.ReadAsync(ct))
                 {
                     areaActualDb = r.IsDBNull(0) ? null : r.GetInt32(0);
                     estadoActualDb = r.GetString(1);
+                    anuladoDb = r.GetBoolean(2);
                 }
             }
 
@@ -414,6 +436,19 @@ public class PedidoRepository : IPedidoRepository
             {
                 await tx.RollbackAsync(ct);
                 throw new InvalidOperationException("Pedido no encontrado.");
+            }
+
+            if (anuladoDb || estadoActualDb is "ENTREGADO" or "ANULADO" or "DONADO")
+            {
+                await tx.RollbackAsync(ct);
+                throw new InvalidOperationException("El pedido está finalizado y no puede volver a avanzar.");
+            }
+
+            if (areaActualDb != areaEsperada || estadoActualDb != estadoEsperado)
+            {
+                await tx.RollbackAsync(ct);
+                throw new InvalidOperationException(
+                    "El pedido cambió de etapa mientras se procesaba la solicitud. Actualiza la lista antes de intentarlo otra vez.");
             }
 
             // 2. Si no hay cambio real, no escribimos nada (evita historial duplicado)
@@ -433,7 +468,7 @@ public class PedidoRepository : IPedidoRepository
                    SET AreaActualId = @AreaId,
                        EstadoProceso = @Estado,
                        FechaEntregaReal = CASE WHEN @Estado = 'ENTREGADO' THEN SYSDATETIME() ELSE FechaEntregaReal END
-                 WHERE Id = @Id AND SedeId = @SedeId";
+                 WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0";
             cmd.AddParam("@AreaId", nuevaAreaId);
             cmd.AddParam("@Estado", nuevoEstado);
             cmd.AddParam("@Id", pedidoId);
@@ -579,7 +614,8 @@ public class PedidoRepository : IPedidoRepository
                                       WHEN (MontoPagado + @Monto) > 0 THEN 'PARCIAL'
                                       ELSE 'PENDIENTE'
                                     END
-                 WHERE Id = @PedidoId AND SedeId = @SedeId
+                 WHERE Id = @PedidoId AND SedeId = @SedeId AND Anulado = 0
+                   AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO')
                    AND MontoPagado + @Monto <= Total + 0.01";
             cmdPed.AddParam("@Monto", monto);
             cmdPed.AddParam("@PedidoId", pedidoId);
@@ -589,13 +625,22 @@ public class PedidoRepository : IPedidoRepository
             {
                 await using var cmdExiste = conn.CreateCommand();
                 cmdExiste.Transaction = tx;
-                cmdExiste.CommandText = "SELECT COUNT(1) FROM dbo.Pedido WHERE Id = @PedidoId AND SedeId = @SedeId";
+                cmdExiste.CommandText = @"
+                    SELECT CASE
+                             WHEN Anulado = 1 OR EstadoProceso IN ('ENTREGADO','ANULADO','DONADO') THEN 2
+                             ELSE 1
+                           END
+                      FROM dbo.Pedido
+                     WHERE Id = @PedidoId AND SedeId = @SedeId";
                 cmdExiste.AddParam("@PedidoId", pedidoId);
                 cmdExiste.AddParam("@SedeId", sedeId);
-                var existe = await cmdExiste.ReadScalarAsync<int>(ct) > 0;
-                throw new InvalidOperationException(existe
-                    ? "El monto excede el saldo pendiente del pedido."
-                    : "Pedido no encontrado.");
+                var resultado = await cmdExiste.ReadScalarAsync<int>(ct);
+                throw new InvalidOperationException(resultado switch
+                {
+                    2 => "El pedido está finalizado y no admite nuevos pagos.",
+                    1 => "El monto excede el saldo pendiente del pedido.",
+                    _ => "Pedido no encontrado."
+                });
             }
 
             // 2) Registrar en MovimientoCaja
@@ -746,13 +791,27 @@ public class PedidoRepository : IPedidoRepository
         }
     }
 
-    public async Task<bool> CambiarModalidadAsync(int pedidoId, string modalidad, int sedeId, CancellationToken ct = default)
+    public async Task<bool> ActualizarDestinoDeliveryAsync(
+        int pedidoId, string direccion, string distrito, string? referencia,
+        decimal? latitud, decimal? longitud, int sedeId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "UPDATE dbo.Pedido SET Modalidad = @Modalidad WHERE Id = @Id AND SedeId = @SedeId";
-        cmd.AddParam("@Modalidad", modalidad);
+        cmd.CommandText = @"
+            UPDATE dbo.Pedido
+               SET Modalidad = 'Delivery',
+                   DireccionEntrega = @Direccion,
+                   DistritoEntrega = @Distrito,
+                   ReferenciaEntrega = @Referencia,
+                   LatitudEntrega = @Latitud,
+                   LongitudEntrega = @Longitud
+             WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso <> 'ENTREGADO'";
+        cmd.AddParam("@Direccion", direccion);
+        cmd.AddParam("@Distrito", distrito);
+        cmd.AddParam("@Referencia", referencia);
+        cmd.AddParam("@Latitud", latitud);
+        cmd.AddParam("@Longitud", longitud);
         cmd.AddParam("@Id", pedidoId);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ExecuteNonQueryAsync(ct) > 0;
@@ -885,6 +944,11 @@ public class PedidoRepository : IPedidoRepository
         FechaIngreso = r.GetDateTime(r.GetOrdinal("FechaIngreso")),
         FechaEntregaEst = r.GetNullableDateTime("FechaEntregaEst"),
         Modalidad = r.GetString(r.GetOrdinal("Modalidad")),
+        DireccionEntrega = r.GetNullableString("DireccionEntrega"),
+        DistritoEntrega = r.GetNullableString("DistritoEntrega"),
+        ReferenciaEntrega = r.GetNullableString("ReferenciaEntrega"),
+        LatitudEntrega = r.GetNullableDecimal("LatitudEntrega"),
+        LongitudEntrega = r.GetNullableDecimal("LongitudEntrega"),
         Subtotal = r.GetDecimal(r.GetOrdinal("Subtotal")),
         Descuento = r.GetDecimal(r.GetOrdinal("Descuento")),
         EsUrgente = r.GetBoolean(r.GetOrdinal("EsUrgente")),
@@ -909,6 +973,7 @@ public class PedidoRepository : IPedidoRepository
         PedidoId = r.GetInt32(r.GetOrdinal("PedidoId")),
         ServicioId = r.GetInt32(r.GetOrdinal("ServicioId")),
         ServicioNombre = r.GetNullableString("ServicioNombre"),
+        ServicioUnidad = r.GetNullableString("ServicioUnidad"),
         Cantidad = r.GetDecimal(r.GetOrdinal("Cantidad")),
         PrecioUnit = r.GetDecimal(r.GetOrdinal("PrecioUnit")),
         Total = r.GetDecimal(r.GetOrdinal("Total")),

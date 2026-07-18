@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Lavixa · Presentación Semana 2</title>
+<style>
+  :root{
+    --ink:#132038; --soft:#4a5878; --faint:#8a97b4; --line:#e4e9f3; --bg:#ffffff;
+    --azul:#0b57d0; --azul-d:#0c447c; --azul-w:#eaf1fd;
+    --rojo:#dc2626; --rojo-w:#fdecec; --naranja:#b7791f; --naranja-w:#fdf3e2;
+    --gris:#475569; --gris-w:#eef2f7; --verde:#1a7a45; --verde-w:#e6f6ec; --morado:#7c3aed; --morado-w:#f2ecfe;
+    --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:#e9edf4;font-family:var(--sans);color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .slide{
+    position:relative; width:1122px; min-height:793px; margin:0 auto; background:var(--bg);
+    padding:60px 72px; display:flex; flex-direction:column; overflow:hidden;
+    page-break-after:always; break-after:page;
+  }
+  .slide:last-child{page-break-after:auto;}
+  .rail{position:absolute; left:0; top:0; bottom:0; width:10px; background:var(--azul);}
+  .slide[data-c="rojo"] .rail{background:var(--rojo);}
+  .slide[data-c="naranja"] .rail{background:var(--naranja);}
+  .slide[data-c="gris"] .rail{background:var(--gris);}
+  .slide[data-c="verde"] .rail{background:var(--verde);}
+
+  .kicker{font-size:14px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--azul);margin:0 0 18px;}
+  .slide[data-c="rojo"] .kicker{color:var(--rojo);}
+  .slide[data-c="naranja"] .kicker{color:var(--naranja);}
+  .slide[data-c="gris"] .kicker{color:var(--gris);}
+  .slide[data-c="verde"] .kicker{color:var(--verde);}
+
+  .chip{
+    width:74px;height:74px;border-radius:20px;display:flex;align-items:center;justify-content:center;
+    background:var(--azul-w);color:var(--azul);margin-bottom:26px;
+  }
+  .slide[data-c="rojo"] .chip{background:var(--rojo-w);color:var(--rojo);}
+  .slide[data-c="naranja"] .chip{background:var(--naranja-w);color:var(--naranja);}
+  .slide[data-c="gris"] .chip{background:var(--gris-w);color:var(--gris);}
+  .slide[data-c="verde"] .chip{background:var(--verde-w);color:var(--verde);}
+  .chip svg{width:38px;height:38px;}
+
+  h2{font-family:var(--serif);font-size:44px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px;line-height:1.05;}
+  .sub{font-size:20px;color:var(--soft);margin:0 0 34px;max-width:60ch;}
+
+  ul.feats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:16px 40px;max-width:920px;}
+  ul.feats li{position:relative;padding-left:34px;font-size:19px;line-height:1.4;color:var(--ink);}
+  ul.feats li b{font-weight:600;}
+  ul.feats li small{display:block;color:var(--faint);font-size:15px;margin-top:2px;}
+  ul.feats li::before{
+    content:"";position:absolute;left:0;top:7px;width:20px;height:20px;border-radius:6px;
+    background:var(--azul-w) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230b57d0' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/13px no-repeat;
+  }
+  .slide[data-c="rojo"] ul.feats li::before{background-color:var(--rojo-w);}
+  .slide[data-c="naranja"] ul.feats li::before{background-color:var(--naranja-w);}
+  .slide[data-c="gris"] ul.feats li::before{background-color:var(--gris-w);}
+
+  .foot{position:absolute;left:72px;right:72px;bottom:34px;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--faint);border-top:1px solid var(--line);padding-top:14px;}
+  .foot b{color:var(--soft);font-weight:600;}
+  .pill{display:inline-block;background:var(--verde-w);color:var(--verde);font-weight:700;font-size:13px;padding:4px 12px;border-radius:999px;}
+
+  /* Portada */
+  .cover{justify-content:center;background:linear-gradient(135deg,#0b3f96 0%,#0b57d0 55%,#1f74e0 100%);color:#fff;}
+  .cover .rail{display:none;}
+  .cover .logo{width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;margin-bottom:30px;}
+  .cover h1{font-family:var(--serif);font-size:62px;font-weight:600;letter-spacing:-.02em;margin:0 0 14px;line-height:1;}
+  .cover .tag{font-size:23px;color:rgba(255,255,255,.9);margin:0 0 30px;}
+  .cover .mods{display:flex;gap:10px;flex-wrap:wrap;}
+  .cover .mods span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);padding:8px 18px;border-radius:999px;font-size:16px;font-weight:600;}
+  .cover .cfoot{position:absolute;left:72px;bottom:44px;font-size:15px;color:rgba(255,255,255,.8);}
+
+  /* Slide resumen / cierre con dos columnas */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:940px;}
+  .card{border:1px solid var(--line);border-radius:16px;padding:22px 24px;}
+  .card h3{font-size:20px;margin:0 0 12px;font-family:var(--serif);font-weight:600;}
+  .card ul{margin:0;padding-left:20px;} .card li{font-size:16.5px;line-height:1.5;margin:6px 0;color:var(--soft);}
+  .card li b{color:var(--ink);font-weight:600;}
+
+  @page{size:297mm 210mm;margin:0;}
+  @media print{ html,body{background:#fff;} .slide{margin:0;box-shadow:none;} }
+  @media screen{ .slide{box-shadow:0 10px 30px rgba(16,24,40,.14);margin:22px auto;} }
+</style>
+</head>
+<body>
+
+  <section class="slide cover">
+    <div class="logo"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 7 6 10 6 14a6 6 0 0 0 12 0c0-4-2-7-6-12Z"/></svg></div>
+    <h1>Lavixa</h1>
+    <p class="tag">Presentación — Semana 2</p>
+    <div class="mods"><span>Promociones</span><span>Usuarios y permisos</span><span>Reportes</span><span>Ajustes</span></div>
+    <div class="cfoot">Sistema integrado de gestión para lavanderías · Sábado 18 / Domingo 19 de julio</div>
+  </section>
+
+  <section class="slide" data-c="verde">
+    <div class="rail"></div>
+    <p class="kicker">Resumen de la semana</p>
+    <h2>Qué quedó listo esta semana</h2>
+    <p class="sub">Los cuatro módulos del alcance de Semana 2, probados de punta a punta y sin errores conocidos.</p>
+    <div class="cols">
+      <div class="card">
+        <h3>Entregado y probado</h3>
+        <ul>
+          <li><b>Promociones</b> — cupones y descuentos</li>
+          <li><b>Usuarios y permisos</b> — roles por módulo</li>
+          <li><b>Reportes</b> — 12 reportes + exportar a Excel</li>
+          <li><b>Ajustes</b> — configuración del negocio</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Mejoras extra incluidas</h3>
+        <ul>
+          <li>Nueva identidad visual por módulo</li>
+          <li>Alertas de vencimiento tipo panel</li>
+          <li>Delivery con <b>mapa</b> y dirección automática</li>
+          <li>Corrección de un error al guardar ajustes</li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot"><span><b>Estado:</b> verificado en pruebas de flujo y de interfaz</span><span class="pill">Listo para demo</span></div>
+  </section>
+
+  <section class="slide" data-c="rojo">
+    <div class="rail"></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+    <p class="kicker">Módulo 1</p>
+    <h2>Promociones</h2>
+    <p class="sub">Herramientas para atraer y fidelizar clientes con descuentos y cupones.</p>
+    <ul class="feats">
+      <li><b>Descuento por porcentaje o monto fijo</b><small>Ej. 10% o S/ 5 de descuento</small></li>
+      <li><b>Cupones con código</b><small>El cliente ingresa un código y aplica el beneficio</small></li>
+      <li><b>Promoción por volumen</b><small>Ej. descuento desde 3 kg de ropa</small></li>
+      <li><b>Aplicable a servicios específicos</b><small>Eliges a qué servicios afecta cada promo</small></li>
+      <li><b>Activar o desactivar en un clic</b><small>Controlas qué promos están vigentes</small></li>
+      <li><b>Vigencia por fechas</b><small>Con fecha de inicio y fin</small></li>
+    </ul>
+    <div class="foot"><span><b>Probado:</b> crear, editar, activar y eliminar promociones</span><span class="pill">Funcionando</span></div>
+  </section>
+
+  <section class="slide" data-c="azul">
+    <div class="rail"></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+    <p class="kicker">Módulo 2</p>
+    <h2>Usuarios y permisos</h2>
+    <p class="sub">Cada persona entra con su propio acceso y ve solo lo que le corresponde.</p>
+    <ul class="feats">
+      <li><b>Usuarios por rol</b><small>Administrador, Coordinador y Trabajador</small></li>
+      <li><b>Permisos por módulo</b><small>Defines qué secciones ve cada rol</small></li>
+      <li><b>Alta, edición y desactivación</b><small>Gestión completa del personal</small></li>
+      <li><b>Acceso por sede</b><small>Cada usuario asignado a su local</small></li>
+      <li><b>Contraseña propia y segura</b><small>Se guarda cifrada</small></li>
+      <li><b>Bloqueo de auto-desactivación</b><small>Un usuario no puede inhabilitarse a sí mismo</small></li>
+    </ul>
+    <div class="foot"><span><b>Probado:</b> crear usuario, editar, cambiar permisos por rol</span><span class="pill">Funcionando</span></div>
+  </section>
+
+  <section class="slide" data-c="naranja">
+    <div class="rail"></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><rect x="5" y="11" width="3.5" height="7"/><rect x="10.5" y="7" width="3.5" height="11"/><rect x="16" y="4" width="3.5" height="14"/></svg></div>
+    <p class="kicker">Módulo 3</p>
+    <h2>Reportes</h2>
+    <p class="sub">Toda la información del negocio en tableros claros y exportables.</p>
+    <ul class="feats">
+      <li><b>12 reportes de gestión</b><small>Ventas, servicios, gastos, pagos, anulados y más</small></li>
+      <li><b>Cuadres diarios dedicados</b><small>Con corte, digital y días sin cuadrar</small></li>
+      <li><b>Exportar a Excel (.xlsx) y CSV</b><small>Para compartir o analizar aparte</small></li>
+      <li><b>Servicios más y menos rentables</b><small>Precio promedio y cantidad vendida</small></li>
+      <li><b>Pagos por método</b><small>Efectivo, Yape, Plin, transferencia, tarjeta</small></li>
+      <li><b>Acciones desde el reporte</b><small>Enviar a donación, reenviar a almacén</small></li>
+    </ul>
+    <div class="foot"><span><b>Probado:</b> los 12 reportes cargan y exportan correctamente</span><span class="pill">Funcionando</span></div>
+  </section>
+
+  <section class="slide" data-c="gris">
+    <div class="rail"></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></div>
+    <p class="kicker">Módulo 4</p>
+    <h2>Ajustes</h2>
+    <p class="sub">El centro de configuración: todo el negocio a la medida.</p>
+    <ul class="feats">
+      <li><b>Marca del negocio</b><small>Logo, colores y datos del ticket</small></li>
+      <li><b>Puntos, metas e impuesto (IGV)</b><small>Fidelización y objetivos mensuales</small></li>
+      <li><b>Servicios, precios y categorías</b><small>El catálogo completo</small></li>
+      <li><b>Áreas de lavado y sedes</b><small>Flujo de producción y locales</small></li>
+      <li><b>Personal, tipos de gasto, motorizados</b><small>Toda la operación</small></li>
+      <li><b>Plantillas de WhatsApp y facturación</b><small>Comunicación y comprobantes</small></li>
+    </ul>
+    <div class="foot"><span><b>Corregido y probado:</b> guardar configuración ahora funciona sin error</span><span class="pill">Funcionando</span></div>
+  </section>
+
+  <section class="slide" data-c="azul">
+    <div class="rail"></div>
+    <p class="kicker">Cierre</p>
+    <h2>Estado y próximos pasos</h2>
+    <p class="sub">El sistema está listo para la demo de Semana 2. Esto es lo que sigue.</p>
+    <div class="cols">
+      <div class="card">
+        <h3>Estado actual</h3>
+        <ul>
+          <li>Los 4 módulos <b>funcionan y están probados</b></li>
+          <li>Código respaldado en <b>GitHub</b></li>
+          <li>Delivery con mapa y seguimiento del cliente</li>
+          <li>Alertas de vencimiento para el propietario</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Próximos pasos</h3>
+        <ul>
+          <li>Seguimiento en <b>vivo tipo Uber</b> (va en camino / llegó)</li>
+          <li>Activar <b>Facturación SUNAT</b> (requisitos entregados)</li>
+          <li>Activar <b>Pagos con tarjeta — Culqi</b></li>
+          <li>Publicación en un dominio con HTTPS</li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot"><span><b>Lavixa</b> · Sistema de gestión para lavanderías</span><span class="pill">Semana 2 completa</span></div>
+  </section>
+
+</body>
+</html>

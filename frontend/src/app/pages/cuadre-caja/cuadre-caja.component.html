@@ -65,7 +65,7 @@
       </div>
 
       <div class="resumen-fila">
-        <span>Ventas del día (todos los métodos)<br><small class="hint">Efectivo + digital. No es el efectivo en caja.</small></span>
+        <span>Cobros registrados del día<br><small class="hint">Efectivo + digital. No es el efectivo en caja.</small></span>
         <strong class="txt-verde">S/ {{ ingresosTotal().toFixed(2) }}</strong>
       </div>
       @if (cargandoMovimientos()) {
@@ -92,17 +92,22 @@
         }
       }
 
-      <div class="digital-resumen digital-resumen--visible">
-        <div>
-          <span>Total digital</span>
-          <strong>S/ {{ ingresosDigitalesTotal().toFixed(2) }}</strong>
+      <div class="metodos-resumen" aria-label="Cobros por método de pago">
+        <div class="metodo-resumen metodo-resumen--efectivo">
+          <span><app-icon name="cash" [size]="15"></app-icon>Efectivo</span>
+          <strong>S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</strong>
         </div>
-        <div>
-          <span>Yape / Plin / transferencia</span>
-          <strong>S/ {{ ingresosTransferenciaMovil().toFixed(2) }}</strong>
+        <div class="metodo-resumen metodo-resumen--billetera">
+          <span><app-icon name="smartphone" [size]="15"></app-icon>Billeteras</span>
+          <strong>S/ {{ ingresosBilleteras().toFixed(2) }}</strong>
+          <small>Yape + Plin</small>
         </div>
-        <div>
-          <span>POS / tarjeta</span>
+        <div class="metodo-resumen metodo-resumen--transferencia">
+          <span><app-icon name="bank" [size]="15"></app-icon>Transferencia</span>
+          <strong>S/ {{ ingresosTransferencia().toFixed(2) }}</strong>
+        </div>
+        <div class="metodo-resumen metodo-resumen--tarjeta">
+          <span><app-icon name="credit-card" [size]="15"></app-icon>Tarjeta / POS</span>
           <strong>S/ {{ ingresosTarjeta().toFixed(2) }}</strong>
         </div>
       </div>
@@ -159,7 +164,7 @@
       </div>
 
       <div class="ganancia" [class.ganancia--negativa]="gananciaNeta() < 0">
-        <span>Utilidad neta del día (ingresos − gastos)</span>
+        <span>Flujo neto del día (cobros − gastos)</span>
         <strong>S/ {{ gananciaNeta().toFixed(2) }}</strong>
       </div>
     </div>

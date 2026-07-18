@@ -1,0 +1,28 @@
+<div class="mapa-toolbar">
+  <div>
+    <strong>Punto exacto en el mapa</strong>
+    <span>Toca el mapa o usa la ubicación del dispositivo.</span>
+  </div>
+  <div class="mapa-acciones">
+    @if (latitud !== null && longitud !== null) {
+      <button type="button" class="btn-mapa btn-mapa--limpiar" (click)="limpiar()" title="Quitar punto del mapa">
+        Quitar
+      </button>
+    }
+    <button type="button" class="btn-mapa" (click)="usarMiUbicacion()" [disabled]="ubicando">
+      <app-icon name="pin" [size]="14"></app-icon>
+      {{ ubicando ? 'Ubicando...' : 'Usar mi ubicación' }}
+    </button>
+  </div>
+</div>
+
+<div #mapa class="mapa" role="application" aria-label="Seleccionar punto exacto de entrega"></div>
+
+@if (latitud !== null && longitud !== null) {
+  <p class="coordenadas"><app-icon name="check" [size]="13"></app-icon> Punto guardado: {{ latitud }}, {{ longitud }}</p>
+} @else {
+  <p class="ayuda">El punto es opcional, pero ayuda al repartidor a llegar sin llamadas adicionales.</p>
+}
+@if (errorUbicacion) {
+  <p class="error" role="alert">{{ errorUbicacion }}</p>
+}

@@ -202,6 +202,11 @@ public class Pedido
     public DateTime FechaIngreso { get; set; }
     public DateTime? FechaEntregaEst { get; set; }
     public string Modalidad { get; set; } = "Tienda";
+    public string? DireccionEntrega { get; set; }
+    public string? DistritoEntrega { get; set; }
+    public string? ReferenciaEntrega { get; set; }
+    public decimal? LatitudEntrega { get; set; }
+    public decimal? LongitudEntrega { get; set; }
     public decimal Subtotal { get; set; }
     public decimal Descuento { get; set; }
     public bool EsUrgente { get; set; }
@@ -231,6 +236,7 @@ public class PedidoItem
     public int PedidoId { get; set; }
     public int ServicioId { get; set; }
     public string? ServicioNombre { get; set; }
+    public string? ServicioUnidad { get; set; }
     public decimal Cantidad { get; set; }
     public decimal PrecioUnit { get; set; }
     public decimal Total { get; set; }

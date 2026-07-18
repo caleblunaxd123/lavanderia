@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ConfiguracionFacturacion, FacturacionService } from '../../core/services/facturacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { InfoTooltipComponent } from '../../shared/info-tooltip/info-tooltip.component';
 
 const VACIO: ConfiguracionFacturacion = {
@@ -25,7 +25,7 @@ const VACIO: ConfiguracionFacturacion = {
 
 @Component({
   selector: 'app-ajustes-facturacion-electronica',
-  imports: [CommonModule, FormsModule, IconComponent, InfoTooltipComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, InfoTooltipComponent],
   templateUrl: './ajustes-facturacion-electronica.component.html',
   styleUrl: './ajustes-facturacion-electronica.component.scss'
 })

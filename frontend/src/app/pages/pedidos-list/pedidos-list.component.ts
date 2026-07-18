@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
 import { AreaLavado, Pedido, PedidoAbandonado, Servicio } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
@@ -16,13 +17,14 @@ import { PaginacionComponent } from '../../shared/paginacion/paginacion.componen
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
 
 type Filtro = 'pendientes' | 'otros' | 'ultimos' | 'fecha';
 type TipoFecha = 'ingreso' | 'entrega';
 
 @Component({
   selector: 'app-pedidos-list',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, SkeletonComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, SkeletonComponent, PageHeaderComponent, MapaUbicacionComponent],
   templateUrl: './pedidos-list.component.html',
   styleUrl: './pedidos-list.component.scss'
 })
@@ -183,12 +185,12 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   cargarMetaMensual() {
-    this.service.dashboard().subscribe({
+    this.service.contadores().subscribe({
       next: d => {
         this.pedidosDelMes.set(d.pedidosDelMes);
-        this.totalPendientesTab.set(d.totalPendientesTab);
-        this.totalOtrosTab.set(d.totalOtrosTab);
-        this.totalUltimosTab.set(d.totalUltimosTab);
+        this.totalPendientesTab.set(d.totalPendientes);
+        this.totalOtrosTab.set(d.totalOtros);
+        this.totalUltimosTab.set(d.totalUltimos);
       },
       error: () => {}
     });
@@ -311,6 +313,12 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   cerrarDetalle() { this.pedidoAbierto.set(null); }
 
   avanzarEtapa(p: Pedido) {
+    if (this.flujoInconsistente(p)) {
+      this.toast.advertencia(
+        'El pedido está EN PROCESO pero no tiene un área actual. No se reinició el flujo; revisa su historial.'
+      );
+      return;
+    }
     // Si el próximo paso es "Marcar entregado", SIEMPRE abrir el modal para
     // registrar quién recoge (aunque no haya saldo pendiente).
     if (p.estadoProceso === 'LISTO') {
@@ -373,6 +381,14 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly enviandoLinkPago = signal(false);
   readonly motorizadosActivos = signal<Motorizado[]>([]);
   readonly asignandoMotorizado = signal(false);
+  readonly modalDestinoDelivery = signal(false);
+  readonly pedidoAConvertir = signal<Pedido | null>(null);
+  readonly distritos = DISTRITOS_LIMA_CALLAO;
+  direccionEntregaConversion = '';
+  distritoEntregaConversion = '';
+  referenciaEntregaConversion = '';
+  latitudEntregaConversion: number | null = null;
+  longitudEntregaConversion: number | null = null;
 
   asignarMotorizado(p: Pedido, motorizadoIdTexto: string) {
     if (this.asignandoMotorizado()) return;
@@ -392,13 +408,50 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  convertirADelivery(p: Pedido) {
+  abrirDestinoDelivery(p: Pedido) {
+    this.pedidoAConvertir.set(p);
+    this.direccionEntregaConversion = p.direccionEntrega ?? '';
+    this.distritoEntregaConversion = p.distritoEntrega ?? '';
+    this.referenciaEntregaConversion = p.referenciaEntrega ?? '';
+    this.latitudEntregaConversion = p.latitudEntrega ?? null;
+    this.longitudEntregaConversion = p.longitudEntrega ?? null;
+    this.modalDestinoDelivery.set(true);
+  }
+
+  cerrarDestinoDelivery() {
+    if (this.convirtiendoDelivery()) return;
+    this.modalDestinoDelivery.set(false);
+    this.pedidoAConvertir.set(null);
+  }
+
+  actualizarUbicacionConversion(ubicacion: UbicacionMapa | null) {
+    this.latitudEntregaConversion = ubicacion?.latitud ?? null;
+    this.longitudEntregaConversion = ubicacion?.longitud ?? null;
+  }
+
+  confirmarConversionDelivery() {
+    const p = this.pedidoAConvertir();
+    if (!p || this.convirtiendoDelivery()) return;
+    if (!this.direccionEntregaConversion.trim() || !this.distritoEntregaConversion) {
+      this.toast.advertencia('Completa la dirección exacta y el distrito de entrega.');
+      return;
+    }
     if (this.convirtiendoDelivery()) return;
     this.convirtiendoDelivery.set(true);
-    this.service.convertirDelivery(p.id).subscribe({
+    this.service.convertirDelivery(p.id, {
+      direccionEntrega: this.direccionEntregaConversion.trim(),
+      distritoEntrega: this.distritoEntregaConversion,
+      referenciaEntrega: this.referenciaEntregaConversion.trim() || null,
+      latitudEntrega: this.latitudEntregaConversion,
+      longitudEntrega: this.longitudEntregaConversion
+    }).subscribe({
       next: () => {
         this.convirtiendoDelivery.set(false);
-        this.toast.exito(`Pedido #${p.numero} convertido a Delivery`);
+        this.modalDestinoDelivery.set(false);
+        this.pedidoAConvertir.set(null);
+        this.toast.exito(p.modalidad === 'Delivery'
+          ? `Destino del pedido #${p.numero} actualizado`
+          : `Pedido #${p.numero} convertido a Delivery`);
         this.refrescarPedidoAbierto();
         this.recargar(true);
       },
@@ -407,6 +460,11 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
         this.toast.desdeHttp(err, 'No se pudo convertir el pedido a Delivery.');
       }
     });
+  }
+
+  urlMapaPedido(p: Pedido): string | null {
+    if (p.latitudEntrega == null || p.longitudEntrega == null) return null;
+    return `https://www.openstreetmap.org/?mlat=${p.latitudEntrega}&mlon=${p.longitudEntrega}#map=18/${p.latitudEntrega}/${p.longitudEntrega}`;
   }
 
   enviarLinkPago(p: Pedido) {
@@ -419,12 +477,12 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       next: ({ token }) => {
         this.enviandoLinkPago.set(false);
         const url = `${window.location.origin}/seguimiento/${token}`;
-        const mensaje = `Hola ${p.clienteNombre}, para tu pedido #${p.numero} puedes ver el estado y pagar en línea (tarjeta o Yape) aquí: ${url}`;
+        const mensaje = this.whatsapp.mensajeIngreso(p, this.config.configuracion(), url);
         this.whatsapp.enviar(p.clienteCelular!, mensaje);
       },
       error: (err: HttpErrorResponse) => {
         this.enviandoLinkPago.set(false);
-        this.toast.desdeHttp(err, 'No se pudo generar el link de pago.');
+        this.toast.desdeHttp(err, 'No se pudo generar el enlace de seguimiento.');
       }
     });
   }
@@ -725,12 +783,16 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   puedeAvanzar(p: Pedido): boolean {
-    return p.estadoProceso !== 'ENTREGADO' && p.estadoProceso !== 'ANULADO';
+    return !['ENTREGADO', 'ANULADO', 'DONADO'].includes(p.estadoProceso) && !this.flujoInconsistente(p);
+  }
+
+  flujoInconsistente(p: Pedido): boolean {
+    return p.estadoProceso === 'EN_PROCESO' && p.areaActualId == null;
   }
 
   botonAvanzarLabel(p: Pedido): string {
     if (p.estadoProceso === 'LISTO') return 'Marcar entregado';
-    if (p.areaActualId == null) return 'Iniciar proceso';
+    if (p.estadoProceso === 'PENDIENTE' && p.areaActualId == null) return 'Iniciar proceso';
     const areasList = this.areas();
     const idx = areasList.findIndex(a => a.id === p.areaActualId);
     if (idx === -1 || idx === areasList.length - 1) return 'Marcar listo';

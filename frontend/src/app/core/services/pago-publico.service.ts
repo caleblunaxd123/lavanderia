@@ -17,6 +17,11 @@ export interface SeguimientoPedido {
   direccionNegocio?: string | null;
   numeroPedido: number;
   modalidad: string;
+  direccionEntrega?: string | null;
+  distritoEntrega?: string | null;
+  referenciaEntrega?: string | null;
+  latitudEntrega?: number | null;
+  longitudEntrega?: number | null;
   resumenEstado: string;
   fechaCompromiso?: string | null;
   etiquetaFechaCompromiso: string;

@@ -218,6 +218,11 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
     return soloDigitos || null;
   }
 
+  urlMapaEntrega(d: SeguimientoPedido): string | null {
+    if (d.latitudEntrega == null || d.longitudEntrega == null) return null;
+    return `https://www.openstreetmap.org/?mlat=${d.latitudEntrega}&mlon=${d.longitudEntrega}#map=18/${d.latitudEntrega}/${d.longitudEntrega}`;
+  }
+
   private confirmarPago(culqiTokenId: string, email: string) {
     this.procesando.set(true);
     this.svc.cobrar(this.token, culqiTokenId, email).subscribe({

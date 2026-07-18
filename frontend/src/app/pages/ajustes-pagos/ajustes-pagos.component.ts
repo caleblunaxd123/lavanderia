@@ -5,8 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ConfiguracionPagos, PagosService } from '../../core/services/pagos.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
 import { InfoTooltipComponent } from '../../shared/info-tooltip/info-tooltip.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 const VACIO: ConfiguracionPagos = {
   proveedor: 'CULQI',
@@ -18,7 +18,7 @@ const VACIO: ConfiguracionPagos = {
 
 @Component({
   selector: 'app-ajustes-pagos',
-  imports: [CommonModule, FormsModule, IconComponent, InfoTooltipComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, InfoTooltipComponent],
   templateUrl: './ajustes-pagos.component.html',
   styleUrl: './ajustes-pagos.component.scss'
 })

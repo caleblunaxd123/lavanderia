@@ -1,12 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Personal</h2>
-      <p>Visualiza, registra o elimina a los empleados de tu negocio.</p>
-    </div>
+  <app-page-header icono="users" color="azul" titulo="Personal" subtitulo="Visualiza, registra o elimina a los empleados de tu negocio." volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo empleado</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

@@ -7,6 +7,72 @@
     <button class="btn btn--primario" (click)="nueva()">+ Nueva empresa</button>
   </div>
 
+  <!-- Alertas de suscripción de las empresas alquiladas (estilo panel) -->
+  <div class="alertas">
+    @if (alertaVencidas().length > 0 && !estaCerrada('vencidas')) {
+      <div class="alerta alerta--rojo">
+        <div class="alerta__linea">
+          <app-icon name="warning" [size]="17"></app-icon>
+          <span>
+            <strong>¡CRÍTICO!</strong> {{ alertaVencidas().length }}
+            empresa(s) con la suscripción <strong>VENCIDA</strong>. Renuévala o suspéndela.
+            <button class="alerta__mostrar" (click)="toggleExpandir('vencidas')">({{ expandida() === 'vencidas' ? 'Ocultar' : 'Mostrar' }})</button>
+          </span>
+          <button class="alerta__cerrar" (click)="cerrarAlerta('vencidas')" aria-label="Cerrar">×</button>
+        </div>
+        @if (expandida() === 'vencidas') {
+          <div class="alerta__lista">
+            @for (n of alertaVencidas(); track n.id) {
+              <button class="alerta__chip" (click)="abrir(n)">{{ n.nombre }} · vencida hace {{ -(diasParaVencer(n) ?? 0) }}d</button>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (alertaPorVencer().length > 0 && !estaCerrada('porvencer')) {
+      <div class="alerta alerta--naranja">
+        <div class="alerta__linea">
+          <app-icon name="calendar" [size]="17"></app-icon>
+          <span>
+            <strong>¡AVISO!</strong> {{ alertaPorVencer().length }}
+            empresa(s) con la suscripción <strong>próxima a vencer</strong> (en 5 días o menos).
+            <button class="alerta__mostrar" (click)="toggleExpandir('porvencer')">({{ expandida() === 'porvencer' ? 'Ocultar' : 'Mostrar' }})</button>
+          </span>
+          <button class="alerta__cerrar" (click)="cerrarAlerta('porvencer')" aria-label="Cerrar">×</button>
+        </div>
+        @if (expandida() === 'porvencer') {
+          <div class="alerta__lista">
+            @for (n of alertaPorVencer(); track n.id) {
+              <button class="alerta__chip" (click)="abrir(n)">{{ n.nombre }} · vence en {{ diasParaVencer(n) }}d</button>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (alertaSuspendidas().length > 0 && !estaCerrada('suspendidas')) {
+      <div class="alerta alerta--azul">
+        <div class="alerta__linea">
+          <app-icon name="info" [size]="17"></app-icon>
+          <span>
+            <strong>INFO:</strong> {{ alertaSuspendidas().length }}
+            empresa(s) suspendida(s).
+            <button class="alerta__mostrar" (click)="toggleExpandir('suspendidas')">({{ expandida() === 'suspendidas' ? 'Ocultar' : 'Mostrar' }})</button>
+          </span>
+          <button class="alerta__cerrar" (click)="cerrarAlerta('suspendidas')" aria-label="Cerrar">×</button>
+        </div>
+        @if (expandida() === 'suspendidas') {
+          <div class="alerta__lista">
+            @for (n of alertaSuspendidas(); track n.id) {
+              <button class="alerta__chip" (click)="abrir(n)">{{ n.nombre }}</button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
   <!-- KPIs -->
   @if (resumen(); as r) {
     <div class="kpis">

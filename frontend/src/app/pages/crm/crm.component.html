@@ -1,11 +1,5 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Clientes</button>
-    <div>
-      <h2>CRM</h2>
-      <p>Frecuencia, ticket promedio, recompra y cumpleaños de tus clientes.</p>
-    </div>
-  </div>
+  <app-page-header icono="users" color="cian" titulo="CRM" subtitulo="Frecuencia, ticket promedio, recompra y cumpleaños de tus clientes." volverTexto="Clientes" (volver)="volver()"></app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

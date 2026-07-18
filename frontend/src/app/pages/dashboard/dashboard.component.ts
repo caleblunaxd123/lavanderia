@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
@@ -9,7 +10,7 @@ import { PersonalService } from '../../core/services/personal.service';
 import { SuscripcionService } from '../../core/services/suscripcion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { MiSuscripcion } from '../../core/models/models';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { IconComponent, IconName } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 
 interface PasoOnboarding {
@@ -17,6 +18,16 @@ interface PasoOnboarding {
   titulo: string;
   hecho: boolean;
   ruta: string;
+}
+
+interface AlertaInicio {
+  clave: string;
+  titulo: string;
+  detalle: string;
+  accion: string;
+  ruta: string;
+  nivel: 'critica' | 'advertencia' | 'informativa';
+  icono: IconName;
 }
 
 @Component({
@@ -36,54 +47,120 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly data = signal<Dashboard | null>(null);
   readonly cargando = signal(false);
+  readonly actualizando = signal(false);
   readonly usuario = this.auth.usuario;
-
-  // Aviso de vencimiento de la suscripción (lo ve la propia empresa).
   readonly suscripcion = signal<MiSuscripcion | null>(null);
-  readonly avisoSuscripcion = computed(() => {
-    const s = this.suscripcion();
-    return s && s.mostrar ? s : null;
-  });
-
-  // Checklist de primeros pasos para un negocio recien creado (solo ADMIN, y solo
-  // mientras falte algo por hacer o el usuario no lo haya cerrado desde este navegador).
   readonly pasosOnboarding = signal<PasoOnboarding[]>([]);
   readonly onboardingCerrado = signal(false);
+
+  readonly avisoSuscripcion = computed(() => {
+    const s = this.suscripcion();
+    return s?.mostrar ? s : null;
+  });
+
   readonly mostrarOnboarding = computed(() =>
     this.usuario()?.rol === 'ADMIN' &&
     !this.onboardingCerrado() &&
     this.pasosOnboarding().some(p => !p.hecho)
   );
 
-  private claveCierre(): string {
-    return `lav.onboarding.cerrado.${this.usuario()?.negocioId ?? 0}`;
-  }
+  readonly puedeVerFinanzas = computed(() =>
+    this.tieneModulo('CAJA') || this.tieneModulo('REPORTES')
+  );
 
-  private cargarOnboarding() {
-    if (this.usuario()?.rol !== 'ADMIN') return;
-    this.onboardingCerrado.set(localStorage.getItem(this.claveCierre()) === '1');
+  readonly progresoMeta = computed(() => {
+    const d = this.data();
+    if (!d || d.metaMensual <= 0) return 0;
+    return Math.min(100, Math.round((d.pedidosDelMes / d.metaMensual) * 100));
+  });
 
-    this.catalogos.servicios().subscribe(servicios => {
-      this.personalSvc.listar().subscribe(personal => {
-        this.pasosOnboarding.set([
-          { clave: 'logo', titulo: 'Pon el logo de tu lavandería', hecho: !!this.config.configuracion().logoUrl, ruta: '/ajustes/negocio' },
-          { clave: 'servicios', titulo: 'Crea tus servicios y precios', hecho: servicios.length > 0, ruta: '/ajustes/servicios' },
-          { clave: 'personal', titulo: 'Registra a tus trabajadores', hecho: personal.length > 0, ruta: '/ajustes/personal' },
-        ]);
+  readonly alertas = computed<AlertaInicio[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    const alertas: AlertaInicio[] = [];
+
+    if (this.tieneModulo('PEDIDOS') && d.totalPedidosEstancados > 0 && d.pedidosEstancados.length > 0) {
+      const primero = d.pedidosEstancados[0];
+      const adicionales = d.totalPedidosEstancados - 1;
+      alertas.push({
+        clave: 'estancados',
+        titulo: `${d.totalPedidosEstancados} ${d.totalPedidosEstancados === 1 ? 'pedido excedió' : 'pedidos excedieron'} el tiempo de proceso`,
+        detalle: `Pedido #${primero.numero} lleva ${this.formatearDuracion(primero.minutosEnArea)} en ${primero.areaNombre}${adicionales > 0 ? ` y hay ${adicionales} más` : ''}.`,
+        accion: 'Revisar pedidos',
+        ruta: '/pedidos',
+        nivel: 'critica',
+        icono: 'warning'
       });
-    });
-  }
+    }
 
-  cerrarOnboarding() {
-    localStorage.setItem(this.claveCierre(), '1');
-    this.onboardingCerrado.set(true);
-  }
+    if (this.tieneModulo('PEDIDOS') && d.totalPedidosAbandonados > 0 && d.pedidosAbandonados.length > 0) {
+      const primero = d.pedidosAbandonados[0];
+      alertas.push({
+        clave: 'abandonados',
+        titulo: `${d.totalPedidosAbandonados} ${d.totalPedidosAbandonados === 1 ? 'pedido espera' : 'pedidos esperan'} recojo hace varios días`,
+        detalle: `El pedido #${primero.numero} de ${primero.clienteNombre} lleva ${primero.diasEsperando} días listo.`,
+        accion: 'Gestionar recojos',
+        ruta: this.tieneModulo('REPORTES') ? '/reportes/almacen' : '/pedidos',
+        nivel: 'advertencia',
+        icono: 'phone-alert'
+      });
+    }
+
+    if (this.tieneModulo('AJUSTES') && (d.comprobantesRechazados ?? 0) > 0) {
+      alertas.push({
+        clave: 'comprobantes-rechazados',
+        titulo: `${d.comprobantesRechazados} comprobante${d.comprobantesRechazados === 1 ? '' : 's'} con error`,
+        detalle: 'Requiere corrección o reenvío para completar la emisión electrónica.',
+        accion: 'Resolver comprobantes',
+        ruta: '/facturacion/comprobantes',
+        nivel: 'critica',
+        icono: 'warning'
+      });
+    }
+
+    if (this.tieneModulo('INVENTARIO') && (d.insumosBajoStock ?? 0) > 0) {
+      alertas.push({
+        clave: 'stock',
+        titulo: `${d.insumosBajoStock} ${d.insumosBajoStock === 1 ? 'insumo está' : 'insumos están'} bajo el mínimo`,
+        detalle: 'Revisa existencias antes de que afecten la operación.',
+        accion: 'Abrir inventario',
+        ruta: '/inventario',
+        nivel: 'advertencia',
+        icono: 'package'
+      });
+    }
+
+    if (this.tieneModulo('AJUSTES') && (d.comprobantesPendientes ?? 0) > 0) {
+      alertas.push({
+        clave: 'comprobantes-pendientes',
+        titulo: `${d.comprobantesPendientes} comprobante${d.comprobantesPendientes === 1 ? '' : 's'} pendiente${d.comprobantesPendientes === 1 ? '' : 's'}`,
+        detalle: 'La emisión todavía no ha sido confirmada.',
+        accion: 'Ver estado',
+        ruta: '/facturacion/comprobantes',
+        nivel: 'informativa',
+        icono: 'info'
+      });
+    }
+
+    return alertas.slice(0, 5);
+  });
 
   readonly saludo = computed(() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Buenos días';
-    if (h < 19) return 'Buenas tardes';
+    const hora = new Date().getHours();
+    if (hora < 12) return 'Buenos días';
+    if (hora < 19) return 'Buenas tardes';
     return 'Buenas noches';
+  });
+
+  readonly nombreCorto = computed(() =>
+    (this.usuario()?.nombreCompleto ?? '').trim().split(/\s+/)[0] || ''
+  );
+  readonly nombreNegocio = computed(() => this.config.configuracion().nombreNegocio);
+  readonly fechaHoy = computed(() => {
+    const texto = new Intl.DateTimeFormat('es-PE', {
+      weekday: 'long', day: 'numeric', month: 'long'
+    }).format(new Date());
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
   });
 
   private timerId?: ReturnType<typeof setInterval>;
@@ -93,32 +170,101 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.cargarOnboarding();
     this.suscripcionSvc.mia().subscribe({
       next: s => this.suscripcion.set(s),
-      error: () => { /* aviso no crítico: silencioso */ }
+      error: () => undefined
     });
-    // Refresco cada 30s para tener siempre datos frescos (la presentacion promete "cada 30 segundos")
     this.timerId = setInterval(() => this.cargar(true), 30_000);
   }
 
-  ngOnDestroy() { if (this.timerId) clearInterval(this.timerId); }
+  ngOnDestroy() {
+    if (this.timerId) clearInterval(this.timerId);
+  }
 
   cargar(silencioso = false) {
-    if (!silencioso) this.cargando.set(true);
+    if (silencioso) this.actualizando.set(true);
+    else this.cargando.set(true);
+
     this.svc.dashboard().subscribe({
-      next: d => { this.data.set(d); this.cargando.set(false); },
+      next: d => {
+        this.data.set(d);
+        this.cargando.set(false);
+        this.actualizando.set(false);
+      },
       error: () => {
         this.cargando.set(false);
-        if (!silencioso) this.toast.error('No se pudo cargar el resumen.');
+        this.actualizando.set(false);
+        if (!silencioso) this.toast.error('No se pudo cargar el resumen. Intenta nuevamente.');
       }
     });
+  }
+
+  cerrarOnboarding() {
+    localStorage.setItem(this.claveCierre(), '1');
+    this.onboardingCerrado.set(true);
   }
 
   tieneModulo(modulo: string): boolean {
     return this.usuario()?.modulosPermitidos?.includes(modulo) ?? false;
   }
 
-  colorArea(cantidad: number): string {
-    if (cantidad === 0) return '#e6f9ee';
-    if (cantidad <= 2) return '#fff4e0';
-    return '#fde8e8';
+  actualizadoTexto(fecha: string): string {
+    if (!fecha) return '';
+    return new Intl.DateTimeFormat('es-PE', {
+      hour: '2-digit', minute: '2-digit'
+    }).format(new Date(fecha));
+  }
+
+  atrasadosEnArea(areaId: number): number {
+    return this.data()?.pedidosEstancados.filter(p => p.areaId === areaId).length ?? 0;
+  }
+
+  estadoArea(areaId: number): 'critico' | 'advertencia' | 'correcto' | 'neutral' {
+    const d = this.data();
+    if (!d) return 'neutral';
+    if (this.atrasadosEnArea(areaId) > 0) return 'critico';
+    const sla = d.slaPorArea.find(a => a.areaId === areaId);
+    if (!sla || sla.pedidosProcesados === 0) return 'neutral';
+    if (sla.minutosPromedioReal > sla.tiempoEstMinutos) return 'advertencia';
+    return 'correcto';
+  }
+
+  textoSla(areaId: number): string {
+    const atrasados = this.atrasadosEnArea(areaId);
+    if (atrasados > 0) return `${atrasados} fuera de tiempo`;
+    const sla = this.data()?.slaPorArea.find(a => a.areaId === areaId);
+    if (!sla || sla.pedidosProcesados === 0) return 'Sin historial SLA';
+    return `Prom. ${this.formatearDuracion(Math.round(sla.minutosPromedioReal))} / meta ${this.formatearDuracion(sla.tiempoEstMinutos)}`;
+  }
+
+  anchoCarga(cantidad: number): number {
+    const maximo = Math.max(...(this.data()?.pedidosPorArea.map(a => a.cantidad) ?? [0]), 1);
+    return cantidad === 0 ? 0 : Math.max(10, Math.round((cantidad / maximo) * 100));
+  }
+
+  formatearDuracion(minutos: number): string {
+    if (minutos < 60) return `${minutos} min`;
+    const horas = Math.floor(minutos / 60);
+    const resto = minutos % 60;
+    return resto > 0 ? `${horas} h ${resto} min` : `${horas} h`;
+  }
+
+  private claveCierre(): string {
+    return `lav.onboarding.cerrado.${this.usuario()?.negocioId ?? 0}`;
+  }
+
+  private cargarOnboarding() {
+    if (this.usuario()?.rol !== 'ADMIN') return;
+    this.onboardingCerrado.set(localStorage.getItem(this.claveCierre()) === '1');
+
+    forkJoin({
+      servicios: this.catalogos.servicios(),
+      personal: this.personalSvc.listar()
+    }).subscribe({
+      next: ({ servicios, personal }) => this.pasosOnboarding.set([
+        { clave: 'logo', titulo: 'Agregar logo del negocio', hecho: !!this.config.configuracion().logoUrl, ruta: '/ajustes/negocio' },
+        { clave: 'servicios', titulo: 'Configurar servicios y precios', hecho: servicios.length > 0, ruta: '/ajustes/servicios' },
+        { clave: 'personal', titulo: 'Registrar al equipo', hecho: personal.length > 0, ruta: '/ajustes/personal' }
+      ]),
+      error: () => undefined
+    });
   }
 }

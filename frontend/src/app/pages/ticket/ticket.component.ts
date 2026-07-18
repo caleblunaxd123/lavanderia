@@ -32,10 +32,14 @@ export class TicketComponent implements OnInit {
 
   readonly negocio = computed(() => this.config.configuracion());
 
+  readonly marcaCorta = computed(() =>
+    (this.negocio().nombreNegocio || 'Lavixa').replace(/^lavander[ií]a\s+/i, '').trim().toUpperCase()
+  );
+
   readonly condicionesLista = computed(() =>
     (this.negocio().condicionesServicio ?? '')
       .split('\n')
-      .map(l => l.trim())
+      .map(l => l.trim().replace(/^\d+\.\s*/, ''))
       .filter(l => l.length > 0)
   );
 
@@ -116,26 +120,14 @@ export class TicketComponent implements OnInit {
       return;
     }
 
-    const cliente = p.clienteNombre ?? 'cliente';
-    const numero = String(p.numero);
-    const entrega = p.fechaEntregaEst
-      ? new Date(p.fechaEntregaEst).toLocaleString('es-PE')
-      : 'por confirmar';
-    const saldoTexto = this.saldo() > 0
-      ? `Saldo pendiente: S/ ${this.saldo().toFixed(2)}`
-      : 'Pago completo';
-    const fallback = `Hola ${cliente}, te compartimos el resumen de tu pedido #${numero} en ${this.negocio().nombreNegocio}. Total: S/ ${p.total.toFixed(2)}. ${saldoTexto}. Entrega: ${entrega}.`;
+    const enviar = (link?: string) =>
+      this.whatsapp.enviar(celular, this.whatsapp.mensajeIngreso(p, this.negocio(), link));
 
-    const mensaje = this.whatsapp.mensaje('INGRESO', {
-      cliente,
-      numero,
-      negocio: this.negocio().nombreNegocio,
-      total: p.total.toFixed(2),
-      saldo: this.saldo().toFixed(2),
-      entrega
-    }, fallback);
-
-    this.whatsapp.enviar(celular, mensaje);
+    if (p.modalidad === 'Recojo' || p.modalidad === 'Delivery') {
+      this.service.linkSeguimiento(p.id).subscribe({ next: ({ token }) => enviar(`${window.location.origin}/seguimiento/${token}`), error: () => enviar() });
+    } else {
+      enviar();
+    }
   }
 
   async compartirPdfWhatsapp() {

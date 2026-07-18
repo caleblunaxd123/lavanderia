@@ -1,11 +1,5 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Puntos y descuentos</h2>
-      <p>Configura la fidelización por puntos y el tope de descuentos del personal.</p>
-    </div>
-  </div>
+  <app-page-header icono="money-bag" color="morado" titulo="Puntos y descuentos" subtitulo="Configura la fidelización por puntos y el tope de descuentos del personal." volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
   <div class="card seccion">
     <h3>Ganar puntos</h3>

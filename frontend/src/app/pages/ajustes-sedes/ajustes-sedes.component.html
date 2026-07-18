@@ -1,12 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Sedes</h2>
-      <p>Sucursales de tu negocio. Cada una tiene su propia caja, pedidos e inventario.</p>
-    </div>
+  <app-page-header icono="pin" color="verde" titulo="Sedes" subtitulo="Sucursales de tu negocio. Cada una tiene su propia caja, pedidos e inventario." volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nueva sede</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

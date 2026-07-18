@@ -233,6 +233,8 @@
     }
   }
 
+  &__horario { white-space: pre-line; }
+
   &__logo {
     max-width: 60px;
     max-height: 60px;
@@ -265,7 +267,7 @@
     font-size: 34px;
     font-weight: 900;
     line-height: 1;
-    letter-spacing: -1px;
+    letter-spacing: 0;
   }
 
   &__barcode {
@@ -314,6 +316,21 @@
     p { margin: 1px 0; font-size: 11px; }
   }
 
+  &__destino {
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px dotted #555;
+
+    strong {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+
+    p { margin: 1px 0; font-size: 10px; line-height: 1.25; }
+  }
+
   &__items {
     strong {
       display: block;
@@ -357,6 +374,17 @@
     small { font-size: 9px; color: #333; }
   }
 
+  &__pago-estado {
+    padding: 7px 4px;
+    text-align: center;
+
+    strong, span { display: block; }
+    strong { font-size: 16px; line-height: 1.15; }
+    span { margin-top: 2px; font-size: 14px; font-weight: 800; }
+
+    &--ok strong { font-size: 13px; }
+  }
+
   &__pie {
     text-align: center;
     font-size: 10px;
@@ -391,6 +419,13 @@
     }
 
     li { margin-bottom: 2px; }
+
+    &-intro, &-cierre {
+      margin: 4px 0;
+      text-align: justify;
+    }
+
+    &-cierre { font-weight: 700; }
   }
 
   &__observaciones {

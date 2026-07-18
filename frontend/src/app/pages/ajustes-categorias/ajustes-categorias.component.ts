@@ -8,10 +8,11 @@ import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-categorias',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
   templateUrl: './ajustes-categorias.component.html',
   styleUrl: './ajustes-categorias.component.scss'
 })

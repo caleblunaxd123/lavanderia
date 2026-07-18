@@ -32,6 +32,22 @@ export class PlataformaNegociosComponent implements OnInit {
 
   readonly confirmarDesactivar = signal<NegocioResumen | null>(null);
 
+  // ---- Alertas tipo panel (vencimiento de suscripción de las empresas alquiladas) ----
+  readonly alertaVencidas = computed(() =>
+    this.negocios().filter(n => n.activo && (n.estadoSuscripcion === 'VENCIDA' || (this.diasParaVencer(n) ?? 99) < 0)));
+  readonly alertaPorVencer = computed(() =>
+    this.negocios().filter(n => {
+      const d = this.diasParaVencer(n);
+      return n.activo && n.estadoSuscripcion !== 'VENCIDA' && d !== null && d >= 0 && d <= 5;
+    }));
+  readonly alertaSuspendidas = computed(() => this.negocios().filter(n => !n.activo));
+
+  readonly expandida = signal<'vencidas' | 'porvencer' | 'suspendidas' | null>(null);
+  readonly cerradas = signal<Set<string>>(new Set());
+  toggleExpandir(k: 'vencidas' | 'porvencer' | 'suspendidas') { this.expandida.set(this.expandida() === k ? null : k); }
+  cerrarAlerta(k: string) { const s = new Set(this.cerradas()); s.add(k); this.cerradas.set(s); }
+  estaCerrada(k: string) { return this.cerradas().has(k); }
+
   readonly negociosFiltrados = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
     const f = this.filtro();

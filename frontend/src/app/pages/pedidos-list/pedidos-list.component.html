@@ -217,6 +217,9 @@
                 </span>
               </td>
               <td class="acciones" (click)="$event.stopPropagation()">
+                @if (flujoInconsistente(p)) {
+                  <span class="flujo-alerta" title="Estado inconsistente: falta el área actual">Revisar flujo</span>
+                }
                 @if (puedeAvanzar(p)) {
                   <button class="btn btn--avanzar" (click)="avanzarEtapa(p)" [disabled]="avanzando()">
                     {{ botonAvanzarLabel(p) }}
@@ -284,6 +287,9 @@
               }
             </div>
             <div class="pedido-card__acciones">
+              @if (flujoInconsistente(p)) {
+                <span class="flujo-alerta" title="Estado inconsistente: falta el área actual">Revisar flujo</span>
+              }
               @if (puedeAvanzar(p)) {
                 <button class="btn btn--primario btn--sm" (click)="avanzarEtapa(p)" [disabled]="avanzando()">
                   {{ botonAvanzarLabel(p) }}
@@ -352,6 +358,10 @@
           <button class="btn btn--primario btn--block" (click)="avanzarEtapa(p)" [disabled]="avanzando()">
             {{ avanzando() ? 'Actualizando…' : botonAvanzarLabel(p) }}
           </button>
+        } @else if (flujoInconsistente(p)) {
+          <div class="flujo-alerta flujo-alerta--detalle">
+            El pedido no tiene un área actual. Revisa el historial antes de continuar.
+          </div>
         }
       </div>
 
@@ -376,14 +386,35 @@
       @if (!p.anulado) {
         <div class="detalle-seccion">
           @if (p.modalidad === 'Tienda') {
-            <button class="btn btn--outline-primary btn--block" [disabled]="convirtiendoDelivery()" (click)="convertirADelivery(p)">
+            <button class="btn btn--outline-primary btn--block" [disabled]="convirtiendoDelivery()" (click)="abrirDestinoDelivery(p)">
               {{ convirtiendoDelivery() ? 'Convirtiendo…' : 'Convertir a Delivery' }}
             </button>
-          } @else if (saldoPendiente() > 0) {
+          } @else {
             <button class="btn btn--outline-primary btn--block" [disabled]="enviandoLinkPago()" (click)="enviarLinkPago(p)">
-              {{ enviandoLinkPago() ? 'Generando link…' : 'Enviar link de pago por WhatsApp' }}
+              {{ enviandoLinkPago() ? 'Generando enlace…' : 'Enviar seguimiento por WhatsApp' }}
             </button>
-            <p class="hint">Así el cliente paga online (tarjeta/Yape) en vez de pagarle al repartidor.</p>
+            <p class="hint">El cliente verá el avance y, si tiene saldo, podrá pagarlo en línea.</p>
+          }
+        </div>
+      }
+
+      @if (p.modalidad === 'Delivery') {
+        <div class="detalle-seccion destino-resumen">
+          <div class="detalle-seccion__head">
+            <h4><app-icon name="pin" [size]="14"></app-icon> Destino de entrega</h4>
+            @if (!p.anulado && p.estadoProceso !== 'ENTREGADO') {
+              <button type="button" class="btn btn--ghost btn--sm" (click)="abrirDestinoDelivery(p)">Editar</button>
+            }
+          </div>
+          <strong>{{ p.direccionEntrega || 'Dirección por confirmar' }}</strong>
+          <span>{{ p.distritoEntrega || 'Distrito por confirmar' }}</span>
+          @if (p.referenciaEntrega) { <p>Referencia: {{ p.referenciaEntrega }}</p> }
+          @if (urlMapaPedido(p); as urlMapa) {
+            <a [href]="urlMapa" target="_blank" rel="noopener noreferrer">
+              <app-icon name="pin" [size]="13"></app-icon> Abrir punto en OpenStreetMap
+            </a>
+          } @else {
+            <p class="destino-resumen__aviso">No se marcó un punto exacto en el mapa.</p>
           }
         </div>
       }
@@ -620,6 +651,57 @@
         <button class="btn btn--ghost" (click)="modalEntrega.set(false)">Cancelar</button>
         <button class="btn btn--verde" [disabled]="procesando()" (click)="confirmarEntrega()">
           {{ procesando() ? 'Procesando…' : (saldoPendiente() > 0 ? 'Cobrar y entregar' : 'Marcar entregado') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: destino de Delivery -->
+@if (modalDestinoDelivery()) {
+  <div class="modal-backdrop modal-backdrop--secundario" (click)="cerrarDestinoDelivery()"></div>
+  <div class="modal-simple modal-simple--destino" role="dialog" aria-modal="true" aria-labelledby="titulo-convertir-delivery">
+    <div class="modal-simple__head">
+      <h3 id="titulo-convertir-delivery"><app-icon name="pin" [size]="15"></app-icon> Destino de Delivery</h3>
+      <button type="button" (click)="cerrarDestinoDelivery()" aria-label="Cerrar"><app-icon name="close" [size]="15"></app-icon></button>
+    </div>
+    <div class="modal-simple__body">
+      <p class="modal-simple__info">
+        Este destino pertenece al pedido #{{ pedidoAConvertir()?.numero }}. No modifica la dirección habitual del cliente.
+      </p>
+
+      <label for="direccion-conversion">Dirección exacta *</label>
+      <input id="direccion-conversion" type="text" maxlength="250"
+             placeholder="Av., calle, número, Mz., lote, urbanización"
+             [(ngModel)]="direccionEntregaConversion" />
+
+      <label for="distrito-conversion">Distrito *</label>
+      <input id="distrito-conversion" type="text" maxlength="100" list="distritos-conversion-sugeridos"
+             placeholder="Escribe o selecciona un distrito"
+             [(ngModel)]="distritoEntregaConversion" />
+      <datalist id="distritos-conversion-sugeridos">
+        @for (distrito of distritos; track distrito) {
+          <option [value]="distrito"></option>
+        }
+      </datalist>
+
+      <label for="referencia-conversion">Referencia <small class="hint">(recomendado)</small></label>
+      <input id="referencia-conversion" type="text" maxlength="250"
+             placeholder="Fachada, piso, puerta o lugar cercano"
+             [(ngModel)]="referenciaEntregaConversion" />
+
+      <app-mapa-ubicacion
+        [latitud]="latitudEntregaConversion"
+        [longitud]="longitudEntregaConversion"
+        (ubicacionChange)="actualizarUbicacionConversion($event)">
+      </app-mapa-ubicacion>
+
+      <div class="modal-simple__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarDestinoDelivery()">Cancelar</button>
+        <button type="button" class="btn btn--primario"
+                [disabled]="convirtiendoDelivery() || !direccionEntregaConversion.trim() || !distritoEntregaConversion"
+                (click)="confirmarConversionDelivery()">
+          {{ convirtiendoDelivery() ? 'Guardando...' : (pedidoAConvertir()?.modalidad === 'Delivery' ? 'Guardar destino' : 'Guardar y convertir') }}
         </button>
       </div>
     </div>

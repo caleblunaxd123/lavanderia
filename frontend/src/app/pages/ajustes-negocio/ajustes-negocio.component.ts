@@ -6,11 +6,11 @@ import { Router } from '@angular/router';
 import { ConfiguracionNegocio } from '../../core/models/models';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-negocio',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule],
   templateUrl: './ajustes-negocio.component.html',
   styleUrl: './ajustes-negocio.component.scss'
 })

@@ -1,12 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Usuarios</h2>
-      <p>Agrega, actualiza o desactiva usuarios del sistema.</p>
-    </div>
+  <app-page-header icono="users" color="morado" titulo="Usuarios" subtitulo="Agrega, actualiza o desactiva usuarios del sistema." volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo usuario</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

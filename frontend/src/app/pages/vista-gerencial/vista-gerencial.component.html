@@ -1,11 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Reportes</button>
-    <div>
-      <h2>Vista Gerencial</h2>
-      <p>Caja, cobranza, facturación e inventario en una sola pantalla.</p>
-    </div>
-  </div>
+  <app-page-header icono="chart" color="azul" titulo="Vista Gerencial"
+    subtitulo="Caja, cobranza, facturación e inventario en una sola pantalla."
+    volverTexto="Reportes" (volver)="volver()"></app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

@@ -569,6 +569,28 @@
   justify-content: flex-end;
 }
 
+.flujo-alerta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #f5b942;
+  border-radius: 6px;
+  background: #fff8e6;
+  color: #8a4b08;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+
+  &--detalle {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 12px;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
 .btn-avanzar {
   border: none;
   background: var(--azul-oscuro);
@@ -907,6 +929,37 @@
   h4 { margin: 0; }
 }
 
+.destino-resumen {
+  padding: 14px 0;
+  border-top: 1px solid #dbeafe;
+  border-bottom: 1px solid #dbeafe;
+
+  h4 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  > strong,
+  > span { display: block; }
+  > strong { color: #1e293b; font-size: 13.5px; line-height: 1.4; }
+  > span { margin-top: 2px; color: #475569; font-size: 12.5px; }
+  > p { margin: 7px 0 0; color: #64748b; font-size: 12px; line-height: 1.4; }
+
+  > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  &__aviso { color: #b45309 !important; }
+}
+
 // ---------- Cobros ----------
 .cobros {
   background: linear-gradient(135deg, #fff9ec 0%, #fff4e0 100%);
@@ -1235,6 +1288,31 @@
     gap: 10px;
     justify-content: flex-end;
     margin-top: 20px;
+  }
+}
+
+.modal-simple--destino {
+  max-width: 600px;
+
+  .modal-simple__head h3 {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+}
+
+@media (max-width: 560px) {
+  .modal-simple--destino {
+    width: calc(100% - 20px);
+    max-height: calc(100vh - 20px);
+
+    .modal-simple__body { padding: 16px; }
+    .modal-simple__actions {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+
+      .btn { min-width: 0; padding-inline: 10px; }
+    }
   }
 }
 

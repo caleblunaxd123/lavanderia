@@ -1,40 +1,73 @@
-<div class="page">
-  <header class="hola">
-    <div>
-      <h2>{{ saludo() }}, {{ usuario()?.nombreCompleto }}</h2>
-      <p>Este es el resumen del negocio ahora mismo.</p>
+<main class="page">
+  <header class="command-bar">
+    <div class="command-bar__copy">
+      <div class="command-bar__meta">
+        <span class="command-bar__date"><app-icon name="calendar" [size]="14"></app-icon>{{ fechaHoy() }}</span>
+        <span class="hero-live"><span></span>Operación en vivo</span>
+      </div>
+      <h1>{{ saludo() }}@if (nombreCorto()) {, {{ nombreCorto() }}}</h1>
+      <p>
+        Tu operación en {{ nombreNegocio() }}, clara y al día.
+        @if (data()?.actualizadoEn) {
+          <span class="actualizado">Actualizado {{ actualizadoTexto(data()!.actualizadoEn) }}</span>
+        }
+      </p>
     </div>
-    @if (tieneModulo('REGISTRAR')) {
-      <a routerLink="/registrar" class="btn btn--primario">+ Nuevo pedido</a>
-    }
+    <div class="command-bar__right">
+      @if (data(); as resumen) {
+        <div class="delivery-summary" aria-label="Pedidos entregados exitosamente">
+          <span class="delivery-summary__icon">
+            <app-icon name="package" [size]="22"></app-icon>
+            <span><app-icon name="check" [size]="10"></app-icon></span>
+          </span>
+          <div class="delivery-summary__copy">
+            <span>Pedidos entregados hoy</span>
+            <strong>{{ resumen.pedidosEntregadosHoy }}</strong>
+            <small>{{ resumen.pedidosEntregadosSemana }} esta semana · {{ resumen.pedidosEntregadosMes }} este mes</small>
+          </div>
+          <div class="delivery-summary__channels">
+            <span><app-icon name="pin" [size]="13"></app-icon><strong>{{ resumen.pedidosEntregadosTiendaHoy }}</strong> en tienda</span>
+            <span><app-icon name="package" [size]="13"></app-icon><strong>{{ resumen.pedidosEntregadosDomicilioHoy }}</strong> a domicilio</span>
+          </div>
+        </div>
+      }
+      <div class="command-bar__actions">
+        <button type="button" class="icon-btn" (click)="cargar(true)" [disabled]="actualizando()"
+                title="Actualizar resumen" aria-label="Actualizar resumen">
+          <app-icon name="refresh" [size]="18"></app-icon>
+        </button>
+        @if (tieneModulo('REGISTRAR')) {
+          <a routerLink="/registrar" class="primary-action"><app-icon name="plus" [size]="17"></app-icon>Nuevo pedido</a>
+        }
+      </div>
+    </div>
   </header>
 
   @if (avisoSuscripcion(); as aviso) {
-    <div class="aviso-suscripcion" [class.aviso-suscripcion--vencida]="aviso.tipo === 'VENCIDA'">
+    <div class="subscription-alert" [class.subscription-alert--critical]="aviso.tipo === 'VENCIDA'" role="alert">
       <app-icon [name]="aviso.tipo === 'VENCIDA' ? 'warning' : 'calendar'" [size]="18"></app-icon>
       <span>{{ aviso.mensaje }}</span>
     </div>
   }
 
   @if (mostrarOnboarding()) {
-    <section class="card onboarding">
+    <section class="onboarding" aria-labelledby="onboarding-title">
       <div class="onboarding__header">
-        <h3>Primeros pasos para dejar todo listo</h3>
-        <button type="button" class="onboarding__cerrar" (click)="cerrarOnboarding()" title="Cerrar">
-          <app-icon name="close" [size]="14"></app-icon>
+        <div>
+      <span class="section-kicker">Configuración inicial</span>
+          <h2 id="onboarding-title">Deja tu espacio listo para operar</h2>
+        </div>
+        <button type="button" class="icon-btn icon-btn--subtle" (click)="cerrarOnboarding()"
+                title="Ocultar configuración inicial" aria-label="Ocultar configuración inicial">
+          <app-icon name="close" [size]="16"></app-icon>
         </button>
       </div>
-      <ul class="onboarding__lista">
+      <ul class="onboarding__steps">
         @for (paso of pasosOnboarding(); track paso.clave) {
-          <li [class.is-hecho]="paso.hecho">
-            <span class="onboarding__check">
-              @if (paso.hecho) { <app-icon name="check" [size]="13"></app-icon> }
-            </span>
-            @if (paso.hecho) {
-              <span>{{ paso.titulo }}</span>
-            } @else {
-              <a [routerLink]="paso.ruta">{{ paso.titulo }}</a>
-            }
+          <li [class.is-complete]="paso.hecho">
+            <span class="step-check">@if (paso.hecho) { <app-icon name="check" [size]="13"></app-icon> }</span>
+            @if (paso.hecho) { <span>{{ paso.titulo }}</span> }
+            @else { <a [routerLink]="paso.ruta">{{ paso.titulo }}</a> }
           </li>
         }
       </ul>
@@ -42,150 +75,165 @@
   }
 
   @if (cargando() && !data()) {
-    <div class="kpis">
-      <div class="card"><app-skeleton variant="lines" [rows]="3"></app-skeleton></div>
-      <div class="card"><app-skeleton variant="lines" [rows]="3"></app-skeleton></div>
-      <div class="card"><app-skeleton variant="lines" [rows]="3"></app-skeleton></div>
-    </div>
-  } @else if (data()) {
-    @if (data(); as d) {
-    <!-- KPIs principales -->
-    <div class="kpis">
-      @if (tieneModulo('PEDIDOS')) {
-        <a routerLink="/pedidos" class="kpi kpi--azul">
-          <div class="kpi__valor">{{ d.totalEnProceso + d.totalPendientes }}</div>
-          <div class="kpi__label">En proceso</div>
-          <div class="kpi__hint">Pedidos activos ahora</div>
-        </a>
-        <a routerLink="/pedidos" class="kpi kpi--verde">
-          <div class="kpi__valor">{{ d.totalListos }}</div>
-          <div class="kpi__label">Listos para recojo</div>
-          <div class="kpi__hint">Avisar al cliente</div>
-        </a>
+    <section class="kpis kpis--loading" aria-label="Cargando indicadores">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="kpi"><app-skeleton variant="lines" [rows]="3"></app-skeleton></div>
       }
-      <div class="kpi kpi--naranja">
-        <div class="kpi__valor">S/ {{ d.ventasDelDia | number:'1.2-2' }}</div>
-        <div class="kpi__label">Ventas de hoy</div>
-        <div class="kpi__hint">Total facturado</div>
-      </div>
-    </div>
-
-    <!-- Ropa por área en tiempo real -->
-    <section class="card seccion">
-      <div class="seccion__header">
-        <h3>Ropa en cada área</h3>
-        <span class="live">
-          <span class="live__dot"></span>
-          En vivo
+    </section>
+  } @else if (data(); as d) {
+    <section class="kpis" aria-label="Indicadores del día">
+      <a [routerLink]="tieneModulo('PEDIDOS') ? '/pedidos' : null" class="kpi kpi--blue">
+        <span class="kpi__icon"><app-icon name="refresh" [size]="20"></app-icon></span>
+        <span class="kpi__content">
+          <strong>{{ d.totalEnProceso + d.totalPendientes }}</strong>
+          <span>Pedidos activos</span>
+          <small>{{ d.totalPendientes }} pendientes, {{ d.totalEnProceso }} en proceso</small>
         </span>
-      </div>
-      @if (d.pedidosPorArea.length === 0) {
-        <p class="empty">No hay pedidos en ningún área ahora.</p>
+      </a>
+      <a [routerLink]="tieneModulo('PEDIDOS') ? '/pedidos' : null" class="kpi kpi--green">
+        <span class="kpi__icon"><app-icon name="check" [size]="20"></app-icon></span>
+        <span class="kpi__content">
+          <strong>{{ d.totalListos }}</strong>
+          <span>Listos para recojo</span>
+          <small>{{ d.totalPedidosAbandonados > 0 ? d.totalPedidosAbandonados + ' esperan 3 días o más' : 'Sin recojos atrasados' }}</small>
+        </span>
+      </a>
+      @if (puedeVerFinanzas()) {
+        <div class="kpi kpi--amber">
+          <span class="kpi__icon"><app-icon name="cash" [size]="20"></app-icon></span>
+          <span class="kpi__content">
+            <strong>S/ {{ (d.cobradoDelDia ?? 0) | number:'1.2-2' }}</strong>
+            <span>Cobrado hoy</span>
+            <small>Pedidos nuevos: S/ {{ d.ventasDelDia | number:'1.2-2' }}</small>
+          </span>
+        </div>
+        <a [routerLink]="tieneModulo('REPORTES') ? '/reportes/gerencial' : '/cuadre-caja'" class="kpi kpi--red">
+          <span class="kpi__icon"><app-icon name="money-bag" [size]="20"></app-icon></span>
+          <span class="kpi__content">
+            <strong>S/ {{ (d.saldoPorCobrar ?? 0) | number:'1.2-2' }}</strong>
+            <span>Saldo por cobrar</span>
+            <small>De pedidos no anulados</small>
+          </span>
+        </a>
       } @else {
-        <div class="areas">
-          @for (a of d.pedidosPorArea; track a.areaId) {
-            <div class="area-kpi" [style.background]="colorArea(a.cantidad)">
-              <div class="area-kpi__num">{{ a.cantidad }}</div>
-              <div class="area-kpi__nombre">{{ a.areaNombre }}</div>
+        <a [routerLink]="tieneModulo('PEDIDOS') ? '/pedidos' : null" class="kpi kpi--red">
+          <span class="kpi__icon"><app-icon name="warning" [size]="20"></app-icon></span>
+          <span class="kpi__content">
+            <strong>{{ d.totalPedidosEstancados }}</strong>
+            <span>Fuera de tiempo</span>
+            <small>Según el SLA de cada área</small>
+          </span>
+        </a>
+        <div class="kpi kpi--amber">
+          <span class="kpi__icon"><app-icon name="calendar" [size]="20"></app-icon></span>
+          <span class="kpi__content">
+            <strong>{{ d.pedidosDelMes }}</strong>
+            <span>Pedidos del mes</span>
+            <small>Acumulado actual</small>
+          </span>
+        </div>
+      }
+    </section>
+
+    <div class="dashboard-layout">
+      <div class="dashboard-main">
+        <section class="panel attention" aria-labelledby="attention-title">
+          <div class="panel__header">
+            <div>
+              <span class="section-kicker">Prioridades</span>
+              <h2 id="attention-title">Atención hoy</h2>
+            </div>
+            @if (alertas().length > 0) { <span class="count-badge">{{ alertas().length }}</span> }
+          </div>
+
+          @if (alertas().length === 0) {
+            <div class="all-clear">
+              <span class="all-clear__icon"><app-icon name="check" [size]="22"></app-icon></span>
+              <div><strong>Todo bajo control</strong><p>No hay alertas operativas que requieran acción inmediata.</p></div>
+            </div>
+          } @else {
+            <div class="alert-list">
+              @for (alerta of alertas(); track alerta.clave) {
+                <a [routerLink]="alerta.ruta" class="alert-item" [class]="'alert-item alert-item--' + alerta.nivel">
+                  <span class="alert-item__icon"><app-icon [name]="alerta.icono" [size]="18"></app-icon></span>
+                  <span class="alert-item__copy"><strong>{{ alerta.titulo }}</strong><small>{{ alerta.detalle }}</small></span>
+                  <span class="alert-item__action">{{ alerta.accion }}<app-icon name="chevron-right" [size]="16"></app-icon></span>
+                </a>
+              }
             </div>
           }
-        </div>
-      }
-    </section>
+        </section>
 
-    <!-- Accesos rápidos -->
-    <section class="atajos">
-      @if (tieneModulo('REGISTRAR')) {
-      <a routerLink="/registrar" class="atajo">
-        <div class="atajo__ilus">
-          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="dbA1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dbeafe"/><stop offset="1" stop-color="#bfdbfe"/></linearGradient></defs>
-            <circle cx="60" cy="60" r="52" fill="url(#dbA1)"/>
-            <rect x="34" y="40" width="52" height="56" rx="4" fill="#fff" stroke="#2563eb" stroke-width="2"/>
-            <path d="M30 40h60l-4-16h-52z" fill="#3b82f6"/>
-            <rect x="42" y="52" width="36" height="4" rx="2" fill="#93c5fd"/>
-            <rect x="42" y="62" width="28" height="4" rx="2" fill="#dbeafe"/>
-            <rect x="42" y="72" width="32" height="4" rx="2" fill="#dbeafe"/>
-            <circle cx="72" cy="86" r="10" fill="#22c55e"/>
-            <path d="M67 86h10M72 81v10" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="30" cy="30" r="4" fill="#fbbf24"/>
-            <circle cx="94" cy="98" r="3" fill="#f43f5e"/>
-          </svg>
-        </div>
-        <strong>Nuevo pedido</strong>
-        <span>Registrar entrada de ropa</span>
-      </a>
-      }
-      @if (tieneModulo('PEDIDOS')) {
-      <a routerLink="/pedidos" class="atajo">
-        <div class="atajo__ilus">
-          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="dbA2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e0e7ff"/><stop offset="1" stop-color="#c7d2fe"/></linearGradient></defs>
-            <circle cx="60" cy="60" r="52" fill="url(#dbA2)"/>
-            <rect x="30" y="30" width="60" height="66" rx="4" fill="#fff" stroke="#6366f1" stroke-width="2"/>
-            <rect x="42" y="24" width="36" height="12" rx="2" fill="#6366f1"/>
-            <circle cx="60" cy="30" r="2.5" fill="#fbbf24"/>
-            <circle cx="40" cy="50" r="3" fill="#22c55e"/>
-            <path d="M38 50l1.5 1.5L42 49" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-            <rect x="48" y="48" width="34" height="4" rx="2" fill="#c7d2fe"/>
-            <circle cx="40" cy="62" r="3" fill="#22c55e"/>
-            <path d="M38 62l1.5 1.5L42 61" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-            <rect x="48" y="60" width="30" height="4" rx="2" fill="#c7d2fe"/>
-            <circle cx="40" cy="74" r="3" fill="#f59e0b"/>
-            <rect x="48" y="72" width="26" height="4" rx="2" fill="#c7d2fe"/>
-            <circle cx="40" cy="86" r="3" fill="#f59e0b"/>
-            <rect x="48" y="84" width="22" height="4" rx="2" fill="#c7d2fe"/>
-            <circle cx="100" cy="30" r="5" fill="#f59e0b"/>
-          </svg>
-        </div>
-        <strong>Lista de pedidos</strong>
-        <span>Ver todos y avanzar etapas</span>
-      </a>
-      }
-      @if (tieneModulo('CLIENTES')) {
-      <a routerLink="/clientes" class="atajo">
-        <div class="atajo__ilus">
-          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="dbA3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fce7f3"/><stop offset="1" stop-color="#fbcfe8"/></linearGradient></defs>
-            <circle cx="60" cy="60" r="52" fill="url(#dbA3)"/>
-            <circle cx="38" cy="52" r="12" fill="#fed7aa"/>
-            <path d="M22 96c0-11 7-18 16-18s16 7 16 18" fill="#8b5cf6"/>
-            <circle cx="82" cy="52" r="12" fill="#fed7aa"/>
-            <path d="M66 96c0-11 7-18 16-18s16 7 16 18" fill="#3b82f6"/>
-            <path d="M32 44c0-6 3-9 6-9s6 3 6 9" fill="#1e293b"/>
-            <path d="M76 44c0-6 3-9 6-9s6 3 6 9" fill="#1e293b"/>
-            <circle cx="60" cy="20" r="6" fill="#f43f5e"/>
-            <path d="M56 20c0-2 2-4 4-4s4 2 4 4-4 5-4 5-4-3-4-5z" fill="#f43f5e"/>
-            <circle cx="16" cy="26" r="3" fill="#fbbf24"/>
-            <circle cx="104" cy="94" r="4" fill="#22c55e"/>
-          </svg>
-        </div>
-        <strong>Clientes</strong>
-        <span>Buscar o registrar</span>
-      </a>
-      }
-      @if (tieneModulo('CAJA')) {
-      <a routerLink="/cuadre-caja" class="atajo">
-        <div class="atajo__ilus">
-          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="dbA4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dcfce7"/><stop offset="1" stop-color="#bbf7d0"/></linearGradient></defs>
-            <circle cx="60" cy="60" r="52" fill="url(#dbA4)"/>
-            <rect x="24" y="44" width="72" height="46" rx="4" fill="#059669" stroke="#065f46" stroke-width="2"/>
-            <circle cx="60" cy="66" r="16" fill="#a7f3d0" stroke="#065f46" stroke-width="2"/>
-            <text x="60" y="72" text-anchor="middle" font-size="16" font-weight="800" fill="#065f46" font-family="sans-serif">S/</text>
-            <rect x="30" y="50" width="8" height="6" rx="1" fill="#065f46"/>
-            <rect x="82" y="78" width="8" height="6" rx="1" fill="#065f46"/>
-            <circle cx="32" cy="30" r="8" fill="#fbbf24"/>
-            <text x="32" y="34" text-anchor="middle" font-size="8" font-weight="800" fill="#78350f" font-family="sans-serif">S/</text>
-            <circle cx="94" cy="30" r="6" fill="#fbbf24"/>
-            <text x="94" y="33" text-anchor="middle" font-size="6" font-weight="800" fill="#78350f" font-family="sans-serif">S/</text>
-          </svg>
-        </div>
-        <strong>Cuadre de caja</strong>
-        <span>Cerrar el día</span>
-      </a>
-      }
-    </section>
-    }
+        <section class="panel flow" aria-labelledby="flow-title">
+          <div class="panel__header">
+            <div>
+              <span class="section-kicker">Produccion</span>
+              <h2 id="flow-title">Flujo por áreas</h2>
+            </div>
+            <span class="live-status"><span></span>En vivo</span>
+          </div>
+
+          @if (d.pedidosPorArea.length === 0) {
+            <div class="empty-state">Configura las áreas del proceso para visualizar el flujo.</div>
+          } @else {
+            <div class="area-list">
+              @for (area of d.pedidosPorArea; track area.areaId) {
+                <div class="area-row" [attr.data-state]="estadoArea(area.areaId)">
+                  <div class="area-row__top">
+                    <div><strong>{{ area.areaNombre }}</strong><span>{{ area.cantidad }} {{ area.cantidad === 1 ? 'pedido' : 'pedidos' }}</span></div>
+                    <span class="sla-label">{{ textoSla(area.areaId) }}</span>
+                  </div>
+                  <div class="load-track" aria-hidden="true"><span [style.width.%]="anchoCarga(area.cantidad)"></span></div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      </div>
+
+      <aside class="dashboard-side">
+        @if (d.metaMensual > 0) {
+          <section class="panel goal" aria-labelledby="goal-title">
+            <div class="panel__header">
+              <div><span class="section-kicker">Objetivo mensual</span><h2 id="goal-title">Meta de pedidos</h2></div>
+              <strong class="goal__percent">{{ progresoMeta() }}%</strong>
+            </div>
+            <div class="goal__numbers"><strong>{{ d.pedidosDelMes }}</strong><span>de {{ d.metaMensual | number:'1.0-0' }} pedidos</span></div>
+            <div class="goal__track"><span [style.width.%]="progresoMeta()"></span></div>
+            <small>@if (progresoMeta() >= 100) { Meta alcanzada. } @else { Faltan {{ d.metaMensual - d.pedidosDelMes | number:'1.0-0' }} pedidos. }</small>
+          </section>
+        } @else if (usuario()?.rol === 'ADMIN' && tieneModulo('AJUSTES')) {
+          <a routerLink="/ajustes/metas" class="configure-goal">
+            <span><app-icon name="chart" [size]="20"></app-icon></span>
+            <div><strong>Define una meta mensual</strong><small>Mide el avance del equipo desde Inicio.</small></div>
+            <app-icon name="chevron-right" [size]="16"></app-icon>
+          </a>
+        }
+
+        <section class="panel shortcuts" aria-labelledby="shortcuts-title">
+          <div class="panel__header"><div><span class="section-kicker">Acciones</span><h2 id="shortcuts-title">Accesos rápidos</h2></div></div>
+          <div class="shortcut-grid">
+            @if (tieneModulo('REGISTRAR')) {
+              <a routerLink="/registrar"><span><app-icon name="plus" [size]="19"></app-icon></span><strong>Nuevo pedido</strong></a>
+            }
+            @if (tieneModulo('PEDIDOS')) {
+              <a routerLink="/pedidos"><span><app-icon name="clipboard" [size]="19"></app-icon></span><strong>Pedidos</strong></a>
+            }
+            @if (tieneModulo('CLIENTES')) {
+              <a routerLink="/clientes"><span><app-icon name="users" [size]="19"></app-icon></span><strong>Clientes</strong></a>
+            }
+            @if (tieneModulo('CAJA')) {
+              <a routerLink="/cuadre-caja"><span><app-icon name="cash" [size]="19"></app-icon></span><strong>Cuadre</strong></a>
+            }
+          </div>
+        </section>
+      </aside>
+    </div>
+  } @else {
+    <div class="load-error">
+      <app-icon name="warning" [size]="24"></app-icon>
+      <strong>No pudimos cargar el resumen</strong>
+      <button type="button" (click)="cargar()">Reintentar</button>
+    </div>
   }
-</div>
+</main>

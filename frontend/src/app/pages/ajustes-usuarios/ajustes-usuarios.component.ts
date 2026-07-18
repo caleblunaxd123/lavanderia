@@ -11,10 +11,11 @@ import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-usuarios',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
   templateUrl: './ajustes-usuarios.component.html',
   styleUrl: './ajustes-usuarios.component.scss'
 })

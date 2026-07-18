@@ -1,11 +1,5 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Pagos online</h2>
-      <p>Permite que tus clientes hagan seguimiento y paguen online los pedidos a domicilio desde una página pública segura.</p>
-    </div>
-  </div>
+  <app-page-header icono="credit-card" color="cian" titulo="Pagos online" subtitulo="Permite que tus clientes hagan seguimiento y paguen online los pedidos a domicilio desde una página pública segura." volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando...</div>

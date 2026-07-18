@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
 import { AreaLavado, Cliente, ModalidadPedido, Pedido, Servicio } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ClientesService } from '../../core/services/clientes.service';
@@ -12,6 +13,7 @@ import { PromocionValida } from '../../core/services/promociones.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
 
 interface ItemAgregado {
   servicioId: number;
@@ -24,7 +26,7 @@ interface ItemAgregado {
 
 @Component({
   selector: 'app-registrar',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent],
   templateUrl: './registrar.component.html',
   styleUrl: './registrar.component.scss'
 })
@@ -49,6 +51,12 @@ export class RegistrarComponent implements OnInit {
   documentoIdentidad = '';
   documentoFiscal = '';
   modalidad: ModalidadPedido = 'Tienda';
+  readonly distritos = DISTRITOS_LIMA_CALLAO;
+  direccionEntrega = '';
+  distritoEntrega = '';
+  referenciaEntrega = '';
+  latitudEntrega: number | null = null;
+  longitudEntrega: number | null = null;
   costoDeliveryPedido = 0;
   observacionesPedido = '';
   buscandoCliente = signal(false);
@@ -188,6 +196,9 @@ export class RegistrarComponent implements OnInit {
 
   cambiarModalidad(m: ModalidadPedido) {
     this.modalidad = m;
+    if (m === 'Delivery' && !this.direccionEntrega.trim() && this.direccion.trim()) {
+      this.direccionEntrega = this.direccion.trim();
+    }
     const idDelivery = this.config.configuracion().servicioDeliveryId;
     if (!idDelivery) return;
 
@@ -226,6 +237,20 @@ export class RegistrarComponent implements OnInit {
     return this.modalidad === 'Recojo' || this.modalidad === 'Delivery';
   }
 
+  tieneServicioLavanderia() {
+    const idDelivery = this.config.configuracion().servicioDeliveryId;
+    return this.items().some(item => !idDelivery || item.servicioId !== idDelivery);
+  }
+
+  actualizarUbicacion(ubicacion: UbicacionMapa | null) {
+    this.latitudEntrega = ubicacion?.latitud ?? null;
+    this.longitudEntrega = ubicacion?.longitud ?? null;
+    // El mapa manda: al elegir/mover el pin se actualizan dirección y distrito para que
+    // no queden inconsistentes con el punto. Solo sobrescribe cuando el mapa resolvió un valor.
+    if (ubicacion?.direccion) this.direccionEntrega = ubicacion.direccion;
+    if (ubicacion?.distrito) this.distritoEntrega = ubicacion.distrito;
+  }
+
   descripcionPaso3() {
     return this.modalidad === 'Delivery' ? '¿Cuándo entregar?'
       : this.modalidad === 'Recojo' ? '¿Cuándo estará listo?'
@@ -243,6 +268,13 @@ export class RegistrarComponent implements OnInit {
     this.nombre = c.nombre;
     this.celular = c.celular ?? '';
     this.direccion = c.direccion ?? '';
+    if (this.modalidad === 'Delivery') {
+      this.direccionEntrega = c.direccion ?? '';
+      this.distritoEntrega = '';
+      this.referenciaEntrega = '';
+      this.latitudEntrega = null;
+      this.longitudEntrega = null;
+    }
     this.documentoIdentidad = c.dni ?? '';
     this.documentoFiscal = c.documentoFiscal ?? '';
     this.resultadosBusquedaCliente.set([]);
@@ -257,6 +289,11 @@ export class RegistrarComponent implements OnInit {
     this.direccion = '';
     this.documentoIdentidad = '';
     this.documentoFiscal = '';
+    this.direccionEntrega = '';
+    this.distritoEntrega = '';
+    this.referenciaEntrega = '';
+    this.latitudEntrega = null;
+    this.longitudEntrega = null;
     this.puntosACanjear.set(0); // los puntos pertenecen al cliente seleccionado
   }
 
@@ -345,8 +382,11 @@ export class RegistrarComponent implements OnInit {
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
       && this.celular.trim().length > 0
-      && (!this.esDomicilio() || this.direccion.trim().length > 0)
-      && this.items().length > 0
+      && (this.modalidad !== 'Recojo' || this.direccion.trim().length > 0)
+      && (this.modalidad !== 'Delivery' || (
+        this.direccionEntrega.trim().length > 0 && this.distritoEntrega.trim().length > 0
+      ))
+      && this.tieneServicioLavanderia()
       && this.totalFinal() > 0
       && !this.registrando();
   }
@@ -354,8 +394,10 @@ export class RegistrarComponent implements OnInit {
   get validacionPedido(): string | null {
     if (!this.nombre.trim()) return 'Indica el nombre del cliente.';
     if (!this.celular.trim()) return 'Indica un celular de contacto.';
-    if (this.esDomicilio() && !this.direccion.trim()) return 'Indica la dirección para el servicio a domicilio.';
-    if (this.items().length === 0) return 'Agrega al menos un servicio al pedido.';
+    if (this.modalidad === 'Recojo' && !this.direccion.trim()) return 'Indica la dirección donde se recogerá el pedido.';
+    if (this.modalidad === 'Delivery' && !this.direccionEntrega.trim()) return 'Indica la dirección exacta de entrega.';
+    if (this.modalidad === 'Delivery' && !this.distritoEntrega.trim()) return 'Selecciona el distrito de entrega.';
+    if (!this.tieneServicioLavanderia()) return 'Agrega al menos un servicio de lavandería; la tarifa de delivery no cuenta como servicio.';
     if (this.totalFinal() <= 0) return 'El total del pedido debe ser mayor a cero.';
     return null;
   }
@@ -375,6 +417,11 @@ export class RegistrarComponent implements OnInit {
         direccion: this.direccion || null,
       },
       modalidad: this.modalidad,
+      direccionEntrega: this.modalidad === 'Delivery' ? this.direccionEntrega.trim() : null,
+      distritoEntrega: this.modalidad === 'Delivery' ? this.distritoEntrega : null,
+      referenciaEntrega: this.modalidad === 'Delivery' ? (this.referenciaEntrega.trim() || null) : null,
+      latitudEntrega: this.modalidad === 'Delivery' ? this.latitudEntrega : null,
+      longitudEntrega: this.modalidad === 'Delivery' ? this.longitudEntrega : null,
       items: this.items().map(i => ({
         servicioId: i.servicioId,
         cantidad: i.cantidad,
@@ -422,20 +469,8 @@ export class RegistrarComponent implements OnInit {
     const p = this.pedidoCreado();
     if (!p || !p.clienteCelular) return;
 
-    const cliente = p.clienteNombre ?? '';
-    const entrega = p.fechaEntregaEst
-      ? new Date(p.fechaEntregaEst).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : 'por confirmar';
-
     const enviar = (link?: string) => {
-      const extra = link ? `\nSigue tu pedido aquí: ${link}` : '';
-      const mensaje = this.whatsapp.mensaje('INGRESO', {
-        cliente,
-        numero: String(p.numero),
-        negocio: this.config.configuracion().nombreNegocio,
-        total: p.total.toFixed(2),
-        entrega,
-      }, `Hola ${cliente}, registramos tu pedido #${p.numero} por un total de S/ ${p.total.toFixed(2)}.${extra}`);
+      const mensaje = this.whatsapp.mensajeIngreso(p, this.config.configuracion(), link);
       this.whatsapp.enviar(p.clienteCelular!, mensaje);
     };
 
@@ -469,6 +504,11 @@ export class RegistrarComponent implements OnInit {
     this.montoPagado = 0;
     this.metodoPagoInicial = 'EFECTIVO';
     this.modalidad = 'Tienda';
+    this.direccionEntrega = '';
+    this.distritoEntrega = '';
+    this.referenciaEntrega = '';
+    this.latitudEntrega = null;
+    this.longitudEntrega = null;
     this.costoDeliveryPedido = 0;
   }
 

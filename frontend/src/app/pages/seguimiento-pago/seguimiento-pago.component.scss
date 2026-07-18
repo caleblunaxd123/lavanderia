@@ -134,6 +134,36 @@
   }
 }
 
+.destino {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--color-primario-cliente, #0b57d0);
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12.5px;
+  line-height: 1.4;
+
+  &__etiqueta {
+    color: #64748b;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  strong { color: #172033; font-size: 13.5px; }
+  small { color: #64748b; }
+  a {
+    align-self: flex-start;
+    margin-top: 5px;
+    color: var(--color-primario-cliente, #0b57d0);
+    font-weight: 700;
+    text-decoration: none;
+  }
+}
+
 .reparto {
   display: flex;
   align-items: center;

@@ -85,6 +85,7 @@ export interface PedidoItem {
   id?: number;
   servicioId: number;
   servicioNombre?: string;
+  servicioUnidad?: string | null;
   cantidad: number;
   precioUnit: number;
   total: number;
@@ -107,6 +108,11 @@ export interface Pedido {
   fechaIngreso: string;
   fechaEntregaEst?: string | null;
   modalidad: ModalidadPedido;
+  direccionEntrega?: string | null;
+  distritoEntrega?: string | null;
+  referenciaEntrega?: string | null;
+  latitudEntrega?: number | null;
+  longitudEntrega?: number | null;
   subtotal: number;
   descuento: number;
   esUrgente: boolean;
@@ -253,6 +259,11 @@ export interface CrearPedidoRequest {
   clienteId?: number;
   clienteNuevo?: Partial<Cliente>;
   modalidad: ModalidadPedido;
+  direccionEntrega?: string | null;
+  distritoEntrega?: string | null;
+  referenciaEntrega?: string | null;
+  latitudEntrega?: number | null;
+  longitudEntrega?: number | null;
   items: Array<{
     servicioId: number;
     cantidad: number;
@@ -261,8 +272,10 @@ export interface CrearPedidoRequest {
     descripcion?: string | null;
   }>;
   descuentoPct: number;
+  puntosACanjear?: number | null;
   esUrgente: boolean;
   recargoUrgentePct: number;
+  costoDelivery?: number | null;
   montoPagado: number;
   metodoPagoInicial: string;
   fechaEntregaEst?: string | null;
@@ -270,4 +283,12 @@ export interface CrearPedidoRequest {
   areaInicialId?: number | null;
   fechaIngreso?: string | null;
   codigoAntiguo?: string | null;
+}
+
+export interface DestinoDeliveryRequest {
+  direccionEntrega: string;
+  distritoEntrega: string;
+  referenciaEntrega?: string | null;
+  latitudEntrega?: number | null;
+  longitudEntrega?: number | null;
 }

@@ -108,7 +108,38 @@ public class PedidosController : TenantAwareControllerBase
     [HttpGet("dashboard")]
     [Authorize(Policy = "Modulo:INICIO")]
     public async Task<ActionResult<DashboardDto>> Dashboard(CancellationToken ct)
-        => Ok(await _service.DashboardAsync(SedeId!.Value, ct));
+    {
+        var dto = await _service.DashboardAsync(NegocioId, SedeId!.Value, ct);
+        var modulos = User.FindAll("mod").Select(c => c.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        bool TieneModulo(string modulo) => User.IsInRole("ADMIN") || modulos.Contains(modulo);
+
+        if (!TieneModulo("CAJA") && !TieneModulo("REPORTES"))
+        {
+            dto.CobradoDelDia = null;
+            dto.SaldoPorCobrar = null;
+            dto.CajaEsperadaHoy = null;
+        }
+        if (!TieneModulo("INVENTARIO")) dto.InsumosBajoStock = null;
+        if (!TieneModulo("AJUSTES"))
+        {
+            dto.ComprobantesPendientes = null;
+            dto.ComprobantesRechazados = null;
+        }
+        if (!TieneModulo("PEDIDOS"))
+        {
+            dto.TotalPedidosEstancados = 0;
+            dto.TotalPedidosAbandonados = 0;
+            dto.PedidosEstancados.Clear();
+            dto.PedidosAbandonados.Clear();
+        }
+
+        return Ok(dto);
+    }
+
+    [HttpGet("contadores")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<PedidoContadoresDto>> Contadores(CancellationToken ct)
+        => Ok(await _service.ContadoresAsync(SedeId!.Value, ct));
 
     [HttpGet("siguiente-numero")]
     [Authorize(Policy = "Modulo:REGISTRAR")]
@@ -200,11 +231,11 @@ public class PedidosController : TenantAwareControllerBase
     /// vez su link de seguimiento/pago (ver <see cref="LinkSeguimiento"/>).</summary>
     [HttpPost("{id:int}/convertir-delivery")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
-    public async Task<IActionResult> ConvertirDelivery(int id, CancellationToken ct)
+    public async Task<IActionResult> ConvertirDelivery(int id, [FromBody] ConvertirDeliveryRequest req, CancellationToken ct)
     {
         try
         {
-            await _service.ConvertirADeliveryAsync(id, NegocioId, SedeId!.Value, ct);
+            await _service.ConvertirADeliveryAsync(id, req, NegocioId, SedeId!.Value, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -238,7 +269,7 @@ public class PedidosController : TenantAwareControllerBase
         try
         {
             var token = await _service.ObtenerOCrearLinkPagoAsync(id, NegocioId, SedeId!.Value, ct);
-            if (token is null) return NotFound(new { mensaje = "Este pedido ya está pagado, no necesita link de pago." });
+            if (token is null) return NotFound(new { mensaje = "No se pudo habilitar el seguimiento para este pedido." });
             return Ok(new LinkSeguimientoDto(token.Value));
         }
         catch (InvalidOperationException ex)

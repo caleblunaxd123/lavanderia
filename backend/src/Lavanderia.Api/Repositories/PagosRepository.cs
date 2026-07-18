@@ -11,6 +11,7 @@ public interface IPagosRepository
 
     Task<SolicitudPago> CrearSolicitudAsync(int negocioId, int sedeId, int pedidoId, decimal monto, CancellationToken ct = default);
     Task<SolicitudPago?> ObtenerVigentePorPedidoAsync(int pedidoId, CancellationToken ct = default);
+    Task<SolicitudPago?> ObtenerUltimaPorPedidoAsync(int pedidoId, CancellationToken ct = default);
     Task<SolicitudPago?> ObtenerPorTokenAsync(Guid token, CancellationToken ct = default);
     /// <summary>Reserva atomicamente el intento antes de llamar al proveedor. Evita que dos
     /// pestañas cobren el mismo pedido al mismo tiempo.</summary>
@@ -134,6 +135,18 @@ public class PagosRepository : IPagosRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = SolicitudSelect + @"
             WHERE PedidoId = @PedidoId AND Estado = 'PENDIENTE' AND FechaExpiracion > SYSDATETIME()
+            ORDER BY FechaCreacion DESC";
+        cmd.AddParam("@PedidoId", pedidoId);
+        return await cmd.ReadFirstOrDefaultAsync(MapSolicitud, ct);
+    }
+
+    public async Task<SolicitudPago?> ObtenerUltimaPorPedidoAsync(int pedidoId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = SolicitudSelect + @"
+            WHERE PedidoId = @PedidoId
             ORDER BY FechaCreacion DESC";
         cmd.AddParam("@PedidoId", pedidoId);
         return await cmd.ReadFirstOrDefaultAsync(MapSolicitud, ct);

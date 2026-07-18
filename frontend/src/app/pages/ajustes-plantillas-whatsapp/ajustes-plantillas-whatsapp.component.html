@@ -1,11 +1,5 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Plantillas de WhatsApp</h2>
-      <p>Personaliza los mensajes automáticos que se envían por cada etapa del proceso.</p>
-    </div>
-  </div>
+  <app-page-header icono="whatsapp" color="verde" titulo="Plantillas de WhatsApp" subtitulo="Personaliza los mensajes automáticos que se envían por cada etapa del proceso." volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>
@@ -29,7 +23,7 @@
             </label>
           </div>
 
-          <textarea rows="3" [(ngModel)]="p.mensaje" placeholder="Escribe el mensaje…"></textarea>
+          <textarea [rows]="p.evento === 'INGRESO' ? 14 : 3" [(ngModel)]="p.mensaje" placeholder="Escribe el mensaje…"></textarea>
 
           @if (info(p.evento).placeholders.length) {
             <div class="placeholders">

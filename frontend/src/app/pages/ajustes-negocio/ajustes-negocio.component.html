@@ -1,11 +1,5 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Configuración del negocio</h2>
-      <p>Nombre, logo, colores e información fiscal.</p>
-    </div>
-  </div>
+  <app-page-header icono="settings" color="azul" titulo="Configuración del negocio" subtitulo="Nombre, logo, colores e información fiscal." volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
   <!-- Preview de marca en vivo -->
   <div class="preview" [style]="previewStyle()">

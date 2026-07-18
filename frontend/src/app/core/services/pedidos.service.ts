@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { CrearPedidoRequest, Pedido, PedidoAbandonado } from '../models/models';
+import { CrearPedidoRequest, DestinoDeliveryRequest, Pedido, PedidoAbandonado } from '../models/models';
 import { PromocionValida } from './promociones.service';
 
 export interface PagedResult<T> {
@@ -25,13 +25,59 @@ export interface Dashboard {
   pedidosPorEstado: Record<string, number>;
   pedidosPorArea: Array<{ areaId: number; areaNombre: string; cantidad: number }>;
   ventasDelDia: number;
+  cobradoDelDia: number | null;
+  saldoPorCobrar: number | null;
+  cajaEsperadaHoy: number | null;
+  pedidosEntregadosHoy: number;
+  pedidosEntregadosTiendaHoy: number;
+  pedidosEntregadosDomicilioHoy: number;
+  pedidosEntregadosSemana: number;
+  pedidosEntregadosMes: number;
   totalPendientes: number;
   totalEnProceso: number;
   totalListos: number;
   pedidosDelMes: number;
-  totalPendientesTab: number;
-  totalOtrosTab: number;
-  totalUltimosTab: number;
+  metaMensual: number;
+  insumosBajoStock: number | null;
+  comprobantesPendientes: number | null;
+  comprobantesRechazados: number | null;
+  totalPedidosEstancados: number;
+  totalPedidosAbandonados: number;
+  slaPorArea: Array<{
+    areaId: number;
+    areaNombre: string;
+    orden: number;
+    tiempoEstMinutos: number;
+    minutosPromedioReal: number;
+    pedidosProcesados: number;
+  }>;
+  pedidosEstancados: Array<{
+    pedidoId: number;
+    numero: number;
+    clienteNombre: string;
+    areaId: number;
+    areaNombre: string;
+    minutosEnArea: number;
+    tiempoEstMinutos: number;
+  }>;
+  pedidosAbandonados: Array<{
+    pedidoId: number;
+    numero: number;
+    clienteNombre: string;
+    clienteCelular?: string | null;
+    total: number;
+    montoPagado: number;
+    fechaListo: string;
+    diasEsperando: number;
+  }>;
+  actualizadoEn: string;
+}
+
+export interface PedidoContadores {
+  pedidosDelMes: number;
+  totalPendientes: number;
+  totalOtros: number;
+  totalUltimos: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -87,6 +133,10 @@ export class PedidosService {
     return this.http.get<Dashboard>(`${this.base}/dashboard`);
   }
 
+  contadores() {
+    return this.http.get<PedidoContadores>(`${this.base}/contadores`);
+  }
+
   siguienteNumero() {
     return this.http.get<number>(`${this.base}/siguiente-numero`);
   }
@@ -115,8 +165,8 @@ export class PedidosService {
     return this.http.put<void>(`${this.base}/${id}/fecha-entrega`, { fecha, motivo });
   }
 
-  convertirDelivery(id: number) {
-    return this.http.post<void>(`${this.base}/${id}/convertir-delivery`, {});
+  convertirDelivery(id: number, destino: DestinoDeliveryRequest) {
+    return this.http.post<void>(`${this.base}/${id}/convertir-delivery`, destino);
   }
 
   linkSeguimiento(id: number) {

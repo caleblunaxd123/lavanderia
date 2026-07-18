@@ -54,7 +54,7 @@
 
       @if (notificarWhatsapp && pedidoCreado()?.clienteCelular) {
         <button class="btn btn--secundario btn--grande" (click)="enviarWhatsapp()">
-          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar confirmación
+          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar pedido y seguimiento
         </button>
       }
 
@@ -116,10 +116,10 @@
         <input type="text" placeholder="9XXXXXXXX" [(ngModel)]="celular" />
         <p class="hint">Necesario para avisar por WhatsApp y compartir el seguimiento del pedido.</p>
 
-        <label>Dirección @if (esDomicilio()) { <small class="hint">*</small> }</label>
-        <input type="text" [placeholder]="esDomicilio() ? 'Dirección para recojo o entrega' : 'Dirección (opcional)'" [(ngModel)]="direccion" />
-        @if (esDomicilio()) {
-          <p class="hint">La usaremos para coordinar el servicio a domicilio.</p>
+        <label>Dirección habitual @if (modalidad === 'Recojo') { <small class="hint">*</small> }</label>
+        <input type="text" [placeholder]="modalidad === 'Recojo' ? 'Dirección donde recoger el pedido' : 'Dirección habitual (opcional)'" [(ngModel)]="direccion" />
+        @if (modalidad === 'Recojo') {
+          <p class="hint">La usaremos para coordinar el recojo a domicilio.</p>
         }
 
         <label>DNI</label>
@@ -200,6 +200,44 @@
               <option [ngValue]="a.id">{{ a.nombre }}</option>
             }
           </select>
+
+          @if (modalidad === 'Delivery') {
+            <section class="destino-delivery" aria-labelledby="titulo-destino-delivery">
+              <div class="destino-delivery__head">
+                <div>
+                  <strong id="titulo-destino-delivery"><app-icon name="pin" [size]="14"></app-icon> Destino de entrega</strong>
+                  <span>Datos propios de este pedido</span>
+                </div>
+                <span class="requerido">Obligatorio</span>
+              </div>
+
+              <label for="direccion-entrega">Dirección exacta *</label>
+              <input id="direccion-entrega" type="text" maxlength="250"
+                     placeholder="Av., calle, número, Mz., lote, urbanización"
+                     [(ngModel)]="direccionEntrega" />
+
+              <label for="distrito-entrega">Distrito *</label>
+              <input id="distrito-entrega" type="text" maxlength="100" list="distritos-entrega-sugeridos"
+                     placeholder="Escribe o selecciona un distrito"
+                     [(ngModel)]="distritoEntrega" />
+              <datalist id="distritos-entrega-sugeridos">
+                @for (distrito of distritos; track distrito) {
+                  <option [value]="distrito"></option>
+                }
+              </datalist>
+
+              <label for="referencia-entrega">Referencia <small class="hint">(recomendado)</small></label>
+              <input id="referencia-entrega" type="text" maxlength="250"
+                     placeholder="Fachada, piso, puerta o lugar cercano"
+                     [(ngModel)]="referenciaEntrega" />
+
+              <app-mapa-ubicacion
+                [latitud]="latitudEntrega"
+                [longitud]="longitudEntrega"
+                (ubicacionChange)="actualizarUbicacion($event)">
+              </app-mapa-ubicacion>
+            </section>
+          }
 
           @if (esDomicilio() && negocioConfig.servicioDeliveryId) {
             <div class="cargo-domicilio">

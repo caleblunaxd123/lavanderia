@@ -94,6 +94,47 @@
   .hint { margin-top: 6px; color: #6366f1; }
 }
 
+.destino-delivery {
+  margin: 16px 0 4px;
+  padding: 14px 0 16px;
+  border-top: 1px solid #bfdbfe;
+  border-bottom: 1px solid #bfdbfe;
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    strong {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #1e3a8a;
+      font-size: 13px;
+    }
+
+    span { color: #64748b; font-size: 11px; }
+  }
+
+  .requerido {
+    flex-shrink: 0;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 10px;
+    font-weight: 700;
+  }
+}
+
 .modalidad {
   display: flex;
   margin-left: auto;
@@ -585,6 +626,10 @@
     padding: 14px;
 
     h4 { margin-bottom: 10px; }
+  }
+
+  .destino-delivery {
+    margin-top: 14px;
   }
 
   .tabla-items {

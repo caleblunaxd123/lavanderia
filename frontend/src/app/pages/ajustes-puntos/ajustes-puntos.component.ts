@@ -7,11 +7,11 @@ import { inject } from '@angular/core';
 import { ConfiguracionNegocio } from '../../core/models/models';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-puntos',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule],
   templateUrl: './ajustes-puntos.component.html',
   styleUrl: './ajustes-puntos.component.scss'
 })

@@ -1,11 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Facturación Electrónica</h2>
-      <p>Emite boletas y facturas electrónicas ante SUNAT directamente desde el sistema.</p>
-    </div>
-  </div>
+  <app-page-header icono="note" color="azul" titulo="Facturación Electrónica"
+    subtitulo="Emite boletas y facturas electrónicas ante SUNAT directamente desde el sistema."
+    volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

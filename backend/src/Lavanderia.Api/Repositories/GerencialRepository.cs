@@ -73,7 +73,7 @@ public class GerencialRepository : IGerencialRepository
                     FROM dbo.PedidoHistorial
                     GROUP BY PedidoId
                 )
-                SELECT p.Id AS PedidoId, p.Numero, c.Nombre AS ClienteNombre, a.Nombre AS AreaNombre,
+                SELECT p.Id AS PedidoId, p.Numero, c.Nombre AS ClienteNombre, a.Id AS AreaId, a.Nombre AS AreaNombre,
                        DATEDIFF(MINUTE, u.FechaUltimoCambio, SYSDATETIME()) AS MinutosEnArea,
                        a.TiempoEstMinutos
                 FROM dbo.Pedido p
@@ -88,6 +88,7 @@ public class GerencialRepository : IGerencialRepository
                 r.GetInt32(r.GetOrdinal("PedidoId")),
                 r.GetInt32(r.GetOrdinal("Numero")),
                 r.GetString(r.GetOrdinal("ClienteNombre")),
+                r.GetInt32(r.GetOrdinal("AreaId")),
                 r.GetString(r.GetOrdinal("AreaNombre")),
                 r.GetInt32(r.GetOrdinal("MinutosEnArea")),
                 r.GetInt32(r.GetOrdinal("TiempoEstMinutos"))
@@ -102,6 +103,7 @@ public class GerencialRepository : IGerencialRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         var hoy = DateTime.Today;
+        var inicioSemana = hoy.AddDays(-(((int)hoy.DayOfWeek + 6) % 7));
         var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
         var dto = new VistaGerencialDto();
 
@@ -134,7 +136,35 @@ public class GerencialRepository : IGerencialRepository
         {
             cmd.CommandText = @"
                 SELECT
+                    COUNT(CASE WHEN CAST(p.FechaEntregaReal AS DATE) = @Hoy THEN 1 END) AS PedidosHoy,
+                    COUNT(CASE WHEN CAST(p.FechaEntregaReal AS DATE) = @Hoy AND p.Modalidad <> 'Delivery' THEN 1 END) AS PedidosTiendaHoy,
+                    COUNT(CASE WHEN CAST(p.FechaEntregaReal AS DATE) = @Hoy AND p.Modalidad = 'Delivery' THEN 1 END) AS PedidosDomicilioHoy,
+                    COUNT(CASE WHEN p.FechaEntregaReal >= @InicioSemana THEN 1 END) AS PedidosSemana,
+                    COUNT(CASE WHEN p.FechaEntregaReal >= @InicioMes THEN 1 END) AS PedidosMes
+                FROM dbo.Pedido p
+                WHERE p.SedeId = @SedeId AND p.Anulado = 0 AND p.EstadoProceso = 'ENTREGADO'
+                  AND p.FechaEntregaReal IS NOT NULL";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@Hoy", hoy);
+            cmd.AddParam("@InicioSemana", inicioSemana);
+            cmd.AddParam("@InicioMes", inicioMes);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (await r.ReadAsync(ct))
+            {
+                dto.PedidosEntregadosHoy = r.GetInt32(r.GetOrdinal("PedidosHoy"));
+                dto.PedidosEntregadosTiendaHoy = r.GetInt32(r.GetOrdinal("PedidosTiendaHoy"));
+                dto.PedidosEntregadosDomicilioHoy = r.GetInt32(r.GetOrdinal("PedidosDomicilioHoy"));
+                dto.PedidosEntregadosSemana = r.GetInt32(r.GetOrdinal("PedidosSemana"));
+                dto.PedidosEntregadosMes = r.GetInt32(r.GetOrdinal("PedidosMes"));
+            }
+        }
+
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT
                     ISNULL(SUM(CASE WHEN Tipo = 'GASTO' AND Fecha >= @InicioMes THEN Monto ELSE 0 END), 0) AS GastosMes,
+                    ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND CAST(Fecha AS DATE) = @Hoy THEN Monto ELSE 0 END), 0) AS CobradoHoy,
                     ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND MetodoPago = 'EFECTIVO' AND CAST(Fecha AS DATE) = @Hoy THEN Monto ELSE 0 END), 0)
                         - ISNULL(SUM(CASE WHEN Tipo = 'GASTO' AND MetodoPago = 'EFECTIVO' AND CAST(Fecha AS DATE) = @Hoy THEN Monto ELSE 0 END), 0)
                         AS CajaEsperadaHoy
@@ -147,6 +177,7 @@ public class GerencialRepository : IGerencialRepository
             if (await r.ReadAsync(ct))
             {
                 dto.GastosMes = r.GetDecimal(r.GetOrdinal("GastosMes"));
+                dto.CobradoHoy = r.GetDecimal(r.GetOrdinal("CobradoHoy"));
                 dto.CajaEsperadaHoy = r.GetDecimal(r.GetOrdinal("CajaEsperadaHoy"));
             }
         }

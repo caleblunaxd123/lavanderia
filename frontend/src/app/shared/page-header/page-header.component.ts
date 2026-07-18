@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent, IconName } from '../icon/icon.component';
 
@@ -23,4 +23,7 @@ export class PageHeaderComponent {
   @Input() subtitulo?: string;
   @Input() icono?: IconName;
   @Input() color: HeaderColor = 'azul';
+  /** Texto del enlace "volver" (ej. "Ajustes", "Reportes"). Si se define, muestra la flecha de regreso. */
+  @Input() volverTexto?: string;
+  @Output() volver = new EventEmitter<void>();
 }

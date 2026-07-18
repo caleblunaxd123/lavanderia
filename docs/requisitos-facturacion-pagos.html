@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Requisitos — Facturación Electrónica y Pagos con Tarjeta · Lavixa</title>
+<style>
+  :root {
+    --paper:#ffffff; --card:#ffffff; --ink:#14213a; --ink-soft:#4a5878; --ink-faint:#8896b4;
+    --line:#e2e8f4; --brand:#0b57d0; --brand-deep:#0c447c; --brand-wash:#eaf1fd;
+    --pay:#0e7c86; --pay-wash:#e2f5f6; --pay-deep:#0b5a62;
+    --good:#1a7a45; --good-wash:#e6f6ec; --warn:#9a6008; --warn-wash:#fdf3e2;
+    --radius:14px;
+    --serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--paper); }
+  body { color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.6; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wrap { max-width:720px; margin:0 auto; padding:40px 34px 56px; }
+
+  .eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); font-weight:700; margin:0 0 12px; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:30px; line-height:1.15; letter-spacing:-.015em; margin:0 0 14px; color:var(--ink); }
+  .lede { font-size:16px; color:var(--ink-soft); margin:0 0 8px; }
+  .lede strong { color:var(--ink); font-weight:600; }
+  .divider { height:1px; background:var(--line); border:0; margin:30px 0; }
+
+  .sec { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin:20px 0; }
+  .sec__head { padding:20px 24px 16px; border-bottom:1px solid var(--line); }
+  .sec__tag { display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:5px 11px; border-radius:999px; background:var(--brand-wash); color:var(--brand-deep); margin-bottom:11px; }
+  .sec--pay .sec__tag { background:var(--pay-wash); color:var(--pay-deep); }
+  .sec__title { font-family:var(--serif); font-size:23px; font-weight:600; margin:0 0 6px; letter-spacing:-.01em; }
+  .sec__what { font-size:14.5px; color:var(--ink-soft); margin:0; }
+  .sec__body { padding:6px 24px 20px; }
+
+  .req { display:flex; gap:15px; padding:16px 0; border-bottom:1px solid var(--line); }
+  .req:last-child { border-bottom:0; }
+  .req__num { flex-shrink:0; width:29px; height:29px; border-radius:9px; background:var(--brand-wash); color:var(--brand-deep); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+  .sec--pay .req__num { background:var(--pay-wash); color:var(--pay-deep); }
+  .req__title { font-size:16px; font-weight:600; margin:2px 0 5px; color:var(--ink); }
+  .req__desc { font-size:14px; color:var(--ink-soft); margin:0 0 6px; }
+  .req__where { font-size:13px; color:var(--ink-faint); margin:0; }
+  .req__where b { color:var(--ink-soft); font-weight:600; }
+
+  .badge { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.04em; padding:2px 9px; border-radius:999px; margin-left:6px; vertical-align:middle; }
+  .badge--free { background:var(--good-wash); color:var(--good); }
+  .badge--key { background:var(--warn-wash); color:var(--warn); }
+
+  .handoff { margin:16px 24px 22px; padding:15px 17px; border-radius:11px; background:var(--brand-wash); border:1px solid var(--line); }
+  .sec--pay .handoff { background:var(--pay-wash); }
+  .handoff__label { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--brand-deep); margin:0 0 8px; }
+  .sec--pay .handoff__label { color:var(--pay-deep); }
+  .handoff ul { margin:0; padding-left:18px; }
+  .handoff li { font-size:14px; color:var(--ink); margin:4px 0; }
+  .handoff code, .req__desc code { font-family:ui-monospace,"Cascadia Code",Menlo,monospace; font-size:12.5px; background:#f1f5fb; padding:1px 6px; border-radius:5px; border:1px solid var(--line); }
+
+  .note { display:flex; gap:12px; padding:15px 17px; border-radius:11px; background:var(--warn-wash); border:1px solid #f0d9ad; margin:24px 0; }
+  .note__mark { flex-shrink:0; color:var(--warn); font-weight:800; font-size:17px; }
+  .note p { margin:0; font-size:14px; color:var(--ink); }
+  .note strong { color:var(--warn); }
+
+  .faq { margin:28px 0 0; }
+  .faq h3 { font-family:var(--serif); font-size:19px; font-weight:600; margin:0 0 4px; }
+  .faq__q { font-weight:600; font-size:14.5px; margin:15px 0 3px; color:var(--ink); }
+  .faq__a { font-size:14px; color:var(--ink-soft); margin:0; }
+
+  .foot { margin-top:36px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-faint); }
+  .foot strong { color:var(--ink-soft); }
+
+  @page { size:A4; margin:14mm; }
+  @media print {
+    .wrap { padding:0; max-width:none; }
+    .sec, .handoff, .note, .req { break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Lavixa · Guía para el propietario del negocio</p>
+  <h1>Requisitos para activar los comprobantes electrónicos y el pago con tarjeta</h1>
+  <p class="lede">Este documento lista, en palabras simples, lo que debes conseguir para que tu lavandería pueda <strong>emitir boletas y facturas por internet</strong> y <strong>cobrar con tarjeta en línea</strong>.</p>
+
+  <hr class="divider" />
+
+  <section class="sec">
+    <div class="sec__head">
+      <span class="sec__tag">Parte 1 — SUNAT</span>
+      <h2 class="sec__title">Facturación electrónica (boletas y facturas)</h2>
+      <p class="sec__what">Para que tu negocio entregue boletas y facturas válidas por internet, ahorrando papel y evitando problemas con SUNAT.</p>
+    </div>
+    <div class="sec__body">
+      <div class="req"><div class="req__num">1</div><div><p class="req__title">RUC activo y habido</p><p class="req__desc">El número de RUC de tu negocio, con el estado en “ACTIVO” y condición “HABIDO”. Es la identidad de tu negocio ante SUNAT.</p><p class="req__where"><b>Cómo saberlo:</b> se consulta gratis en la web de SUNAT (“Consulta RUC”). Si dice ACTIVO y HABIDO, estás bien.</p></div></div>
+      <div class="req"><div class="req__num">2</div><div><p class="req__title">Usuario y Clave SOL</p><p class="req__desc">Es tu usuario y contraseña para entrar al portal de SUNAT. Lo ideal (por seguridad) es crear un <b>“usuario secundario”</b> con el permiso de <b>Facturación Electrónica</b>, en lugar de dar tu clave principal.</p><p class="req__where"><b>Dónde:</b> dentro de SUNAT (SOL) → “Administración de usuarios secundarios”. Si no sabes crearlo, se te guía paso a paso.</p></div></div>
+      <div class="req"><div class="req__num">3</div><div><p class="req__title">Certificado digital (archivo .pfx) y su contraseña <span class="badge badge--free">Puede ser GRATIS</span></p><p class="req__desc">Es como la “firma electrónica” de tu negocio: un archivo que firma cada boleta/factura. Viene protegido con una contraseña que tú eliges.</p><p class="req__where"><b>Cómo conseguirlo gratis:</b> SUNAT entrega un certificado digital <b>sin costo</b> a los negocios que emiten electrónicamente; se tramita desde el mismo portal de SUNAT. (También existe la opción de comprar uno a una entidad autorizada, pero para empezar el gratuito alcanza.)</p></div></div>
+      <div class="req"><div class="req__num">4</div><div><p class="req__title">Razón social y dirección fiscal exactas</p><p class="req__desc">El nombre legal del negocio y la dirección tal como aparecen en tu ficha RUC. Esto sale impreso en cada comprobante, así que debe coincidir exactamente.</p><p class="req__where"><b>Dónde:</b> en tu Consulta RUC de SUNAT aparecen ambos datos.</p></div></div>
+      <div class="req"><div class="req__num">5</div><div><p class="req__title">Con qué numeración empezar</p><p class="req__desc">Solo decidir desde qué número arrancan tus comprobantes (por lo general boletas en la serie <b>B001</b> y facturas en <b>F001</b>, empezando en 1). Si ya emitías antes, indica en qué número te quedaste.</p><p class="req__where"><b>No requiere trámite:</b> es una decisión que se configura al activar.</p></div></div>
+    </div>
+    <div class="handoff"><p class="handoff__label">Lo mínimo para activarlo</p><ul><li>Tu <b>RUC</b> (confirmando que está activo y habido).</li><li>El <b>usuario y clave SOL</b> (de preferencia el usuario secundario).</li><li>El <b>archivo del certificado (.pfx)</b> y su <b>contraseña</b>.</li></ul></div>
+  </section>
+
+  <section class="sec sec--pay">
+    <div class="sec__head">
+      <span class="sec__tag">Parte 2 — Pagos con tarjeta</span>
+      <h2 class="sec__title">Cobrar en línea con tarjeta (Culqi)</h2>
+      <p class="sec__what">Para que tus clientes puedan pagar con tarjeta desde el celular (por un link), y el dinero llegue a tu cuenta bancaria.</p>
+    </div>
+    <div class="sec__body">
+      <div class="req"><div class="req__num">1</div><div><p class="req__title">Una cuenta en Culqi</p><p class="req__desc">Culqi es la empresa que procesa los pagos con tarjeta. Debes crear una cuenta a nombre de tu negocio en su página web (culqi.com).</p><p class="req__where"><b>Qué te pedirán:</b> datos del negocio, tu RUC o DNI, y correo. El registro es en línea.</p></div></div>
+      <div class="req"><div class="req__num">2</div><div><p class="req__title">Activación de la cuenta</p><p class="req__desc">Culqi revisa y aprueba tu cuenta antes de habilitar los cobros reales. Es un paso normal de verificación.</p><p class="req__where"><b>Qué te pueden pedir:</b> RUC, documento del representante y los datos del negocio. Ellos te indican el proceso.</p></div></div>
+      <div class="req"><div class="req__num">3</div><div><p class="req__title">Tu cuenta bancaria (para recibir el dinero)</p><p class="req__desc">El número de cuenta / CCI donde Culqi te depositará lo que cobres. Sin esto, el dinero no llega a ti.</p><p class="req__where"><b>Dónde:</b> lo registras dentro del panel de Culqi.</p></div></div>
+      <div class="req"><div class="req__num">4</div><div><p class="req__title">Las dos “llaves” de Culqi <span class="badge badge--key">Lo más importante</span></p><p class="req__desc">Son dos códigos que Culqi te da en su panel. Una <b>pública</b> (empieza con <code>pk_</code>) y una <b>secreta</b> (empieza con <code>sk_</code>). Con ellas se conecta tu app a Culqi. Vienen en versión de <b>prueba</b> y de <b>producción</b>.</p><p class="req__where"><b>Dónde:</b> panel de Culqi → sección “Desarrollo” o “Llaves (API keys)”. Se empieza con las de <b>prueba</b>, luego se cambian a las reales.</p></div></div>
+      <div class="req"><div class="req__num">5</div><div><p class="req__title">Conocer la comisión</p><p class="req__desc">Culqi cobra un pequeño porcentaje por cada venta con tarjeta. Conviene que sepas cuánto es para tu rubro, así defines tus precios.</p><p class="req__where"><b>Dónde:</b> lo confirmas con Culqi al abrir la cuenta.</p></div></div>
+    </div>
+    <div class="handoff"><p class="handoff__label">Lo mínimo para activarlo</p><ul><li>La <b>llave pública</b> (<code>pk_…</code>) y la <b>llave secreta</b> (<code>sk_…</code>) — primero las de prueba.</li><li>Confirmación de que registraste tu <b>cuenta bancaria</b> en Culqi.</li></ul></div>
+  </section>
+
+  <div class="note"><span class="note__mark">!</span><p><strong>Importante sobre las llaves y contraseñas:</strong> son como las llaves de tu caja fuerte. Compártelas solo por un medio privado y directo. Se guardan de forma cifrada dentro del sistema; nunca quedan a la vista de nadie más.</p></div>
+
+  <div class="faq">
+    <h3>Preguntas frecuentes</h3>
+    <p class="faq__q">¿Tengo que pagar algo para la facturación electrónica?</p>
+    <p class="faq__a">El certificado digital puede ser gratuito (lo da SUNAT). La emisión de boletas y facturas dentro del sistema no tiene costo adicional por comprobante.</p>
+    <p class="faq__q">¿Los pagos con tarjeta tienen costo?</p>
+    <p class="faq__a">Sí, pero solo cuando cobras: Culqi te descuenta una comisión por cada venta con tarjeta. Si no vendes, no pagas nada.</p>
+    <p class="faq__q">¿Puedo empezar a usar el sistema sin esto?</p>
+    <p class="faq__a">Sí. Todo lo demás (pedidos, caja, clientes, reportes, delivery) ya funciona. La facturación SUNAT y el pago con tarjeta se activan cuando reúnas estos datos.</p>
+    <p class="faq__q">¿Y si me confundo o no encuentro algo?</p>
+    <p class="faq__a">Se puede revisar juntos cada paso; lo importante es que las cuentas queden a tu nombre.</p>
+  </div>
+
+  <p class="foot">Sistema <strong>Lavixa</strong> · Guía de activación. Reúne lo de cada parte y se deja todo activo y probado antes de usarlo con clientes reales.</p>
+</div>
+</body>
+</html>

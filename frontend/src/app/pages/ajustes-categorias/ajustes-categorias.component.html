@@ -1,12 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Categorías</h2>
-      <p>Registra categorías para agrupar tus servicios.</p>
-    </div>
+  <app-page-header icono="clipboard" color="cian" titulo="Categorías" subtitulo="Registra categorías para agrupar tus servicios." volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nueva categoría</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>
