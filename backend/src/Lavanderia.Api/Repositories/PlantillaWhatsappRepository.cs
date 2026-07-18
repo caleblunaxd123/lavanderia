@@ -32,21 +32,26 @@ public class PlantillaWhatsappRepository : IPlantillaWhatsappRepository
         ("INGRESO", "¡Hola *{cliente}*!\nLe saluda la lavandería *{negocio}*. Su orden es la *{numero}* con los siguientes ítems:\n\n{items}\n\nMonto total a pagar *S/{total}*, del cual falta pagar *S/{saldo}*.\nFecha de entrega: *{entrega}*.\n\nNuestro horario de atención es:\n{horario}\n\n{seguimiento}\n\n*CONDICIONES DEL SERVICIO - {negocio}*\n{condiciones}"),
         ("CAMBIO_AREA", "Hola {cliente}, tu pedido #{numero} ya esta en la etapa: {area}. Tiempo estimado restante: {tiempoRestante}."),
         ("LISTO", "Hola {cliente}! Tu pedido #{numero} esta LISTO para recoger en {negocio}. Te esperamos!"),
+        ("EN_RUTA", "Hola {cliente}! Tu pedido #{numero} de {negocio} ya va en camino a tu direccion. Sigue al repartidor en tiempo real aqui:\n{seguimiento}"),
         ("DEMORA", "Hola {cliente}, tu pedido #{numero} tendra una demora. Nueva hora estimada: {entrega}. Disculpa las molestias."),
         ("ENTREGADO", "Gracias por tu preferencia, {cliente}! Pedido #{numero} entregado. Total: S/ {total}.")
     ];
 
-    /// <summary>Un negocio nuevo no tiene plantillas propias (no hay flujo de alta desde la UI); se siembran los mensajes por defecto la primera vez que se consultan.</summary>
+    /// <summary>Siembra los mensajes por defecto que le falten a este negocio. Es idempotente por
+    /// evento: un negocio nuevo recibe todos, y uno existente recibe solo los eventos nuevos
+    /// (p.ej. EN_RUTA) sin tocar los que el dueño ya haya personalizado.</summary>
     private async Task SembrarDefaultsSiFaltanAsync(Microsoft.Data.SqlClient.SqlConnection conn, int negocioId, CancellationToken ct)
     {
         await using var check = conn.CreateCommand();
-        check.CommandText = "SELECT COUNT(1) FROM dbo.PlantillaWhatsapp WHERE NegocioId = @NegocioId";
+        check.CommandText = "SELECT Evento FROM dbo.PlantillaWhatsapp WHERE NegocioId = @NegocioId";
         check.AddParam("@NegocioId", negocioId);
-        var existentes = await check.ReadScalarAsync<int>(ct);
-        if (existentes > 0) return;
+        var existentes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var r = await check.ExecuteReaderAsync(ct))
+            while (await r.ReadAsync(ct)) existentes.Add(r.GetString(0));
 
         foreach (var (evento, mensaje) in Defaults)
         {
+            if (existentes.Contains(evento)) continue;
             await using var insert = conn.CreateCommand();
             insert.CommandText = "INSERT INTO dbo.PlantillaWhatsapp (NegocioId, Evento, Mensaje, Activa) VALUES (@NegocioId, @Evento, @Mensaje, 1)";
             insert.AddParam("@NegocioId", negocioId);

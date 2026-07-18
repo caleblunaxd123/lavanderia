@@ -504,6 +504,31 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.conLinkRepartidor(p, url => this.copiarTexto(url, 'Enlace del repartidor copiado.'));
   }
 
+  /** Avisa al cliente por WhatsApp que su pedido va en camino, con el link de seguimiento en vivo. */
+  avisarEnCaminoCliente(p: Pedido) {
+    if (!p.clienteCelular) { this.toast.advertencia('Este cliente no tiene celular registrado.'); return; }
+    if (this.enviandoLinkPago()) return;
+    this.enviandoLinkPago.set(true);
+    this.service.linkSeguimiento(p.id).subscribe({
+      next: ({ token }) => {
+        this.enviandoLinkPago.set(false);
+        const url = `${window.location.origin}/seguimiento/${token}`;
+        const cliente = (p.clienteNombre || 'cliente').trim();
+        const negocio = this.config.configuracion().nombreNegocio || 'la lavandería';
+        const fallback = `Hola ${cliente}! Tu pedido #${p.numero} de ${negocio} ya va en camino a tu dirección. Sigue al repartidor en tiempo real aquí:\n${url}`;
+        const mensaje = this.whatsapp.mensaje('EN_RUTA', {
+          cliente, numero: String(p.numero), negocio, seguimiento: url
+        }, fallback);
+        const texto = mensaje.includes(url) ? mensaje : `${mensaje}\n${url}`;
+        this.whatsapp.enviar(p.clienteCelular!, texto);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.enviandoLinkPago.set(false);
+        this.toast.desdeHttp(err, 'No se pudo generar el enlace de seguimiento.');
+      }
+    });
+  }
+
   private copiarTexto(texto: string, ok: string) {
     navigator.clipboard?.writeText(texto)
       .then(() => this.toast.exito(ok))

@@ -450,6 +450,12 @@
                   <app-icon name="clipboard" [size]="13"></app-icon> Copiar link
                 </button>
               </div>
+              @if (p.clienteCelular) {
+                <button type="button" class="btn btn--outline-primary btn--sm btn--block"
+                        [disabled]="enviandoLinkPago()" (click)="avisarEnCaminoCliente(p)">
+                  <app-icon name="whatsapp" [size]="13"></app-icon> Avisar al cliente: va en camino
+                </button>
+              }
             </div>
           }
         </div>

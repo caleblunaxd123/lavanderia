@@ -13,6 +13,7 @@ const EVENTOS: Record<string, EventoInfo> = {
   'INGRESO': { titulo: 'Pedido registrado', descripcion: 'Incluye detalle, saldo, horario, condiciones y seguimiento cuando corresponde.', placeholders: ['cliente', 'numero', 'negocio', 'items', 'total', 'saldo', 'entrega', 'destino', 'horario', 'seguimiento', 'condiciones'] },
   'CAMBIO_AREA': { titulo: 'Cambio de etapa', descripcion: 'Se envía cuando el pedido avanza de área en el proceso de lavado.', placeholders: ['cliente', 'numero', 'area', 'tiempoRestante'] },
   'LISTO': { titulo: 'Pedido listo para recoger', descripcion: 'Se envía cuando el pedido termina el proceso.', placeholders: ['cliente', 'numero', 'negocio'] },
+  'EN_RUTA': { titulo: 'Pedido va en camino (Delivery)', descripcion: 'Aviso para el cliente cuando el repartidor sale a ruta. Incluye el link de seguimiento en vivo.', placeholders: ['cliente', 'numero', 'negocio', 'seguimiento'] },
   'DEMORA': { titulo: 'Cambio de fecha de entrega', descripcion: 'Se envía al reprogramar la hora de entrega o recojo.', placeholders: ['cliente', 'numero', 'entrega'] },
   'ENTREGADO': { titulo: 'Pedido entregado', descripcion: 'Se envía cuando el pedido se entrega al cliente.', placeholders: ['cliente', 'numero', 'total'] },
 };
