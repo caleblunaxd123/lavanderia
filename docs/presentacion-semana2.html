@@ -25,12 +25,14 @@
   .slide[data-c="naranja"] .rail{background:var(--naranja);}
   .slide[data-c="gris"] .rail{background:var(--gris);}
   .slide[data-c="verde"] .rail{background:var(--verde);}
+  .slide[data-c="morado"] .rail{background:var(--morado);}
 
   .kicker{font-size:14px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--azul);margin:0 0 18px;}
   .slide[data-c="rojo"] .kicker{color:var(--rojo);}
   .slide[data-c="naranja"] .kicker{color:var(--naranja);}
   .slide[data-c="gris"] .kicker{color:var(--gris);}
   .slide[data-c="verde"] .kicker{color:var(--verde);}
+  .slide[data-c="morado"] .kicker{color:var(--morado);}
 
   .chip{
     width:74px;height:74px;border-radius:20px;display:flex;align-items:center;justify-content:center;
@@ -40,6 +42,7 @@
   .slide[data-c="naranja"] .chip{background:var(--naranja-w);color:var(--naranja);}
   .slide[data-c="gris"] .chip{background:var(--gris-w);color:var(--gris);}
   .slide[data-c="verde"] .chip{background:var(--verde-w);color:var(--verde);}
+  .slide[data-c="morado"] .chip{background:var(--morado-w);color:var(--morado);}
   .chip svg{width:38px;height:38px;}
 
   h2{font-family:var(--serif);font-size:44px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px;line-height:1.05;}
@@ -56,6 +59,7 @@
   .slide[data-c="rojo"] ul.feats li::before{background-color:var(--rojo-w);}
   .slide[data-c="naranja"] ul.feats li::before{background-color:var(--naranja-w);}
   .slide[data-c="gris"] ul.feats li::before{background-color:var(--gris-w);}
+  .slide[data-c="morado"] ul.feats li::before{background-color:var(--morado-w);}
 
   .foot{position:absolute;left:72px;right:72px;bottom:34px;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--faint);border-top:1px solid var(--line);padding-top:14px;}
   .foot b{color:var(--soft);font-weight:600;}
@@ -111,10 +115,10 @@
       <div class="card">
         <h3>Mejoras extra incluidas</h3>
         <ul>
-          <li>Nueva identidad visual por módulo</li>
-          <li>Alertas de vencimiento tipo panel</li>
+          <li><b>Seguimiento en vivo tipo Uber</b> del delivery</li>
           <li>Delivery con <b>mapa</b> y dirección automática</li>
-          <li>Corrección de un error al guardar ajustes</li>
+          <li>Alertas de vencimiento y de cumpleaños</li>
+          <li>Nueva identidad visual por módulo</li>
         </ul>
       </div>
     </div>
@@ -189,6 +193,23 @@
     <div class="foot"><span><b>Corregido y probado:</b> guardar configuración ahora funciona sin error</span><span class="pill">Funcionando</span></div>
   </section>
 
+  <section class="slide" data-c="morado">
+    <div class="rail"></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+    <p class="kicker">Diferenciador</p>
+    <h2>Seguimiento en vivo tipo Uber</h2>
+    <p class="sub">El cliente ve a su repartidor moverse en el mapa en tiempo real, igual que en Rappi o Uber. Algo que casi ninguna lavandería del país ofrece.</p>
+    <ul class="feats">
+      <li><b>El repartidor comparte su ubicación</b><small>Abre un link en su celular y toca “Salí a ruta”</small></li>
+      <li><b>El cliente ve el mapa en vivo</b><small>El pin del repartidor se mueve hacia su dirección</small></li>
+      <li><b>Distancia y tiempo estimado</b><small>“A 500 m · llega en ~2 min”, se actualiza solo</small></li>
+      <li><b>Avisos automáticos</b><small>Va en camino → está cerca → llegó → entregado</small></li>
+      <li><b>Notificación al cliente</b><small>Por WhatsApp y en el navegador, sin apps que instalar</small></li>
+      <li><b>Sin costo extra de plataformas</b><small>Usa mapas gratuitos, no depende de Uber ni Rappi</small></li>
+    </ul>
+    <div class="foot"><span><b>Construido y probado</b> esta semana · se activa al publicar con dominio seguro (HTTPS)</span><span class="pill">Listo</span></div>
+  </section>
+
   <section class="slide" data-c="azul">
     <div class="rail"></div>
     <p class="kicker">Cierre</p>
@@ -200,17 +221,16 @@
         <ul>
           <li>Los 4 módulos <b>funcionan y están probados</b></li>
           <li>Código respaldado en <b>GitHub</b></li>
-          <li>Delivery con mapa y seguimiento del cliente</li>
-          <li>Alertas de vencimiento para el propietario</li>
+          <li>Delivery con mapa y <b>seguimiento en vivo tipo Uber</b></li>
+          <li>Alertas de vencimiento y de <b>cumpleaños de clientes</b></li>
         </ul>
       </div>
       <div class="card">
         <h3>Próximos pasos</h3>
         <ul>
-          <li>Seguimiento en <b>vivo tipo Uber</b> (va en camino / llegó)</li>
           <li>Activar <b>Facturación SUNAT</b> (requisitos entregados)</li>
-          <li>Activar <b>Pagos con tarjeta — Culqi</b></li>
-          <li>Publicación en un dominio con HTTPS</li>
+          <li>Activar <b>Pagos con tarjeta y Yape — Culqi</b> (requisitos entregados)</li>
+          <li>Contratar <b>dominio + hosting con HTTPS</b> (publica el sistema y activa lo anterior)</li>
         </ul>
       </div>
     </div>
