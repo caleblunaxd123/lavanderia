@@ -32,3 +32,4 @@ Thumbs.db
 # Office temp / lock files
 ~$*
 *.tmp
+backend/src/Lavanderia.Api/wwwroot/

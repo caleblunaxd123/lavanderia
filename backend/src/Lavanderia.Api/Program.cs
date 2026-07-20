@@ -274,6 +274,11 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
+// Sirve el frontend (Angular) compilado desde wwwroot: la API y la web quedan en un
+// solo origen, listo para publicar bajo un dominio con HTTPS sin líos de CORS.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -282,6 +287,10 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
     .AllowAnonymous();
 app.MapControllers();
+
+// Cualquier ruta que no sea de la API ni un archivo estático la resuelve Angular
+// (rutas del cliente: /{slug}/inicio, /seguimiento/:token, /repartidor/:token, etc.).
+app.MapFallbackToFile("index.html");
 
 // Seed inicial (usuario admin) — no bloquea el arranque si SQL no está disponible aún.
 using (var scope = app.Services.CreateScope())
