@@ -1,20 +1,31 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
 import { Sede } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { SedesService } from '../../core/services/sedes.service';
+import { IconComponent, IconName } from '../../shared/icon/icon.component';
+
+interface SubLink {
+  label: string;
+  path: string;
+  modulo?: string; // si difiere del módulo del padre (para permisos)
+}
 
 interface NavLink {
   label: string;
   path: string;
   modulo: string;
+  icono: IconName;
+  children?: SubLink[];
 }
 
 @Component({
   selector: 'app-header',
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, IconComponent],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss'
 })
@@ -22,24 +33,46 @@ export class HeaderComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly config = inject(ConfiguracionService);
   private readonly sedesSvc = inject(SedesService);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly usuario = this.auth.usuario;
   readonly negocio = computed(() => this.config.configuracion());
 
   readonly menuAbierto = signal(false);
+  readonly urlActual = signal(this.router.url);
+  // Módulo con el submenú expandido (acordeón: solo uno abierto a la vez).
+  readonly expandido = signal<string | null>(null);
 
   // Badge de sede: siempre visible para saber en qué sucursal estás trabajando.
-  // Solo ADMIN con más de una sede puede además cambiarse entre sucursales desde acá.
   readonly sedes = signal<Sede[]>([]);
   readonly sedeMenuAbierto = signal(false);
   readonly cambiandoSede = signal(false);
   readonly mostrarBadgeSede = computed(() => !!this.usuario()?.sedeNombre);
   readonly puedeCambiarSede = computed(() => this.usuario()?.rol === 'ADMIN' && this.sedes().length > 1);
 
+  constructor() {
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(e => {
+      this.urlActual.set(e.urlAfterRedirects);
+      this.abrirSeccionActiva();
+    });
+  }
+
   ngOnInit() {
     if (this.usuario()?.rol === 'ADMIN') {
       this.sedesSvc.listar().subscribe(list => this.sedes.set(list.filter(s => s.activo)));
     }
+    this.abrirSeccionActiva();
+  }
+
+  /** Acordeón: abre la sección donde está el usuario (y cierra las demás). */
+  private abrirSeccionActiva() {
+    const activo = [...this.primaryLinksBase, ...this.secondaryLinksBase]
+      .find(l => l.children?.length && this.esSeccionActiva(l));
+    if (activo) this.expandido.set(activo.modulo);
   }
 
   toggleSedeMenu() { this.sedeMenuAbierto.update(v => !v); }
@@ -58,18 +91,55 @@ export class HeaderComponent implements OnInit {
   }
 
   private readonly primaryLinksBase: NavLink[] = [
-    { label: 'Inicio', path: '/inicio', modulo: 'INICIO' },
-    { label: 'Pedidos', path: '/pedidos', modulo: 'PEDIDOS' },
-    { label: 'Registrar', path: '/registrar', modulo: 'REGISTRAR' },
-    { label: 'Cuadre de Caja', path: '/cuadre-caja', modulo: 'CAJA' },
+    { label: 'Inicio', path: '/inicio', modulo: 'INICIO', icono: 'home' },
+    {
+      label: 'Pedidos', path: '/pedidos', modulo: 'PEDIDOS', icono: 'clipboard',
+      children: [
+        { label: 'Ver pedidos', path: '/pedidos' },
+        { label: 'Registro antiguos', path: '/registro-antiguo', modulo: 'REGISTRAR' },
+      ]
+    },
+    { label: 'Registrar', path: '/registrar', modulo: 'REGISTRAR', icono: 'plus' },
+    {
+      label: 'Cuadre de Caja', path: '/cuadre-caja', modulo: 'CAJA', icono: 'cash',
+      children: [
+        { label: 'Cuadre del día', path: '/cuadre-caja' },
+        { label: 'Reporte de cuadres', path: '/reportes/cuadres-caja', modulo: 'REPORTES' },
+      ]
+    },
   ];
 
   private readonly secondaryLinksBase: NavLink[] = [
-    { label: 'Clientes', path: '/clientes', modulo: 'CLIENTES' },
-    { label: 'Promociones', path: '/promociones', modulo: 'PROMOCIONES' },
-    { label: 'Reportes', path: '/reportes', modulo: 'REPORTES' },
-    { label: 'Inventario', path: '/inventario', modulo: 'INVENTARIO' },
-    { label: 'Ajustes', path: '/ajustes', modulo: 'AJUSTES' },
+    {
+      label: 'Clientes', path: '/clientes', modulo: 'CLIENTES', icono: 'users',
+      children: [
+        { label: 'Lista de clientes', path: '/clientes' },
+        { label: 'Fidelización (CRM)', path: '/clientes/crm' },
+      ]
+    },
+    { label: 'Promociones', path: '/promociones', modulo: 'PROMOCIONES', icono: 'tag' },
+    {
+      label: 'Reportes', path: '/reportes', modulo: 'REPORTES', icono: 'chart',
+      children: [
+        { label: 'Todos los reportes', path: '/reportes' },
+        { label: 'Vista gerencial', path: '/reportes/gerencial' },
+        { label: 'Consolidado', path: '/reportes/consolidado' },
+        { label: 'Cuadres diarios', path: '/reportes/cuadres-caja' },
+      ]
+    },
+    { label: 'Inventario', path: '/inventario', modulo: 'INVENTARIO', icono: 'package' },
+    {
+      label: 'Ajustes', path: '/ajustes', modulo: 'AJUSTES', icono: 'settings',
+      children: [
+        { label: 'Ver todo', path: '/ajustes' },
+        { label: 'Negocio y marca', path: '/ajustes/negocio' },
+        { label: 'Servicios y precios', path: '/ajustes/servicios' },
+        { label: 'Personal', path: '/ajustes/personal' },
+        { label: 'Usuarios y permisos', path: '/ajustes/usuarios' },
+        { label: 'Facturación electrónica', path: '/ajustes/facturacion-electronica' },
+        { label: 'Pagos en línea', path: '/ajustes/pagos' },
+      ]
+    },
   ];
 
   readonly primaryLinks = computed(() => this.filtrar(this.primaryLinksBase));
@@ -78,6 +148,30 @@ export class HeaderComponent implements OnInit {
   private filtrar(list: NavLink[]): NavLink[] {
     const modulos = this.usuario()?.modulosPermitidos ?? [];
     return list.filter(l => modulos.includes(l.modulo));
+  }
+
+  /** Hijos visibles según los permisos del usuario. */
+  hijosVisibles(link: NavLink): SubLink[] {
+    const modulos = this.usuario()?.modulosPermitidos ?? [];
+    return (link.children ?? []).filter(c => modulos.includes(c.modulo ?? link.modulo));
+  }
+
+  /** La sección está activa si la ruta actual coincide con el padre o alguno de sus hijos. */
+  esSeccionActiva(link: NavLink): boolean {
+    const url = this.urlActual().split('?')[0];
+    if (url === link.path) return true;
+    return (link.children ?? []).some(c => url === c.path)
+      // Caso especial: reportes/:key cae bajo la sección Reportes.
+      || (link.path !== '/inicio' && url.startsWith(link.path + '/'));
+  }
+
+  estaExpandido(link: NavLink): boolean { return this.expandido() === link.modulo; }
+
+  toggleGrupo(link: NavLink, ev: Event) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    // Acordeón tipo carrusel: al abrir uno se cierra el que estaba abierto.
+    this.expandido.set(this.expandido() === link.modulo ? null : link.modulo);
   }
 
   toggleMenu() { this.menuAbierto.update(v => !v); }

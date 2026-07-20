@@ -1,12 +1,9 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Ajustes</button>
-    <div>
-      <h2>Repartidores</h2>
-      <p>Administra a los motorizados que puedes asignar a los pedidos con delivery.</p>
-    </div>
+  <app-page-header icono="smartphone" color="naranja" titulo="Repartidores"
+    subtitulo="Administra a los motorizados que puedes asignar a los pedidos con delivery."
+    volverTexto="Ajustes" (volver)="volver()">
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo repartidor</button>
-  </div>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

@@ -4,5 +4,7 @@
 @if (esPlataforma()) {
   <app-plataforma-header />
 }
-<router-outlet />
+<main class="app-content" [class.app-content--sidebar]="mostrarHeader()">
+  <router-outlet />
+</main>
 <app-toaster />

@@ -165,3 +165,12 @@ a.card:hover,
     transition-duration: .01ms !important;
   }
 }
+
+/* ===== Desplazamiento del contenido junto al sidebar (nav lateral) ===== */
+.app-content { display: block; }
+@media (min-width: 901px) {
+  .app-content--sidebar { margin-left: 250px; }
+}
+@media (max-width: 900px) {
+  .app-content--sidebar { padding-top: 56px; }
+}

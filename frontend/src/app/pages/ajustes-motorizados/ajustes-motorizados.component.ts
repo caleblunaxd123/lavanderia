@@ -9,10 +9,11 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-motorizados',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, SoloDigitosDirective],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, SoloDigitosDirective],
   templateUrl: './ajustes-motorizados.component.html',
   styleUrl: './ajustes-motorizados.component.scss'
 })

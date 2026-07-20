@@ -7,10 +7,11 @@ import { CrearNegocioRequest } from '../../core/models/models';
 import { NegociosPlataformaService } from '../../core/services/negocios-plataforma.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-plataforma-negocio-crear',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, IconComponent],
   templateUrl: './plataforma-negocio-crear.component.html',
   styleUrl: './plataforma-negocio-crear.component.scss'
 })

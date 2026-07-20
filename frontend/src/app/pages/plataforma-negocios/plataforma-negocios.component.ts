@@ -8,12 +8,13 @@ import { NegociosPlataformaService } from '../../core/services/negocios-platafor
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 type FiltroEstado = 'todas' | 'activas' | 'suspendidas' | 'por-cobrar';
 
 @Component({
   selector: 'app-plataforma-negocios',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, IconComponent],
   templateUrl: './plataforma-negocios.component.html',
   styleUrl: './plataforma-negocios.component.scss'
 })

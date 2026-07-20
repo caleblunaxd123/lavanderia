@@ -6,7 +6,7 @@ export type IconName =
   | 'package' | 'pin' | 'clipboard' | 'money-bag' | 'users' | 'whatsapp' | 'plus' | 'search'
   | 'chevron-left' | 'chevron-right' | 'chevron-first' | 'chevron-last' | 'arrow-left' | 'arrow-right'
   | 'smartphone' | 'bank' | 'credit-card' | 'info' | 'eye' | 'eye-off'
-  | 'chart' | 'settings' | 'tag';
+  | 'chart' | 'settings' | 'tag' | 'home';
 
 @Component({
   selector: 'app-icon',

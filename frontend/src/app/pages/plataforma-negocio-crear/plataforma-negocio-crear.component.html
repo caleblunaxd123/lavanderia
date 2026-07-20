@@ -1,11 +1,7 @@
 <div class="page">
-  <div class="page__header">
-    <button class="volver" (click)="cancelar()"><app-icon name="arrow-left" [size]="14"></app-icon> Empresas</button>
-    <div>
-      <h2>Nueva empresa</h2>
-      <p>Crea el negocio, su primera sede y el usuario administrador que la va a manejar.</p>
-    </div>
-  </div>
+  <app-page-header icono="bank" color="gris" titulo="Nueva empresa"
+    subtitulo="Crea el negocio, su primera sede y el usuario administrador que la va a manejar."
+    volverTexto="Empresas" (volver)="cancelar()"></app-page-header>
 
   @if (creada(); as c) {
     <div class="card exito">

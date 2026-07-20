@@ -1,97 +1,133 @@
-<header class="topbar">
-  <button type="button" class="topbar__hamburger" (click)="toggleMenu()" aria-label="Menú"
-          [attr.aria-expanded]="menuAbierto()" aria-controls="menu-principal-movil">
+<!-- Barra superior compacta: SOLO en móvil (hamburguesa + marca + salir) -->
+<header class="mtop">
+  <button type="button" class="mtop__burger" (click)="toggleMenu()" aria-label="Menú"
+          [attr.aria-expanded]="menuAbierto()" aria-controls="sidebar-nav">
     <span></span><span></span><span></span>
   </button>
-
-  <div class="brand">
+  <div class="mtop__brand">
     @if (negocio().logoUrl) {
-      <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" class="brand__logo" />
-    } @else {
-      <svg viewBox="0 0 24 24" class="brand__icon" fill="none" stroke="currentColor" stroke-width="1.6">
-        <path d="M12 2c3 4 6 7.5 6 11.5A6 6 0 1 1 6 13.5C6 9.5 9 6 12 2Z" />
-      </svg>
+      <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" class="mtop__logo" />
     }
-    <div class="brand__text">
+    <strong>{{ negocio().nombreNegocio }}</strong>
+  </div>
+  <button type="button" class="mtop__logout" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M4 12h12"/>
+    </svg>
+  </button>
+</header>
+
+<!-- Fondo oscuro para cerrar el sidebar en móvil -->
+@if (menuAbierto()) {
+  <div class="sb-backdrop" (click)="cerrarMenu()"></div>
+}
+
+<!-- Plantilla de un ítem del menú (con o sin submenú) -->
+<ng-template #item let-link>
+  @if (hijosVisibles(link).length) {
+    <div class="sidebar__item" [class.is-open]="estaExpandido(link)">
+      <div class="sidebar__link-wrap">
+        <a [routerLink]="link.path" class="sidebar__link sidebar__link--parent"
+           [class.is-active]="esSeccionActiva(link)" (click)="cerrarMenu()">
+          <app-icon [name]="link.icono" [size]="18"></app-icon>
+          <span class="sidebar__label">{{ link.label }}</span>
+        </a>
+        <button type="button" class="sidebar__caret" (click)="toggleGrupo(link, $event)"
+                [attr.aria-expanded]="estaExpandido(link)" [attr.aria-label]="'Desplegar ' + link.label">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+      <div class="sidebar__submenu">
+        <div class="sidebar__submenu-inner">
+          @for (sub of hijosVisibles(link); track sub.path) {
+            <a [routerLink]="sub.path" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }"
+               class="sidebar__sublink" (click)="cerrarMenu()">
+              <span class="sidebar__dot"></span>{{ sub.label }}
+            </a>
+          }
+        </div>
+      </div>
+    </div>
+  } @else {
+    <a [routerLink]="link.path" routerLinkActive="is-active" class="sidebar__link" (click)="cerrarMenu()">
+      <app-icon [name]="link.icono" [size]="18"></app-icon>
+      <span class="sidebar__label">{{ link.label }}</span>
+    </a>
+  }
+</ng-template>
+
+<!-- Sidebar: fijo en escritorio, cajón deslizable en móvil -->
+<aside id="sidebar-nav" class="sidebar" [class.is-open]="menuAbierto()">
+  <div class="sidebar__brand">
+    @if (negocio().logoUrl) {
+      <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" class="sidebar__logo" />
+    } @else {
+      <span class="sidebar__logo sidebar__logo--icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 2c3 4 6 7.5 6 11.5A6 6 0 1 1 6 13.5C6 9.5 9 6 12 2Z" />
+        </svg>
+      </span>
+    }
+    <div class="sidebar__brand-text">
       <strong>{{ negocio().nombreNegocio }}</strong>
       <span>Sistema de gestión</span>
     </div>
   </div>
 
-  <nav class="topbar__primary">
-    @for (link of primaryLinks(); track link.path) {
-      <a [routerLink]="link.path" routerLinkActive="is-active" class="tab" (click)="cerrarMenu()">{{ link.label }}</a>
+  @if (mostrarBadgeSede()) {
+    <div class="sidebar__sede">
+      <button type="button" class="sidebar__sede-btn" (click)="puedeCambiarSede() && toggleSedeMenu()"
+              [disabled]="cambiandoSede()" [class.is-fijo]="!puedeCambiarSede()"
+              [attr.aria-expanded]="puedeCambiarSede() ? sedeMenuAbierto() : null"
+              [attr.aria-label]="puedeCambiarSede() ? 'Cambiar sede activa' : 'Sede activa'">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 21s7-6.5 7-11.5A7 7 0 1 0 5 9.5C5 14.5 12 21 12 21Z" />
+          <circle cx="12" cy="9.5" r="2.5" />
+        </svg>
+        <span>{{ usuario()?.sedeNombre }}</span>
+        @if (puedeCambiarSede()) {
+          <svg class="sidebar__sede-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        }
+      </button>
+      @if (sedeMenuAbierto()) {
+        <div class="sidebar__sede-menu">
+          @for (s of sedes(); track s.id) {
+            <button type="button" class="sidebar__sede-item"
+              [class.is-active]="s.id === usuario()?.sedeId" (click)="elegirSede(s.id)">
+              {{ s.nombre }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <nav class="sidebar__nav">
+    @if (primaryLinks().length) {
+      <p class="sidebar__group">General</p>
+      @for (link of primaryLinks(); track link.path) {
+        <ng-container *ngTemplateOutlet="item; context: { $implicit: link }"></ng-container>
+      }
+    }
+    @if (secondaryLinks().length) {
+      <p class="sidebar__group">Administración</p>
+      @for (link of secondaryLinks(); track link.path) {
+        <ng-container *ngTemplateOutlet="item; context: { $implicit: link }"></ng-container>
+      }
     }
   </nav>
 
-  <div class="user-menu">
-    <div class="user-info">
+  <div class="sidebar__user">
+    <div class="sidebar__user-info">
       <strong>{{ usuario()?.nombreCompleto }}</strong>
       <span>{{ usuario()?.rol }}</span>
     </div>
-    <button type="button" class="user-menu__btn" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+    <button type="button" class="sidebar__logout" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M4 12h12"/>
       </svg>
     </button>
   </div>
-</header>
-
-<nav class="subbar">
-  @for (link of secondaryLinks(); track link.path) {
-    <a [routerLink]="link.path" routerLinkActive="is-active" class="tab tab--sub" (click)="cerrarMenu()">{{ link.label }}</a>
-  }
-</nav>
-
-@if (mostrarBadgeSede()) {
-  <div class="sede-badge">
-    <button type="button" class="sede-badge__btn" (click)="puedeCambiarSede() && toggleSedeMenu()"
-            [disabled]="cambiandoSede()" [class.is-fijo]="!puedeCambiarSede()"
-            [attr.aria-expanded]="puedeCambiarSede() ? sedeMenuAbierto() : null"
-            [attr.aria-label]="puedeCambiarSede() ? 'Cambiar sede activa' : 'Sede activa'">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 21s7-6.5 7-11.5A7 7 0 1 0 5 9.5C5 14.5 12 21 12 21Z" />
-        <circle cx="12" cy="9.5" r="2.5" />
-      </svg>
-      <span>{{ usuario()?.sedeNombre }}</span>
-      @if (puedeCambiarSede()) {
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      }
-    </button>
-    @if (sedeMenuAbierto()) {
-      <div class="sede-badge__menu">
-        @for (s of sedes(); track s.id) {
-          <button type="button"
-            class="sede-badge__item"
-            [class.is-active]="s.id === usuario()?.sedeId"
-            (click)="elegirSede(s.id)">
-            {{ s.nombre }}
-          </button>
-        }
-      </div>
-    }
-  </div>
-}
-
-@if (menuAbierto()) {
-  <div class="drawer-backdrop" (click)="cerrarMenu()"></div>
-  <aside id="menu-principal-movil" class="drawer">
-    <div class="drawer__header">
-      <strong>{{ negocio().nombreNegocio }}</strong>
-      <span>{{ usuario()?.nombreCompleto }} · {{ usuario()?.rol }}</span>
-    </div>
-    <nav class="drawer__nav">
-      @for (link of primaryLinks(); track link.path) {
-        <a [routerLink]="link.path" routerLinkActive="is-active" (click)="cerrarMenu()">{{ link.label }}</a>
-      }
-      <div class="drawer__separator"></div>
-      @for (link of secondaryLinks(); track link.path) {
-        <a [routerLink]="link.path" routerLinkActive="is-active" (click)="cerrarMenu()">{{ link.label }}</a>
-      }
-      <div class="drawer__separator"></div>
-      <button type="button" class="drawer__logout" (click)="logout()">Cerrar sesión</button>
-    </nav>
-  </aside>
-}
+</aside>
