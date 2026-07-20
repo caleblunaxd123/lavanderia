@@ -16,8 +16,13 @@ namespace Lavanderia.Api.Controllers;
 public class ServiciosAdminController : TenantAwareControllerBase
 {
     private readonly IServicioRepository _repo;
+    private readonly ICategoriaRepository _categorias;
 
-    public ServiciosAdminController(IServicioRepository repo) => _repo = repo;
+    public ServiciosAdminController(IServicioRepository repo, ICategoriaRepository categorias)
+    {
+        _repo = repo;
+        _categorias = categorias;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<ServicioEditableDto>>> Listar(CancellationToken ct)
@@ -26,6 +31,9 @@ public class ServiciosAdminController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<ServicioEditableDto>> Crear([FromBody] ServicioEditableDto dto, CancellationToken ct)
     {
+        var validacion = await ValidarCatalogoAsync(dto, null, ct);
+        if (validacion is not null) return validacion;
+
         var id = await _repo.CrearAsync(new Servicio
         {
             NegocioId = NegocioId,
@@ -44,6 +52,11 @@ public class ServiciosAdminController : TenantAwareControllerBase
     {
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
+        if (existente.EsCargoDelivery)
+            return BadRequest(new { mensaje = "El cargo interno de delivery se configura desde Negocio y marca." });
+
+        var validacion = await ValidarCatalogoAsync(dto, id, ct);
+        if (validacion is not null) return validacion;
 
         existente.Nombre = dto.Nombre.Trim();
         existente.Precio = dto.Precio;
@@ -59,6 +72,8 @@ public class ServiciosAdminController : TenantAwareControllerBase
     {
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
+        if (existente.EsCargoDelivery)
+            return BadRequest(new { mensaje = "El cargo interno de delivery no puede desactivarse desde Servicios." });
 
         var usos = await _repo.ContarUsoAsync(id, NegocioId, ct);
         await _repo.CambiarEstadoAsync(id, false, NegocioId, ct);
@@ -68,6 +83,19 @@ public class ServiciosAdminController : TenantAwareControllerBase
                 ? $"Servicio desactivado (usado en {usos} pedidos históricos)."
                 : "Servicio desactivado."
         });
+    }
+
+    private async Task<ActionResult?> ValidarCatalogoAsync(ServicioEditableDto dto, int? excluirId, CancellationToken ct)
+    {
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, excluirId, ct))
+            return Conflict(new { mensaje = $"Ya existe un servicio llamado '{nombre}' en esta empresa." });
+
+        if (dto.CategoriaId.HasValue &&
+            await _categorias.ObtenerPorIdAsync(dto.CategoriaId.Value, NegocioId, ct) is null)
+            return BadRequest(new { mensaje = "La categoría seleccionada no pertenece a esta empresa." });
+
+        return null;
     }
 
     private static ServicioEditableDto Map(Servicio s) => new()

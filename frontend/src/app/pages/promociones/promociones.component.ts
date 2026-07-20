@@ -97,6 +97,14 @@ export class PromocionesComponent implements OnInit {
       this.errorForm.set('Debes indicar un descuento en % o en soles.');
       return;
     }
+    if (this.form.descuentoPct && this.form.descuentoMonto) {
+      this.errorForm.set('Usa solo un tipo de descuento: porcentaje o monto fijo.');
+      return;
+    }
+    if (this.form.fechaInicio && this.form.fechaFin && this.form.fechaFin < this.form.fechaInicio) {
+      this.errorForm.set('La fecha final no puede ser anterior a la fecha inicial.');
+      return;
+    }
     this.guardando.set(true);
     this.errorForm.set(null);
 

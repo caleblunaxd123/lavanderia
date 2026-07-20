@@ -12,7 +12,12 @@ namespace Lavanderia.Api.Controllers;
 public class PromocionesController : TenantAwareControllerBase
 {
     private readonly IPromocionRepository _repo;
-    public PromocionesController(IPromocionRepository repo) => _repo = repo;
+    private readonly IServicioRepository _servicios;
+    public PromocionesController(IPromocionRepository repo, IServicioRepository servicios)
+    {
+        _repo = repo;
+        _servicios = servicios;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<PromocionDto>>> Listar(CancellationToken ct)
@@ -21,6 +26,9 @@ public class PromocionesController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<PromocionDto>> Crear([FromBody] PromocionDto dto, CancellationToken ct)
     {
+        var error = await ValidarAsync(dto, null, ct);
+        if (error is not null) return error;
+
         var id = await _repo.CrearAsync(new Promocion
         {
             NegocioId = NegocioId,
@@ -45,6 +53,9 @@ public class PromocionesController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
+        var error = await ValidarAsync(dto, id, ct);
+        if (error is not null) return error;
+
         existente.Tipo = dto.Tipo.Trim();
         existente.Descripcion = dto.Descripcion.Trim();
         existente.DescuentoPct = dto.DescuentoPct;
@@ -57,6 +68,41 @@ public class PromocionesController : TenantAwareControllerBase
         existente.Codigo = dto.Codigo;
         await _repo.ActualizarAsync(existente, NegocioId, ct);
         return NoContent();
+    }
+
+    private async Task<ObjectResult?> ValidarAsync(PromocionDto dto, int? excluirId, CancellationToken ct)
+    {
+        var tiposValidos = new[] { "VOLUMEN", "FRECUENCIA", "FIJA", "CODIGO" };
+        dto.Tipo = dto.Tipo.Trim().ToUpperInvariant();
+        dto.Codigo = string.IsNullOrWhiteSpace(dto.Codigo) ? null : dto.Codigo.Trim().ToUpperInvariant();
+
+        if (!tiposValidos.Contains(dto.Tipo))
+            return BadRequest(new { mensaje = "El tipo de promocion no es valido." });
+        if (dto.FechaInicio.HasValue && dto.FechaFin.HasValue && dto.FechaFin < dto.FechaInicio)
+            return BadRequest(new { mensaje = "La fecha final no puede ser anterior a la fecha inicial." });
+
+        var tienePorcentaje = dto.DescuentoPct is > 0;
+        var tieneMonto = dto.DescuentoMonto is > 0;
+        if (!tienePorcentaje && !tieneMonto)
+            return BadRequest(new { mensaje = "Indica un descuento mayor a cero, en porcentaje o en soles." });
+        if (tienePorcentaje && tieneMonto)
+            return BadRequest(new { mensaje = "Usa solo un tipo de descuento: porcentaje o monto fijo." });
+
+        if (dto.ServicioId is int servicioId)
+        {
+            var servicio = await _servicios.ObtenerPorIdAsync(servicioId, NegocioId, ct);
+            if (servicio is null || !servicio.Activo)
+                return BadRequest(new { mensaje = "El servicio seleccionado no existe o esta inactivo." });
+        }
+
+        if (dto.Codigo is not null)
+        {
+            var duplicada = await _repo.BuscarPorCodigoAsync(dto.Codigo, NegocioId, ct);
+            if (duplicada is not null && duplicada.Id != excluirId)
+                return Conflict(new { mensaje = "Ya existe una promocion con ese codigo." });
+        }
+
+        return null;
     }
 
     [HttpPatch("{id:int}/estado")]

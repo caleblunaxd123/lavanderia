@@ -14,6 +14,7 @@ public interface ICajaRepository
     Task<List<TipoGasto>> ListarTiposGastoAsync(int negocioId, CancellationToken ct = default);
     Task<List<TipoGasto>> ListarTodosTiposGastoAsync(int negocioId, CancellationToken ct = default);
     Task<TipoGasto?> ObtenerTipoGastoPorIdAsync(int id, int negocioId, CancellationToken ct = default);
+    Task<bool> ExisteNombreTipoGastoAsync(string nombre, int negocioId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearTipoGastoAsync(TipoGasto t, CancellationToken ct = default);
     Task ActualizarTipoGastoAsync(TipoGasto t, int negocioId, CancellationToken ct = default);
     Task CambiarEstadoTipoGastoAsync(int id, bool activo, int negocioId, CancellationToken ct = default);
@@ -137,6 +138,24 @@ public class CajaRepository : ICajaRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadFirstOrDefaultAsync(MapTipoGasto, ct);
+    }
+
+    public async Task<bool> ExisteNombreTipoGastoAsync(string nombre, int negocioId, int? excluirId = null, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM dbo.TipoGasto
+                WHERE NegocioId = @NegocioId
+                  AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(@Nombre)
+                  AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
+        cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@Nombre", nombre.Trim());
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<bool>(ct);
     }
 
     public async Task<int> CrearTipoGastoAsync(TipoGasto t, CancellationToken ct = default)

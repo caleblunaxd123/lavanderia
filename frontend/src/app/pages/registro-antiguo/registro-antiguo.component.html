@@ -1,12 +1,11 @@
 <div class="page">
-  <div class="page__header card">
-    <h2>Registro Antiguos</h2>
-    <button class="volver" (click)="volver()"><app-icon name="arrow-left" [size]="14"></app-icon> Pedidos</button>
-    <button class="btn btn--primario" [disabled]="!puedeRegistrar" (click)="registrarOrden()">
+  <app-page-header icono="clipboard" color="naranja" titulo="Registro de pedidos antiguos"
+    subtitulo="Carga pedidos de un talonario o sistema anterior conservando su fecha real de ingreso."
+    volverTexto="Pedidos" (volver)="volver()">
+    <button type="button" class="btn btn--primario header-action" [disabled]="!puedeRegistrar" (click)="registrarOrden()">
       {{ registrando() ? 'Registrando…' : 'Registrar' }}
     </button>
-  </div>
-  <p class="aviso-antiguo">Usa este formulario para cargar pedidos antiguos (de tu registro en papel u otro sistema), con su fecha real de ingreso.</p>
+  </app-page-header>
 
   <div class="pasos">
     <!-- Cliente -->

@@ -1,4 +1,7 @@
 <div class="page">
+  <app-page-header icono="settings" color="azul" titulo="Ajustes"
+    subtitulo="Configura el negocio, las sedes, el equipo y las reglas de operación."></app-page-header>
+
   <div class="grid">
     @for (a of ajustes; track a.nombre) {
       @if (a.ruta) {

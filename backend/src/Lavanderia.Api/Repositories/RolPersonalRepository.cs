@@ -7,6 +7,7 @@ public interface IRolPersonalRepository
 {
     Task<List<RolPersonal>> ListarTodosAsync(int negocioId, CancellationToken ct = default);
     Task<RolPersonal?> ObtenerPorIdAsync(int id, int negocioId, CancellationToken ct = default);
+    Task<bool> ExisteNombreAsync(string nombre, int negocioId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearAsync(RolPersonal r, CancellationToken ct = default);
     Task ActualizarAsync(RolPersonal r, int negocioId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int negocioId, CancellationToken ct = default);
@@ -43,6 +44,24 @@ public class RolPersonalRepository : IRolPersonalRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<bool> ExisteNombreAsync(string nombre, int negocioId, int? excluirId = null, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM dbo.RolPersonal
+                WHERE NegocioId = @NegocioId
+                  AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(@Nombre)
+                  AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
+        cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@Nombre", nombre.Trim());
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<bool>(ct);
     }
 
     public async Task<int> CrearAsync(RolPersonal r, CancellationToken ct = default)

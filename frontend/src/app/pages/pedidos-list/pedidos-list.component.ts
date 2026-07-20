@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
@@ -18,9 +19,21 @@ import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
+import { debounceTime } from 'rxjs';
+import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 
 type Filtro = 'pendientes' | 'otros' | 'ultimos' | 'fecha';
 type TipoFecha = 'ingreso' | 'entrega';
+type VistaPedidos = 'lista' | 'tablero';
+type KanbanTone = 'pendiente' | 'area' | 'listo' | 'entregado' | 'anulado' | 'alerta';
+
+interface KanbanColumn {
+  key: string;
+  titulo: string;
+  subtitulo: string;
+  tone: KanbanTone;
+  pedidos: Pedido[];
+}
 
 @Component({
   selector: 'app-pedidos-list',
@@ -36,6 +49,8 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly config = inject(ConfiguracionService);
   private readonly facturacionSvc = inject(FacturacionService);
   private readonly motorizadosSvc = inject(MotorizadosService);
+  private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly emitiendoComprobante = signal(false);
 
   readonly pedidos = signal<Pedido[]>([]);
@@ -43,6 +58,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
   readonly filtro = signal<Filtro>('pendientes');
+  readonly vista = signal<VistaPedidos>(this.vistaInicial());
   readonly busqueda = signal('');
   private busquedaTimerId?: ReturnType<typeof setTimeout>;
 
@@ -113,6 +129,80 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     );
   });
 
+  readonly kanbanColumns = computed<KanbanColumn[]>(() => {
+    const pedidos = this.pedidosFiltrados();
+    const areas = [...this.areas()].sort((a, b) => a.orden - b.orden);
+    const idsArea = new Set(areas.map(a => a.id));
+    const flujoCompleto = this.filtro() === 'pendientes' && !this.busqueda().trim();
+
+    const columnas: KanbanColumn[] = [
+      {
+        key: 'pendiente',
+        titulo: 'Sin iniciar',
+        subtitulo: 'En recepción',
+        tone: 'pendiente',
+        pedidos: pedidos.filter(p => !p.anulado && p.estadoProceso === 'PENDIENTE' && p.areaActualId == null)
+      },
+      ...areas.map(area => ({
+        key: `area-${area.id}`,
+        titulo: area.nombre,
+        subtitulo: `Meta ${area.tiempoEstMinutos} min`,
+        tone: 'area' as const,
+        pedidos: pedidos.filter(p =>
+          !p.anulado &&
+          (p.estadoProceso === 'PENDIENTE' || p.estadoProceso === 'EN_PROCESO') &&
+          p.areaActualId === area.id
+        )
+      })),
+      {
+        key: 'listo',
+        titulo: 'Listos',
+        subtitulo: 'Para entregar',
+        tone: 'listo',
+        pedidos: pedidos.filter(p => !p.anulado && p.estadoProceso === 'LISTO')
+      }
+    ];
+
+    const inconsistentes = pedidos.filter(p => {
+      if (p.anulado || !['PENDIENTE', 'EN_PROCESO'].includes(p.estadoProceso)) return false;
+      if (p.estadoProceso === 'EN_PROCESO' && p.areaActualId == null) return true;
+      return p.areaActualId != null && !idsArea.has(p.areaActualId);
+    });
+    if (inconsistentes.length > 0) {
+      columnas.push({
+        key: 'revisar',
+        titulo: 'Revisar',
+        subtitulo: 'Flujo inconsistente',
+        tone: 'alerta',
+        pedidos: inconsistentes
+      });
+    }
+
+    const entregados = pedidos.filter(p => !p.anulado && p.estadoProceso === 'ENTREGADO');
+    if (entregados.length > 0) {
+      columnas.push({
+        key: 'entregado',
+        titulo: 'Entregados',
+        subtitulo: 'Finalizados',
+        tone: 'entregado',
+        pedidos: entregados
+      });
+    }
+
+    const anulados = pedidos.filter(p => p.anulado || p.estadoProceso === 'ANULADO');
+    if (anulados.length > 0) {
+      columnas.push({
+        key: 'anulado',
+        titulo: 'Anulados',
+        subtitulo: 'Sin actividad',
+        tone: 'anulado',
+        pedidos: anulados
+      });
+    }
+
+    return flujoCompleto ? columnas : columnas.filter(c => c.pedidos.length > 0);
+  });
+
   @ViewChild('buscadorInput') buscadorInputRef?: ElementRef<HTMLInputElement>;
 
   /** Al presionar Enter con un texto puramente numérico, abrir directo el pedido. */
@@ -139,6 +229,9 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly historial = signal<PedidoHistorial[]>([]);
   readonly cargandoHistorial = signal(false);
   readonly avanzando = signal(false);
+  readonly avanzandoId = signal<number | null>(null);
+  readonly pedidoAnimadoId = signal<number | null>(null);
+  private pedidoAnimadoTimer?: ReturnType<typeof setTimeout>;
 
   // Modales secundarios
   readonly modalPago = signal(false);
@@ -161,6 +254,14 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   procesando = signal(false);
 
   private timerId?: ReturnType<typeof setInterval>;
+  private versionRecarga = 0;
+
+  constructor() {
+    this.actualizaciones.cambios('pedidos', 'foco').pipe(
+      debounceTime(180),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.refrescarDinamicamente());
+  }
 
 
   readonly saldoPendiente = computed(() => {
@@ -176,7 +277,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.cargarAbandonados();
     this.cargarMetaMensual();
     this.motorizadosSvc.listarActivos().subscribe(m => this.motorizadosActivos.set(m));
-    this.timerId = setInterval(() => { this.recargar(true); this.cargarAbandonados(); }, 30_000);
+    this.timerId = setInterval(() => this.refrescarDinamicamente(), 10_000);
   }
 
   ngAfterViewInit() {
@@ -230,6 +331,15 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy() {
     if (this.timerId) clearInterval(this.timerId);
     if (this.busquedaTimerId) clearTimeout(this.busquedaTimerId);
+    if (this.pedidoAnimadoTimer) clearTimeout(this.pedidoAnimadoTimer);
+  }
+
+  cambiarVista(vista: VistaPedidos) {
+    if (this.vista() === vista) return;
+    this.vista.set(vista);
+    this.pagina.set(1);
+    try { localStorage.setItem('lavanderia.pedidos.vista', vista); } catch {}
+    this.recargar();
   }
 
   cambiarFiltro(f: Filtro) {
@@ -263,6 +373,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   recargar(silencioso = false) {
+    const version = ++this.versionRecarga;
     if (!silencioso) this.cargando.set(true);
     // Toda mutacion (avanzar, entregar, anular, pagar) y el refresco periodico entran con
     // silencioso=true: es el momento de refrescar tambien los contadores de las pestañas,
@@ -273,15 +384,21 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     const usandoFiltroFecha = !texto && this.filtro() === 'fecha';
     this.service.listar(
       texto ? undefined : this.filtro(),
-      this.pagina(),
-      this.tamanoPagina(),
+      this.vista() === 'tablero' ? 1 : this.pagina(),
+      this.vista() === 'tablero' ? 100 : this.tamanoPagina(),
       texto || undefined,
       usandoFiltroFecha && this.fechaFiltroDesde ? this.fechaFiltroDesde : undefined,
       usandoFiltroFecha && this.fechaFiltroHasta ? this.fechaFiltroHasta : undefined,
       usandoFiltroFecha ? this.tipoFechaConsulta() : undefined
     ).subscribe({
-      next: res => { this.pedidos.set(res.items); this.total.set(res.total); this.cargando.set(false); },
+      next: res => {
+        if (version !== this.versionRecarga) return;
+        this.pedidos.set(res.items);
+        this.total.set(res.total);
+        this.cargando.set(false);
+      },
       error: (err: HttpErrorResponse) => {
+        if (version !== this.versionRecarga) return;
         this.cargando.set(false);
         if (!silencioso) {
           this.error.set(err.status === 0
@@ -335,10 +452,13 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private ejecutarAvance(p: Pedido) {
     this.avanzando.set(true);
+    this.avanzandoId.set(p.id);
     const eraLista = p.estadoProceso === 'LISTO';
     this.service.siguienteArea(p.id).subscribe({
       next: () => {
         this.avanzando.set(false);
+        this.avanzandoId.set(null);
+        this.destacarPedido(p.id);
         this.toast.exito(eraLista ? `Pedido #${p.numero} entregado` : 'Etapa actualizada');
         this.recargar(true);
         // Refresca el pedido para conocer su nuevo estado. Si acaba de quedar LISTO, avisa
@@ -357,9 +477,26 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       error: (err: HttpErrorResponse) => {
         this.avanzando.set(false);
+        this.avanzandoId.set(null);
         this.toast.desdeHttp(err, 'No se pudo avanzar la etapa.');
       }
     });
+  }
+
+  private refrescarDinamicamente() {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (this.cargando() || this.procesando() || this.avanzando()) return;
+    this.recargar(true);
+    this.cargarAbandonados();
+    this.refrescarPedidoAbierto();
+  }
+
+  private destacarPedido(id: number) {
+    clearTimeout(this.pedidoAnimadoTimer);
+    this.pedidoAnimadoId.set(id);
+    this.pedidoAnimadoTimer = setTimeout(() => {
+      if (this.pedidoAnimadoId() === id) this.pedidoAnimadoId.set(null);
+    }, 1200);
   }
 
   /** Abre WhatsApp con el mensaje de "pedido listo" cuando el pedido acaba de terminar producción. */
@@ -582,9 +719,21 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.modalPago.set(true);
   }
 
+  cerrarModalPago() { if (!this.procesando()) this.modalPago.set(false); }
+  cerrarModalEntrega() { if (!this.procesando()) this.modalEntrega.set(false); }
+  cerrarModalItem() { if (!this.procesando()) this.modalItem.set(false); }
+  cerrarModalFecha() { if (!this.procesando()) this.modalFecha.set(false); }
+  cerrarModalAnular() { if (!this.procesando()) this.modalAnular.set(false); }
+
   confirmarPago() {
     const p = this.pedidoAbierto();
-    if (!p || this.pagoMonto <= 0) return;
+    const saldo = this.saldoPendiente();
+    if (!p || this.procesando()) return;
+    if (!Number.isFinite(this.pagoMonto) || this.pagoMonto <= 0 || this.pagoMonto > saldo + 0.01) {
+      this.toast.advertencia(`Ingresa un monto válido de hasta S/ ${saldo.toFixed(2)}.`);
+      return;
+    }
+    this.pagoMonto = Math.round(this.pagoMonto * 100) / 100;
     this.procesando.set(true);
     this.service.registrarPago(p.id, this.pagoMonto, this.pagoMetodo).subscribe({
       next: () => {
@@ -604,8 +753,17 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   // ---------- Entrega con cobro ----------
   confirmarEntrega() {
     const p = this.pedidoAbierto();
-    if (!p) return;
+    if (!p || this.procesando()) return;
     const saldo = p.total - p.montoPagado;
+    if (saldo > 0.01 && (!Number.isFinite(this.pagoMonto) || Math.abs(this.pagoMonto - saldo) > 0.01)) {
+      this.toast.advertencia(`Para entregar debes cobrar el saldo completo de S/ ${saldo.toFixed(2)}.`);
+      return;
+    }
+    if (this.recibidoPor.trim().length > 120) {
+      this.toast.advertencia('El nombre de quien recibe no puede superar 120 caracteres.');
+      return;
+    }
+    this.pagoMonto = Math.round(Math.max(0, this.pagoMonto) * 100) / 100;
     this.procesando.set(true);
 
     const cobrar = this.pagoMonto > 0
@@ -662,7 +820,15 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
 
   confirmarAgregarItem() {
     const p = this.pedidoAbierto();
-    if (!p || !this.itemServicioId || this.itemCantidad <= 0) return;
+    if (!p || this.procesando() || !this.itemServicioId) return;
+    if (!Number.isFinite(this.itemCantidad) || this.itemCantidad <= 0 || this.itemCantidad > 10_000) {
+      this.toast.advertencia('La cantidad debe ser mayor a 0 y no superar 10,000.');
+      return;
+    }
+    if (this.itemDescripcion.trim().length > 200) {
+      this.toast.advertencia('La observación no puede superar 200 caracteres.');
+      return;
+    }
     this.procesando.set(true);
     this.service.agregarItem(p.id, this.itemServicioId as number, this.itemCantidad, this.itemDescripcion.trim() || undefined).subscribe({
       next: () => {
@@ -730,11 +896,24 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
+  get fechaEntregaMinima(): string {
+    return this.formatoLocal(new Date(Date.now() + 5 * 60 * 1000));
+  }
+
   confirmarCambioFecha() {
     const p = this.pedidoAbierto();
-    if (!p || !this.fechaEntregaNueva) return;
+    if (!p || this.procesando() || !this.fechaEntregaNueva) return;
+    const nuevaFecha = new Date(this.fechaEntregaNueva);
+    if (Number.isNaN(nuevaFecha.getTime()) || nuevaFecha.getTime() < Date.now() + 4 * 60 * 1000) {
+      this.toast.advertencia('La nueva fecha de entrega debe ser posterior al momento actual.');
+      return;
+    }
+    if (this.motivoCambioFecha.trim().length > 200) {
+      this.toast.advertencia('El motivo no puede superar 200 caracteres.');
+      return;
+    }
     this.procesando.set(true);
-    const iso = new Date(this.fechaEntregaNueva).toISOString();
+    const iso = nuevaFecha.toISOString();
     this.service.cambiarFechaEntrega(p.id, iso, this.motivoCambioFecha.trim() || undefined).subscribe({
       next: () => {
         this.procesando.set(false);
@@ -855,7 +1034,9 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   flujoInconsistente(p: Pedido): boolean {
-    return p.estadoProceso === 'EN_PROCESO' && p.areaActualId == null;
+    if (!['PENDIENTE', 'EN_PROCESO'].includes(p.estadoProceso)) return false;
+    if (p.estadoProceso === 'EN_PROCESO' && p.areaActualId == null) return true;
+    return p.areaActualId != null && !this.areas().some(a => a.id === p.areaActualId);
   }
 
   botonAvanzarLabel(p: Pedido): string {
@@ -865,6 +1046,28 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     const idx = areasList.findIndex(a => a.id === p.areaActualId);
     if (idx === -1 || idx === areasList.length - 1) return 'Marcar listo';
     return `Pasar a "${areasList[idx + 1].nombre}"`;
+  }
+
+  kanbanActionLabel(p: Pedido): string {
+    if (p.estadoProceso === 'LISTO') return 'Entregar';
+    if (p.estadoProceso === 'PENDIENTE' && p.areaActualId == null) return 'Iniciar';
+    const areasList = this.areas();
+    const idx = areasList.findIndex(a => a.id === p.areaActualId);
+    if (idx === -1 || idx === areasList.length - 1) return 'Marcar listo';
+    return `Mover a ${areasList[idx + 1].nombre}`;
+  }
+
+  entregaVencida(p: Pedido): boolean {
+    if (!p.fechaEntregaEst || ['ENTREGADO', 'ANULADO'].includes(p.estadoProceso)) return false;
+    return new Date(p.fechaEntregaEst).getTime() < Date.now();
+  }
+
+  private vistaInicial(): VistaPedidos {
+    try {
+      const guardada = localStorage.getItem('lavanderia.pedidos.vista');
+      if (guardada === 'lista' || guardada === 'tablero') return guardada;
+    } catch {}
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches ? 'lista' : 'tablero';
   }
 
   imprimirTicket(p: Pedido) {

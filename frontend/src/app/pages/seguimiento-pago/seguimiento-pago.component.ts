@@ -8,8 +8,8 @@ import { MapaSeguimientoComponent } from '../../shared/mapa-seguimiento/mapa-seg
 
 declare const CulqiCheckout: any;
 
-const INTERVALO_NORMAL_MS = 30_000;
-const INTERVALO_EN_RUTA_MS = 10_000;
+const INTERVALO_NORMAL_MS = 10_000;
+const INTERVALO_EN_RUTA_MS = 5_000;
 
 @Component({
   selector: 'app-seguimiento-pago',
@@ -27,6 +27,10 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   private timerId?: ReturnType<typeof setInterval>;
   private intervaloActualMs = INTERVALO_NORMAL_MS;
   private estadoRutaPrevio: EstadoRuta | null = null;
+  private readonly alRecuperarFoco = () => this.cargar(true);
+  private readonly alCambiarVisibilidad = () => {
+    if (document.visibilityState === 'visible') this.cargar(true);
+  };
 
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
@@ -43,10 +47,14 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
     this.token = this.route.snapshot.paramMap.get('token') ?? '';
     this.cargar();
     this.reprogramarTimer(INTERVALO_NORMAL_MS);
+    window.addEventListener('focus', this.alRecuperarFoco);
+    document.addEventListener('visibilitychange', this.alCambiarVisibilidad);
   }
 
   ngOnDestroy() {
     if (this.timerId) clearInterval(this.timerId);
+    window.removeEventListener('focus', this.alRecuperarFoco);
+    document.removeEventListener('visibilitychange', this.alCambiarVisibilidad);
   }
 
   private reprogramarTimer(ms: number) {

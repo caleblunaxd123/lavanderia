@@ -9,6 +9,7 @@ public interface IInsumoRepository
     Task<List<Insumo>> ListarTodosAsync(int sedeId, CancellationToken ct = default);
     Task<List<Insumo>> ListarBajoStockAsync(int sedeId, CancellationToken ct = default);
     Task<Insumo?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
+    Task<bool> ExisteNombreAsync(string nombre, int sedeId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearAsync(Insumo i, CancellationToken ct = default);
     Task ActualizarAsync(Insumo i, int sedeId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int sedeId, CancellationToken ct = default);
@@ -65,6 +66,23 @@ public class InsumoRepository : IInsumoRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<bool> ExisteNombreAsync(string nombre, int sedeId, int? excluirId = null, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT COUNT(1)
+            FROM dbo.Insumo
+            WHERE SedeId = @SedeId
+              AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(LTRIM(RTRIM(@Nombre)))
+              AND (@ExcluirId IS NULL OR Id <> @ExcluirId)";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Nombre", nombre);
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<int>(ct) > 0;
     }
 
     public async Task<int> CrearAsync(Insumo i, CancellationToken ct = default)

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CajaService } from '../../core/services/caja.service';
 import { Insumo, InsumosService, MovimientoInsumo } from '../../core/services/insumos.service';
@@ -10,6 +11,8 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { debounceTime } from 'rxjs';
+import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 
 @Component({
   selector: 'app-inventario',
@@ -17,10 +20,12 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })
-export class InventarioComponent implements OnInit {
+export class InventarioComponent implements OnInit, OnDestroy {
   private readonly svc = inject(InsumosService);
   private readonly cajaSvc = inject(CajaService);
   private readonly toast = inject(ToastService);
+  private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly tab = signal<'insumos' | 'historial'>('insumos');
 
@@ -28,16 +33,43 @@ export class InventarioComponent implements OnInit {
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
   readonly tiposGasto = signal<TipoGasto[]>([]);
+  readonly insumoAnimadoId = signal<number | null>(null);
+  private insumoAnimadoTimer?: ReturnType<typeof setTimeout>;
+  private timerActualizacion?: ReturnType<typeof setInterval>;
+  private versionCarga = 0;
 
   // ---------- Paginación ----------
   readonly paginaInsumos = signal(1);
   readonly tamanoPaginaInsumos = signal(15);
+  readonly insumosBajoStock = computed(() => this.insumos().filter(i => i.activo && this.bajoStock(i)).length);
+  readonly insumosActivos = computed(() => this.insumos().filter(i => i.activo).length);
+  readonly busqueda = signal('');
+  readonly filtroEstado = signal<'TODOS' | 'ACTIVOS' | 'BAJO_STOCK' | 'INACTIVOS'>('TODOS');
+  readonly insumosFiltrados = computed(() => {
+    const termino = this.normalizar(this.busqueda());
+    const estado = this.filtroEstado();
+    return this.insumos().filter(i => {
+      const coincideTexto = !termino || this.normalizar(`${i.nombre} ${i.unidadMedida}`).includes(termino);
+      const coincideEstado = estado === 'TODOS'
+        || (estado === 'ACTIVOS' && i.activo)
+        || (estado === 'BAJO_STOCK' && i.activo && this.bajoStock(i))
+        || (estado === 'INACTIVOS' && !i.activo);
+      return coincideTexto && coincideEstado;
+    });
+  });
+  readonly insumosOrdenados = computed(() => [...this.insumosFiltrados()].sort((a, b) => {
+    const prioridadA = !a.activo ? 2 : (this.bajoStock(a) ? 0 : 1);
+    const prioridadB = !b.activo ? 2 : (this.bajoStock(b) ? 0 : 1);
+    return prioridadA - prioridadB || a.nombre.localeCompare(b.nombre, 'es');
+  }));
   readonly insumosPaginados = computed(() => {
     const inicio = (this.paginaInsumos() - 1) * this.tamanoPaginaInsumos();
-    return this.insumos().slice(inicio, inicio + this.tamanoPaginaInsumos());
+    return this.insumosOrdenados().slice(inicio, inicio + this.tamanoPaginaInsumos());
   });
   cambiarPaginaInsumos(p: number) { this.paginaInsumos.set(p); }
   cambiarTamanoPaginaInsumos(t: number) { this.tamanoPaginaInsumos.set(t); this.paginaInsumos.set(1); }
+  cambiarFiltros() { this.paginaInsumos.set(1); }
+  limpiarFiltros() { this.busqueda.set(''); this.filtroEstado.set('TODOS'); this.paginaInsumos.set(1); }
 
   readonly paginaHistorial = signal(1);
   readonly tamanoPaginaHistorial = signal(15);
@@ -70,6 +102,13 @@ export class InventarioComponent implements OnInit {
   movFecha = '';  // fecha de la compra (opcional, solo COMPRA)
   guardandoMovimiento = signal(false);
 
+  constructor() {
+    this.actualizaciones.cambios('inventario', 'foco').pipe(
+      debounceTime(180),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.refrescarDinamicamente());
+  }
+
   // ---------- Historial ----------
   readonly movimientos = signal<MovimientoInsumo[]>([]);
   readonly cargandoHistorial = signal(false);
@@ -84,6 +123,12 @@ export class InventarioComponent implements OnInit {
   ngOnInit() {
     this.cargar();
     this.cajaSvc.tiposGasto().subscribe(t => this.tiposGasto.set(t));
+    this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 20_000);
+  }
+
+  ngOnDestroy() {
+    if (this.insumoAnimadoTimer) clearTimeout(this.insumoAnimadoTimer);
+    if (this.timerActualizacion) clearInterval(this.timerActualizacion);
   }
 
   cambiarTab(t: 'insumos' | 'historial') {
@@ -91,19 +136,36 @@ export class InventarioComponent implements OnInit {
     if (t === 'historial' && this.movimientos().length === 0) this.cargarHistorial();
   }
 
-  cargar() {
-    this.cargando.set(true);
-    this.error.set(null);
-    this.paginaInsumos.set(1);
+  cargar(silencioso = false) {
+    const version = ++this.versionCarga;
+    if (!silencioso) {
+      this.cargando.set(true);
+      this.error.set(null);
+      this.paginaInsumos.set(1);
+    }
     this.svc.listar().subscribe({
-      next: list => { this.insumos.set(list); this.cargando.set(false); },
-      error: (err: HttpErrorResponse) => {
+      next: list => {
+        if (version !== this.versionCarga) return;
+        this.insumos.set(list);
         this.cargando.set(false);
-        this.error.set(err.status === 0
-          ? 'No se pudo conectar con el servidor.'
-          : (err.error?.mensaje ?? 'Error al cargar el inventario.'));
+      },
+      error: (err: HttpErrorResponse) => {
+        if (version !== this.versionCarga) return;
+        this.cargando.set(false);
+        if (!silencioso) {
+          this.error.set(err.status === 0
+            ? 'No se pudo conectar con el servidor.'
+            : (err.error?.mensaje ?? 'Error al cargar el inventario.'));
+        }
       }
     });
+  }
+
+  private refrescarDinamicamente() {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (this.cargando() || this.guardandoInsumo() || this.guardandoMovimiento()) return;
+    this.cargar(true);
+    if (this.tab() === 'historial') this.cargarHistorial();
   }
 
   cargarHistorial() {
@@ -116,6 +178,11 @@ export class InventarioComponent implements OnInit {
   }
 
   bajoStock(i: Insumo): boolean { return i.stockActual <= i.stockMinimo; }
+
+  nivelStock(i: Insumo): number {
+    if (i.stockMinimo <= 0) return i.stockActual > 0 ? 100 : 0;
+    return Math.min(100, Math.max(0, (i.stockActual / (i.stockMinimo * 2)) * 100));
+  }
 
   // ---------- Alta/edición ----------
   abrirCrearInsumo() {
@@ -132,13 +199,37 @@ export class InventarioComponent implements OnInit {
     this.modalInsumo.set(true);
   }
 
-  cerrarModalInsumo() { this.modalInsumo.set(false); }
+  cerrarModalInsumo() {
+    if (!this.guardandoInsumo()) this.modalInsumo.set(false);
+  }
 
   guardarInsumo() {
-    if (!this.formInsumo.nombre?.trim() || !this.formInsumo.unidadMedida?.trim()) {
+    const nombre = this.formInsumo.nombre?.trim() ?? '';
+    const unidad = this.formInsumo.unidadMedida?.trim() ?? '';
+    const stockMinimo = Number(this.formInsumo.stockMinimo ?? 0);
+    const stockActual = Number(this.formInsumo.stockActual ?? 0);
+    if (nombre.length < 2 || nombre.length > 80) {
+      this.errorFormInsumo.set('El nombre debe tener entre 2 y 80 caracteres.');
+      return;
+    }
+    if (!unidad || unidad.length > 20) {
       this.errorFormInsumo.set('Nombre y unidad de medida son obligatorios.');
       return;
     }
+    if (!Number.isFinite(stockMinimo) || stockMinimo < 0 || stockMinimo > 1_000_000) {
+      this.errorFormInsumo.set('El stock mínimo debe ser un número entre 0 y 1,000,000.');
+      return;
+    }
+    if (!this.editandoInsumo() && (!Number.isFinite(stockActual) || stockActual < 0 || stockActual > 1_000_000)) {
+      this.errorFormInsumo.set('El stock inicial debe ser un número entre 0 y 1,000,000.');
+      return;
+    }
+    const duplicado = this.insumos().some(i => i.id !== this.editandoInsumo()?.id && this.normalizar(i.nombre) === this.normalizar(nombre));
+    if (duplicado) {
+      this.errorFormInsumo.set('Ya existe un insumo con ese nombre en esta sede.');
+      return;
+    }
+    this.formInsumo = { ...this.formInsumo, nombre, unidadMedida: unidad, stockMinimo, stockActual };
     this.guardandoInsumo.set(true);
     this.errorFormInsumo.set(null);
 
@@ -211,6 +302,10 @@ export class InventarioComponent implements OnInit {
 
   // ---------- Registrar movimiento ----------
   abrirModalMovimiento(i: Insumo) {
+    if (!i.activo) {
+      this.toast.advertencia('Reactiva el insumo antes de registrar movimientos.');
+      return;
+    }
     this.insumoMovimiento = i;
     this.movTipo = 'COMPRA';
     this.movCantidad = 0;
@@ -222,11 +317,17 @@ export class InventarioComponent implements OnInit {
     this.modalMovimiento.set(true);
   }
 
-  cerrarModalMovimiento() { this.modalMovimiento.set(false); }
+  cerrarModalMovimiento() {
+    if (!this.guardandoMovimiento()) this.modalMovimiento.set(false);
+  }
 
   get puedeRegistrarMovimiento(): boolean {
+    if (!Number.isFinite(this.movCantidad) || !Number.isFinite(this.movCosto)) return false;
     if (this.movCantidad === 0) return false;
     if (this.movTipo !== 'AJUSTE' && this.movCantidad <= 0) return false;
+    if (Math.abs(this.movCantidad) > 1_000_000 || this.movCosto < 0 || this.movCosto > 1_000_000) return false;
+    if (this.movTipo === 'CONSUMO' && this.movCantidad > (this.insumoMovimiento?.stockActual ?? 0)) return false;
+    if (this.movTipo === 'COMPRA' && this.movFecha > this.formatoFecha(new Date())) return false;
     return !this.guardandoMovimiento();
   }
 
@@ -248,6 +349,11 @@ export class InventarioComponent implements OnInit {
         this.guardandoMovimiento.set(false);
         this.modalMovimiento.set(false);
         this.toast.exito('Movimiento registrado');
+        clearTimeout(this.insumoAnimadoTimer);
+        this.insumoAnimadoId.set(i.id);
+        this.insumoAnimadoTimer = setTimeout(() => {
+          if (this.insumoAnimadoId() === i.id) this.insumoAnimadoId.set(null);
+        }, 1200);
         this.cargar();
       },
       error: (err: HttpErrorResponse) => {
@@ -263,5 +369,9 @@ export class InventarioComponent implements OnInit {
 
   claseTipo(tipo: string): string {
     return ({ COMPRA: 'badge badge--verde', CONSUMO: 'badge badge--gris', AJUSTE: 'badge badge--azul' } as Record<string, string>)[tipo] ?? 'badge badge--gris';
+  }
+
+  private normalizar(valor: string): string {
+    return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('es');
   }
 }

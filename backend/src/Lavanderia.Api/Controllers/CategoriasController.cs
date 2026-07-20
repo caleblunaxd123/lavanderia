@@ -21,7 +21,10 @@ public class CategoriasController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoriaDto>> Crear([FromBody] CategoriaDto dto, CancellationToken ct)
     {
-        var id = await _repo.CrearAsync(new Categoria { NegocioId = NegocioId, Nombre = dto.Nombre.Trim(), Activa = dto.Activa }, ct);
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, ct: ct))
+            return Conflict(new { mensaje = "Ya existe una categoria con ese nombre." });
+        var id = await _repo.CrearAsync(new Categoria { NegocioId = NegocioId, Nombre = nombre, Activa = dto.Activa }, ct);
         var creada = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         return CreatedAtAction(nameof(Listar), Map(creada!));
     }
@@ -32,7 +35,10 @@ public class CategoriasController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, id, ct))
+            return Conflict(new { mensaje = "Ya existe otra categoria con ese nombre." });
+        existente.Nombre = nombre;
         existente.Activa = dto.Activa;
         await _repo.ActualizarAsync(existente, NegocioId, ct);
         return NoContent();

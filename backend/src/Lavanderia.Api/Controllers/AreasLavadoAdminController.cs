@@ -25,10 +25,15 @@ public class AreasLavadoAdminController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<AreaLavadoEditableDto>> Crear([FromBody] AreaLavadoEditableDto dto, CancellationToken ct)
     {
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, SedeId!.Value, ct: ct))
+            return Conflict(new { mensaje = "Ya existe un area con ese nombre en esta sede." });
+        if (await _repo.ExisteOrdenAsync(dto.Orden, SedeId.Value, ct: ct))
+            return Conflict(new { mensaje = "Ya existe un area con ese orden en esta sede." });
         var id = await _repo.CrearAsync(new AreaLavado
         {
             SedeId = SedeId!.Value,
-            Nombre = dto.Nombre.Trim(),
+            Nombre = nombre,
             Orden = dto.Orden,
             TiempoEstMinutos = dto.TiempoEstMinutos,
             Activa = dto.Activa
@@ -43,7 +48,12 @@ public class AreasLavadoAdminController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
         if (existente is null) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, SedeId!.Value, id, ct))
+            return Conflict(new { mensaje = "Ya existe otra area con ese nombre en esta sede." });
+        if (await _repo.ExisteOrdenAsync(dto.Orden, SedeId.Value, id, ct))
+            return Conflict(new { mensaje = "Ya existe otra area con ese orden en esta sede." });
+        existente.Nombre = nombre;
         existente.Orden = dto.Orden;
         existente.TiempoEstMinutos = dto.TiempoEstMinutos;
         existente.Activa = dto.Activa;

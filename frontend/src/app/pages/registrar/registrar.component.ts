@@ -16,6 +16,7 @@ import { esCelularObligatorioValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface ItemAgregado {
   servicioId: number;
@@ -28,7 +29,7 @@ interface ItemAgregado {
 
 @Component({
   selector: 'app-registrar',
-  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, SoloDigitosDirective],
+  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, PageHeaderComponent, SoloDigitosDirective],
   templateUrl: './registrar.component.html',
   styleUrl: './registrar.component.scss'
 })
@@ -45,6 +46,8 @@ export class RegistrarComponent implements OnInit {
   readonly areas = signal<AreaLavado[]>([]);
   readonly cargando = signal(false);
   readonly siguienteNumero = signal<number | null>(null);
+  readonly itemAnimadoId = signal<number | null>(null);
+  private itemAnimadoTimer?: ReturnType<typeof setTimeout>;
 
   clienteExistente: Cliente | null = null;
   nombre = '';
@@ -319,6 +322,11 @@ export class RegistrarComponent implements OnInit {
         descripcion: ''
       }]);
     }
+    clearTimeout(this.itemAnimadoTimer);
+    this.itemAnimadoId.set(servicio.id);
+    this.itemAnimadoTimer = setTimeout(() => {
+      if (this.itemAnimadoId() === servicio.id) this.itemAnimadoId.set(null);
+    }, 850);
     this.servicioSeleccionadoId = '';
   }
 

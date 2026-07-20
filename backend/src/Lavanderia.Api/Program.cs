@@ -279,6 +279,8 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+    .AllowAnonymous();
 app.MapControllers();
 
 // Seed inicial (usuario admin) — no bloquea el arranque si SQL no está disponible aún.

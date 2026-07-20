@@ -11,14 +11,14 @@ Lavanderia/
 |-- backend/
 |   |-- src/Lavanderia.Api/       # Web API .NET 9 (ADO.NET puro, no ORM)
 |   `-- db/scripts/               # Scripts SQL Server incrementales
-|-- frontend/                     # Angular 19 standalone
+|-- frontend/                     # Angular 20 standalone
 `-- Lavanderia.sln
 ```
 
 ## Stack
 
 - Backend: .NET 9 Web API, ADO.NET (`Microsoft.Data.SqlClient`), SQL Server 2019+, JWT Bearer, BCrypt.
-- Frontend: Angular 19 standalone, Signals, lazy loading, interceptor JWT, guards por modulo.
+- Frontend: Angular 20 standalone, Signals, lazy loading, interceptor JWT, guards por modulo.
 - PDF/QR: QuestPDF y QRCoder para tickets/comprobantes.
 - Facturacion electronica: generacion UBL, firma XML y envio SUNAT directo.
 - SaaS: `Negocio` por empresa, `Sede` por sucursal y rutas publicas tipo `/:empresaSlug/login`.
@@ -65,10 +65,10 @@ Abre `http://localhost:4200`. Para modo SaaS usa una ruta con slug, por ejemplo
 ## Modulos principales
 
 - Login, sesion JWT y seleccion de sede.
-- Pedidos: registro, items, pagos, promociones, avance de area y anulacion.
+- Pedidos: registro, pagos, delivery, seguimiento publico, repartidor, tablero Kanban, avance de area y anulacion.
 - Clientes: busqueda, puntos, frecuentes y fusion.
-- Caja: movimientos, gastos y cuadre por usuario.
-- Inventario: insumos, movimientos, compras y alertas de stock.
+- Caja: efectivo, billeteras, transferencias, POS, gastos y cuadre por usuario.
+- Inventario: tarjetas de stock, busqueda, movimientos, compras y alertas de reposicion.
 - Reportes: ventas, pedidos, clientes, servicios y productividad.
 - Ajustes: negocio, sedes, usuarios, permisos, servicios, categorias, areas, tipos de gasto, puntos y plantillas.
 - Facturacion electronica: configuracion fiscal, certificado, emision y comprobantes.
@@ -92,6 +92,7 @@ El sistema esta adaptado a movil:
 - Tablas principales convertidas en cards apiladas en movil.
 - Wizard de registro adaptable de 3 columnas a 2 y luego a 1.
 - Botones e inputs con tamanos tactiles en login y seleccion de sede.
+- Tablero Kanban con desplazamiento contenido y centro de atencion operativa adaptable.
 
 ## Seguridad y aislamiento
 
@@ -105,6 +106,7 @@ El sistema esta adaptado a movil:
 
 - `POST /api/auth/login`
 - `POST /api/auth/seleccionar-sede`
+- `GET /health`
 - `GET /api/configuracion/publico/{slug}`
 - `GET /api/pedidos`, `POST /api/pedidos`, `POST /api/pedidos/{id}/avanzar`
 - `GET /api/insumos`, `POST /api/insumos/{id}/movimientos`
@@ -116,4 +118,5 @@ El sistema esta adaptado a movil:
 dotnet build Lavanderia.sln
 cd frontend
 npm run build
+npm test -- --watch=false
 ```

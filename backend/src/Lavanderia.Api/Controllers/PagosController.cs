@@ -43,8 +43,12 @@ public class PagosController : TenantAwareControllerBase
     public async Task<IActionResult> GuardarConfiguracion([FromBody] ConfiguracionPagosDto dto, CancellationToken ct)
     {
         var existente = await _pagos.ObtenerConfigAsync(NegocioId, ct) ?? new ConfiguracionPagos { NegocioId = NegocioId };
+        var proveedor = string.IsNullOrWhiteSpace(dto.Proveedor) ? "CULQI" : dto.Proveedor.Trim().ToUpperInvariant();
         var publicKey = string.IsNullOrWhiteSpace(dto.PublicKey) ? null : dto.PublicKey.Trim();
         var secretKeyNueva = string.IsNullOrWhiteSpace(dto.SecretKeyNueva) ? null : dto.SecretKeyNueva.Trim();
+
+        if (proveedor != "CULQI")
+            return BadRequest(new { mensaje = "El unico proveedor de pagos disponible actualmente es CULQI." });
 
         if (publicKey is not null && !PublicKeyRegex.IsMatch(publicKey))
             return BadRequest(new { mensaje = "La llave pública de Culqi no tiene un formato válido." });
@@ -73,7 +77,7 @@ public class PagosController : TenantAwareControllerBase
         if (dto.Activo && (publicKey is null || !tieneSecreta))
             return BadRequest(new { mensaje = "Para activar pagos online debes guardar la llave pública y la llave secreta." });
 
-        existente.Proveedor = string.IsNullOrWhiteSpace(dto.Proveedor) ? "CULQI" : dto.Proveedor.Trim().ToUpperInvariant();
+        existente.Proveedor = proveedor;
         existente.PublicKey = publicKey;
         existente.Activo = dto.Activo;
 

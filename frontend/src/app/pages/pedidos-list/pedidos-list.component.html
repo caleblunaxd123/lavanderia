@@ -80,6 +80,24 @@
         Fecha
       </button>
     </div>
+    <div class="vista-switch" role="group" aria-label="Vista de pedidos">
+      <button type="button"
+        [class.is-active]="vista() === 'lista'"
+        [attr.aria-pressed]="vista() === 'lista'"
+        (click)="cambiarVista('lista')"
+        title="Ver como lista">
+        <app-icon name="list" [size]="15"></app-icon>
+        <span>Lista</span>
+      </button>
+      <button type="button"
+        [class.is-active]="vista() === 'tablero'"
+        [attr.aria-pressed]="vista() === 'tablero'"
+        (click)="cambiarVista('tablero')"
+        title="Ver como tablero">
+        <app-icon name="kanban" [size]="15"></app-icon>
+        <span>Tablero</span>
+      </button>
+    </div>
     <button type="button" class="btn-leyenda" (click)="leyendaAbierta.set(!leyendaAbierta())" title="Leyenda de filas">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -118,6 +136,108 @@
       <a routerLink="/registrar" class="btn btn--primario">+ Nuevo Pedido</a>
     </app-empty-state>
   } @else {
+    @if (vista() === 'tablero') {
+      <section class="kanban" aria-label="Tablero de pedidos">
+        @for (columna of kanbanColumns(); track columna.key) {
+          <section class="kanban-column" [attr.data-tone]="columna.tone"
+            [attr.data-empty]="columna.pedidos.length === 0"
+            [attr.aria-label]="columna.titulo + ': ' + columna.pedidos.length + ' pedidos'">
+            <header class="kanban-column__head">
+              <div>
+                <strong>{{ columna.titulo }}</strong>
+                <span>{{ columna.subtitulo }}</span>
+              </div>
+              <span class="kanban-column__count">{{ columna.pedidos.length }}</span>
+            </header>
+
+            <div class="kanban-column__body">
+              @for (p of columna.pedidos; track p.id) {
+                <article class="kanban-card"
+                  [class.kanban-card--urgent]="p.esUrgente"
+                  [class.kanban-card--overdue]="entregaVencida(p)"
+                  [class.is-updated]="pedidoAnimadoId() === p.id">
+                  <button type="button" class="kanban-card__open" (click)="abrirDetalle(p)"
+                    [attr.aria-label]="'Abrir pedido ' + p.numero + ' de ' + p.clienteNombre">
+                    <span class="kanban-card__top">
+                      <strong>#{{ p.numero }}</strong>
+                      <span class="kanban-card__badges">
+                        @if (p.esUrgente) {
+                          <span class="badge badge--urgente"><app-icon name="fire" [size]="11"></app-icon> Urgente</span>
+                        }
+                        <span class="badge"
+                          [class.badge--verde]="saldoPedido(p) <= 0"
+                          [class.badge--gris]="saldoPedido(p) > 0">
+                          {{ saldoPedido(p) <= 0 ? 'PAGADO' : p.estadoPago }}
+                        </span>
+                      </span>
+                    </span>
+
+                    <span class="kanban-card__client">
+                      <strong>{{ p.clienteNombre }}</strong>
+                      @if (p.clienteCelular) { <small>{{ p.clienteCelular }}</small> }
+                    </span>
+
+                    <span class="kanban-card__items">
+                      @for (item of p.items.slice(0, 2); track item.id) {
+                        <span>{{ item.cantidad }} x {{ item.servicioNombre }}</span>
+                      }
+                      @if (p.items.length > 2) {
+                        <small>+{{ p.items.length - 2 }} artículo{{ p.items.length - 2 === 1 ? '' : 's' }}</small>
+                      }
+                    </span>
+
+                    <span class="kanban-card__delivery" [class.is-overdue]="entregaVencida(p)">
+                      <app-icon [name]="p.modalidad === 'Delivery' ? 'pin' : 'package'" [size]="13"></app-icon>
+                      <span>
+                        <small>{{ p.modalidad }} · {{ entregaVencida(p) ? 'Entrega vencida' : 'Entrega' }}</small>
+                        <strong>{{ p.fechaEntregaEst ? (p.fechaEntregaEst | date:'dd/MM · HH:mm') : 'Sin fecha definida' }}</strong>
+                      </span>
+                    </span>
+
+                    <span class="kanban-card__money">
+                      <span><small>Total</small><strong>S/ {{ p.total | number:'1.2-2' }}</strong></span>
+                      <span [class.has-debt]="saldoPedido(p) > 0">
+                        <small>{{ saldoPedido(p) > 0 ? 'Saldo' : 'Cobrado' }}</small>
+                        <strong>S/ {{ (saldoPedido(p) > 0 ? saldoPedido(p) : p.montoPagado) | number:'1.2-2' }}</strong>
+                      </span>
+                    </span>
+                  </button>
+
+                  <footer class="kanban-card__actions">
+                    @if (flujoInconsistente(p)) {
+                      <span class="kanban-card__warning"><app-icon name="warning" [size]="13"></app-icon> Revisar flujo</span>
+                    }
+                    @if (puedeAvanzar(p)) {
+                      <button type="button" class="kanban-card__advance"
+                        [class.is-loading]="avanzandoId() === p.id"
+                        (click)="avanzarEtapa(p)" [disabled]="avanzando()">
+                        @if (avanzandoId() === p.id) {
+                          <span class="btn-spinner" aria-hidden="true"></span> Actualizando
+                        } @else {
+                          {{ kanbanActionLabel(p) }} <app-icon name="arrow-right" [size]="14"></app-icon>
+                        }
+                      </button>
+                    }
+                    <button type="button" class="btn-wsp" (click)="abrirWhatsapp(p)"
+                      title="Notificar por WhatsApp" [attr.aria-label]="'Notificar pedido ' + p.numero + ' por WhatsApp'">
+                      <app-icon name="whatsapp" [size]="16"></app-icon>
+                    </button>
+                  </footer>
+                </article>
+              } @empty {
+                <div class="kanban-empty">
+                  <span><app-icon name="check" [size]="15"></app-icon></span>
+                  Sin pedidos
+                </div>
+              }
+            </div>
+          </section>
+        }
+      </section>
+      @if (total() > 100) {
+        <p class="kanban-limit">Mostrando los primeros 100 pedidos. Usa la búsqueda o los filtros para acotar el tablero.</p>
+      }
+    } @else {
     <!-- Desktop: tabla -->
     <div class="card tabla-wrap">
       <table class="tabla">
@@ -157,7 +277,7 @@
           @for (p of pedidosFiltrados(); track p.id) {
             <tr (click)="abrirDetalle(p)" (keydown.enter)="abrirDetalle(p)" role="button" tabindex="0"
                 [attr.aria-label]="'Abrir pedido ' + p.numero + ' de ' + p.clienteNombre"
-                class="tabla__row" [ngClass]="claseFila(p)">
+                class="tabla__row" [class.is-updated]="pedidoAnimadoId() === p.id" [ngClass]="claseFila(p)">
               <td class="mono">
                 #{{ p.numero }}
                 @if (p.esUrgente) { <span class="badge-urgente" title="Servicio urgente"><app-icon name="fire" [size]="13"></app-icon></span> }
@@ -221,8 +341,10 @@
                   <span class="flujo-alerta" title="Estado inconsistente: falta el área actual">Revisar flujo</span>
                 }
                 @if (puedeAvanzar(p)) {
-                  <button class="btn btn--avanzar" (click)="avanzarEtapa(p)" [disabled]="avanzando()">
-                    {{ botonAvanzarLabel(p) }}
+                  <button class="btn btn--avanzar" [class.is-loading]="avanzandoId() === p.id"
+                    (click)="avanzarEtapa(p)" [disabled]="avanzando()">
+                    @if (avanzandoId() === p.id) { <span class="btn-spinner" aria-hidden="true"></span> Actualizando }
+                    @else { {{ botonAvanzarLabel(p) }} }
                   </button>
                 }
                 <button class="btn-wsp" (click)="abrirWhatsapp(p)" title="Notificar por WhatsApp">
@@ -240,7 +362,7 @@
     <!-- Mobile: cards apiladas -->
     <div class="cards">
       @for (p of pedidosFiltrados(); track p.id) {
-        <article class="pedido-card card" [ngClass]="claseFila(p)" (click)="abrirDetalle(p)">
+        <article class="pedido-card card" [class.is-updated]="pedidoAnimadoId() === p.id" [ngClass]="claseFila(p)" (click)="abrirDetalle(p)">
           <header class="pedido-card__head">
             <div class="pedido-card__numero">
               <span class="pedido-card__label">Orden</span>
@@ -291,8 +413,10 @@
                 <span class="flujo-alerta" title="Estado inconsistente: falta el área actual">Revisar flujo</span>
               }
               @if (puedeAvanzar(p)) {
-                <button class="btn btn--primario btn--sm" (click)="avanzarEtapa(p)" [disabled]="avanzando()">
-                  {{ botonAvanzarLabel(p) }}
+                <button class="btn btn--primario btn--sm" [class.is-loading]="avanzandoId() === p.id"
+                  (click)="avanzarEtapa(p)" [disabled]="avanzando()">
+                  @if (avanzandoId() === p.id) { <span class="btn-spinner" aria-hidden="true"></span> Actualizando }
+                  @else { {{ botonAvanzarLabel(p) }} }
                 </button>
               }
               <button class="btn-wsp" (click)="abrirWhatsapp(p)" title="Notificar por WhatsApp">
@@ -315,6 +439,7 @@
         (tamanoPaginaChange)="cambiarTamanoPagina($event)">
       </app-paginacion>
     </div>
+    }
   }
 </div>
 
@@ -333,7 +458,10 @@
           @if (p.usuarioNombre) { · Atendido por: {{ p.usuarioNombre }} }
         </p>
       </div>
-      <button class="modal-detalle__close" (click)="cerrarDetalle()"><app-icon name="close" [size]="16"></app-icon></button>
+      <button type="button" class="modal-detalle__close" (click)="cerrarDetalle()"
+        title="Cerrar detalle" aria-label="Cerrar detalle del pedido">
+        <app-icon name="close" [size]="16"></app-icon>
+      </button>
     </div>
 
     <div class="modal-detalle__body">
@@ -603,30 +731,32 @@
 
 <!-- Modal: Registrar pago -->
 @if (modalPago()) {
-  <div class="modal-backdrop modal-backdrop--secundario" (click)="modalPago.set(false)"></div>
-  <div class="modal-simple">
+  <div class="modal-backdrop modal-backdrop--secundario" (click)="cerrarModalPago()"></div>
+  <div class="modal-simple" role="dialog" aria-modal="true" aria-labelledby="titulo-pago-pedido">
     <div class="modal-simple__head">
-      <h3><app-icon name="cash" [size]="15"></app-icon> Registrar pago</h3>
-      <button (click)="modalPago.set(false)"><app-icon name="close" [size]="15"></app-icon></button>
+      <h3 id="titulo-pago-pedido"><app-icon name="cash" [size]="15"></app-icon> Registrar pago</h3>
+      <button type="button" aria-label="Cerrar registro de pago" (click)="cerrarModalPago()"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">
       <p class="modal-simple__info">Saldo pendiente: <strong>S/ {{ saldoPendiente() | number:'1.2-2' }}</strong></p>
 
-      <label>Monto a cobrar</label>
-      <input type="number" step="0.01" min="0.01" [max]="saldoPendiente()" [(ngModel)]="pagoMonto" />
+      <label for="pago-monto">Monto a cobrar</label>
+      <input id="pago-monto" type="number" step="0.01" min="0.01" inputmode="decimal"
+        [max]="saldoPendiente()" [(ngModel)]="pagoMonto" />
 
       <label>Método de pago</label>
       <div class="metodos">
-        <button class="metodo" [class.is-active]="pagoMetodo==='EFECTIVO'" (click)="pagoMetodo='EFECTIVO'"><app-icon name="cash" [size]="13"></app-icon> Efectivo</button>
-        <button class="metodo" [class.is-active]="pagoMetodo==='YAPE'" (click)="pagoMetodo='YAPE'"><app-icon name="smartphone" [size]="13"></app-icon> Yape</button>
-        <button class="metodo" [class.is-active]="pagoMetodo==='PLIN'" (click)="pagoMetodo='PLIN'"><app-icon name="smartphone" [size]="13"></app-icon> Plin</button>
-        <button class="metodo" [class.is-active]="pagoMetodo==='TRANSFERENCIA'" (click)="pagoMetodo='TRANSFERENCIA'"><app-icon name="bank" [size]="13"></app-icon> Transferencia</button>
-        <button class="metodo" [class.is-active]="pagoMetodo==='POS'" (click)="pagoMetodo='POS'"><app-icon name="credit-card" [size]="13"></app-icon> POS</button>
+        <button type="button" class="metodo" [class.is-active]="pagoMetodo==='EFECTIVO'" (click)="pagoMetodo='EFECTIVO'"><app-icon name="cash" [size]="13"></app-icon> Efectivo</button>
+        <button type="button" class="metodo" [class.is-active]="pagoMetodo==='YAPE'" (click)="pagoMetodo='YAPE'"><app-icon name="smartphone" [size]="13"></app-icon> Yape</button>
+        <button type="button" class="metodo" [class.is-active]="pagoMetodo==='PLIN'" (click)="pagoMetodo='PLIN'"><app-icon name="smartphone" [size]="13"></app-icon> Plin</button>
+        <button type="button" class="metodo" [class.is-active]="pagoMetodo==='TRANSFERENCIA'" (click)="pagoMetodo='TRANSFERENCIA'"><app-icon name="bank" [size]="13"></app-icon> Transferencia</button>
+        <button type="button" class="metodo" [class.is-active]="pagoMetodo==='POS'" (click)="pagoMetodo='POS'"><app-icon name="credit-card" [size]="13"></app-icon> POS</button>
       </div>
 
       <div class="modal-simple__actions">
-        <button class="btn btn--ghost" (click)="modalPago.set(false)">Cancelar</button>
-        <button class="btn btn--verde" [disabled]="procesando() || pagoMonto <= 0" (click)="confirmarPago()">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalPago()">Cancelar</button>
+        <button type="button" class="btn btn--verde"
+          [disabled]="procesando() || pagoMonto <= 0 || pagoMonto > saldoPendiente()" (click)="confirmarPago()">
           {{ procesando() ? 'Guardando…' : 'Confirmar pago' }}
         </button>
       </div>
@@ -636,11 +766,11 @@
 
 <!-- Modal: Entrega con cobro -->
 @if (modalEntrega()) {
-  <div class="modal-backdrop modal-backdrop--secundario" (click)="modalEntrega.set(false)"></div>
-  <div class="modal-simple">
+  <div class="modal-backdrop modal-backdrop--secundario" (click)="cerrarModalEntrega()"></div>
+  <div class="modal-simple" role="dialog" aria-modal="true" aria-labelledby="titulo-entrega-pedido">
     <div class="modal-simple__head">
-      <h3><app-icon name="package" [size]="15"></app-icon> Entregar pedido</h3>
-      <button (click)="modalEntrega.set(false)"><app-icon name="close" [size]="15"></app-icon></button>
+      <h3 id="titulo-entrega-pedido"><app-icon name="package" [size]="15"></app-icon> Entregar pedido</h3>
+      <button type="button" aria-label="Cerrar entrega" (click)="cerrarModalEntrega()"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">
       @if (saldoPendiente() > 0) {
@@ -650,27 +780,28 @@
         </p>
 
         <label>Monto a cobrar ahora</label>
-        <input type="number" step="0.01" min="0" [max]="saldoPendiente()" [(ngModel)]="pagoMonto" />
+        <input type="number" step="0.01" min="0" inputmode="decimal" [max]="saldoPendiente()" [(ngModel)]="pagoMonto" />
 
         <label>Método de pago</label>
         <div class="metodos">
-          <button class="metodo" [class.is-active]="pagoMetodo==='EFECTIVO'" (click)="pagoMetodo='EFECTIVO'"><app-icon name="cash" [size]="13"></app-icon> Efectivo</button>
-          <button class="metodo" [class.is-active]="pagoMetodo==='YAPE'" (click)="pagoMetodo='YAPE'"><app-icon name="smartphone" [size]="13"></app-icon> Yape</button>
-          <button class="metodo" [class.is-active]="pagoMetodo==='PLIN'" (click)="pagoMetodo='PLIN'"><app-icon name="smartphone" [size]="13"></app-icon> Plin</button>
-          <button class="metodo" [class.is-active]="pagoMetodo==='TRANSFERENCIA'" (click)="pagoMetodo='TRANSFERENCIA'"><app-icon name="bank" [size]="13"></app-icon> Transferencia</button>
-          <button class="metodo" [class.is-active]="pagoMetodo==='POS'" (click)="pagoMetodo='POS'"><app-icon name="credit-card" [size]="13"></app-icon> POS</button>
+          <button type="button" class="metodo" [class.is-active]="pagoMetodo==='EFECTIVO'" (click)="pagoMetodo='EFECTIVO'"><app-icon name="cash" [size]="13"></app-icon> Efectivo</button>
+          <button type="button" class="metodo" [class.is-active]="pagoMetodo==='YAPE'" (click)="pagoMetodo='YAPE'"><app-icon name="smartphone" [size]="13"></app-icon> Yape</button>
+          <button type="button" class="metodo" [class.is-active]="pagoMetodo==='PLIN'" (click)="pagoMetodo='PLIN'"><app-icon name="smartphone" [size]="13"></app-icon> Plin</button>
+          <button type="button" class="metodo" [class.is-active]="pagoMetodo==='TRANSFERENCIA'" (click)="pagoMetodo='TRANSFERENCIA'"><app-icon name="bank" [size]="13"></app-icon> Transferencia</button>
+          <button type="button" class="metodo" [class.is-active]="pagoMetodo==='POS'" (click)="pagoMetodo='POS'"><app-icon name="credit-card" [size]="13"></app-icon> POS</button>
         </div>
       } @else {
         <p class="modal-simple__info">El pedido ya está pagado completo. Confirma para marcarlo como entregado.</p>
       }
 
       <label>¿Quién recoge? <small class="hint">(por defecto el titular del pedido)</small></label>
-      <input type="text" [(ngModel)]="recibidoPor" [placeholder]="pedidoAbierto()?.clienteNombre || 'Nombre de la persona que recibe'" />
+      <input type="text" maxlength="120" [(ngModel)]="recibidoPor" [placeholder]="pedidoAbierto()?.clienteNombre || 'Nombre de la persona que recibe'" />
       <p class="hint">Si viene un familiar o tercero con el ticket, escribe su nombre para dejar registro.</p>
 
       <div class="modal-simple__actions">
-        <button class="btn btn--ghost" (click)="modalEntrega.set(false)">Cancelar</button>
-        <button class="btn btn--verde" [disabled]="procesando()" (click)="confirmarEntrega()">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalEntrega()">Cancelar</button>
+        <button type="button" class="btn btn--verde"
+          [disabled]="procesando() || (saldoPendiente() > 0 && pagoMonto !== saldoPendiente())" (click)="confirmarEntrega()">
           {{ procesando() ? 'Procesando…' : (saldoPendiente() > 0 ? 'Cobrar y entregar' : 'Marcar entregado') }}
         </button>
       </div>
@@ -731,11 +862,11 @@
 
 <!-- Modal: Agregar ítem -->
 @if (modalItem()) {
-  <div class="modal-backdrop modal-backdrop--secundario" (click)="modalItem.set(false)"></div>
-  <div class="modal-simple">
+  <div class="modal-backdrop modal-backdrop--secundario" (click)="cerrarModalItem()"></div>
+  <div class="modal-simple" role="dialog" aria-modal="true" aria-labelledby="titulo-item-pedido">
     <div class="modal-simple__head">
-      <h3><app-icon name="plus" [size]="14"></app-icon> Agregar ítem al pedido</h3>
-      <button (click)="modalItem.set(false)"><app-icon name="close" [size]="15"></app-icon></button>
+      <h3 id="titulo-item-pedido"><app-icon name="plus" [size]="14"></app-icon> Agregar ítem al pedido</h3>
+      <button type="button" aria-label="Cerrar nuevo ítem" (click)="cerrarModalItem()"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">
       <label>Servicio</label>
@@ -747,14 +878,15 @@
       </select>
 
       <label>Cantidad</label>
-      <input type="number" step="0.01" min="0.01" [(ngModel)]="itemCantidad" />
+      <input type="number" step="0.01" min="0.01" max="10000" inputmode="decimal" [(ngModel)]="itemCantidad" />
 
       <label>Observación <small class="hint">(opcional)</small></label>
-      <input type="text" placeholder="Ej. mancha de aceite manga izquierda" [(ngModel)]="itemDescripcion" />
+      <input type="text" maxlength="200" placeholder="Ej. mancha de aceite manga izquierda" [(ngModel)]="itemDescripcion" />
 
       <div class="modal-simple__actions">
-        <button class="btn btn--ghost" (click)="modalItem.set(false)">Cancelar</button>
-        <button class="btn btn--primario" [disabled]="procesando() || !itemServicioId" (click)="confirmarAgregarItem()">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalItem()">Cancelar</button>
+        <button type="button" class="btn btn--primario"
+          [disabled]="procesando() || !itemServicioId || itemCantidad <= 0 || itemCantidad > 10000" (click)="confirmarAgregarItem()">
           {{ procesando() ? 'Agregando…' : 'Agregar' }}
         </button>
       </div>
@@ -764,11 +896,11 @@
 
 <!-- Modal: Cambiar fecha de entrega -->
 @if (modalFecha()) {
-  <div class="modal-backdrop modal-backdrop--secundario" (click)="modalFecha.set(false)"></div>
-  <div class="modal-simple">
+  <div class="modal-backdrop modal-backdrop--secundario" (click)="cerrarModalFecha()"></div>
+  <div class="modal-simple" role="dialog" aria-modal="true" aria-labelledby="titulo-fecha-pedido">
     <div class="modal-simple__head">
-      <h3><app-icon name="calendar" [size]="15"></app-icon> Cambiar {{ pedidoAbierto()?.modalidad === 'Delivery' ? 'fecha de entrega' : 'fecha de recojo' }}</h3>
-      <button (click)="modalFecha.set(false)"><app-icon name="close" [size]="15"></app-icon></button>
+      <h3 id="titulo-fecha-pedido"><app-icon name="calendar" [size]="15"></app-icon> Cambiar {{ pedidoAbierto()?.modalidad === 'Delivery' ? 'fecha de entrega' : 'fecha de recojo' }}</h3>
+      <button type="button" aria-label="Cerrar cambio de fecha" (click)="cerrarModalFecha()"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">
       @if (pedidoAbierto()?.fechaEntregaEst) {
@@ -778,7 +910,7 @@
       }
 
       <label>Nueva fecha y hora</label>
-      <input type="datetime-local" [(ngModel)]="fechaEntregaNueva" />
+      <input type="datetime-local" [min]="fechaEntregaMinima" [(ngModel)]="fechaEntregaNueva" />
 
       <div class="presets-modal">
         <button type="button" (click)="presetFechaEntrega(2)">En 2h</button>
@@ -789,13 +921,13 @@
       </div>
 
       <label>Motivo (opcional)</label>
-      <textarea rows="2" [(ngModel)]="motivoCambioFecha"
+      <textarea rows="2" maxlength="200" [(ngModel)]="motivoCambioFecha"
                 placeholder="Ej: falta de agua, corte de luz, cliente pidió postergar, etc."></textarea>
       <p class="modal-simple__hint">Se registra en el historial del pedido.</p>
 
       <div class="modal-simple__actions">
-        <button class="btn btn--ghost" (click)="modalFecha.set(false)">Cancelar</button>
-        <button class="btn btn--primario" [disabled]="procesando() || !fechaEntregaNueva" (click)="confirmarCambioFecha()">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalFecha()">Cancelar</button>
+        <button type="button" class="btn btn--primario" [disabled]="procesando() || !fechaEntregaNueva" (click)="confirmarCambioFecha()">
           {{ procesando() ? 'Guardando…' : 'Guardar cambio' }}
         </button>
       </div>
@@ -811,11 +943,11 @@
 
 <!-- Modal: Anular pedido -->
 @if (modalAnular()) {
-  <div class="modal-backdrop modal-backdrop--secundario" (click)="modalAnular.set(false)"></div>
-  <div class="modal-simple">
+  <div class="modal-backdrop modal-backdrop--secundario" (click)="cerrarModalAnular()"></div>
+  <div class="modal-simple" role="alertdialog" aria-modal="true" aria-labelledby="titulo-anular-pedido">
     <div class="modal-simple__head">
-      <h3><app-icon name="ban" [size]="15"></app-icon> Anular pedido</h3>
-      <button (click)="modalAnular.set(false)"><app-icon name="close" [size]="15"></app-icon></button>
+      <h3 id="titulo-anular-pedido"><app-icon name="ban" [size]="15"></app-icon> Anular pedido</h3>
+      <button type="button" aria-label="Cerrar anulación" (click)="cerrarModalAnular()"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">
       <p class="modal-simple__info modal-simple__info--alerta">
@@ -831,12 +963,12 @@
       }
 
       <label>Motivo de anulación *</label>
-      <textarea rows="3" [(ngModel)]="motivoAnulacion"
+      <textarea rows="3" minlength="3" maxlength="200" [(ngModel)]="motivoAnulacion"
                 placeholder="Ej: Cliente canceló, error en registro, etc."></textarea>
 
       <div class="modal-simple__actions">
-        <button class="btn btn--ghost" (click)="modalAnular.set(false)">Cancelar</button>
-        <button class="btn btn--danger" [disabled]="procesando() || motivoAnulacion.trim().length < 3" (click)="confirmarAnular()">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalAnular()">Cancelar</button>
+        <button type="button" class="btn btn--danger" [disabled]="procesando() || motivoAnulacion.trim().length < 3" (click)="confirmarAnular()">
           {{ procesando() ? 'Anulando…' : 'Sí, anular' }}
         </button>
       </div>

@@ -11,6 +11,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { esCelularObligatorioValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface ItemAgregado {
   servicioId: number;
@@ -23,7 +24,7 @@ interface ItemAgregado {
 
 @Component({
   selector: 'app-registro-antiguo',
-  imports: [CommonModule, FormsModule, IconComponent, SoloDigitosDirective],
+  imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent, SoloDigitosDirective],
   templateUrl: './registro-antiguo.component.html',
   styleUrl: './registro-antiguo.component.scss'
 })

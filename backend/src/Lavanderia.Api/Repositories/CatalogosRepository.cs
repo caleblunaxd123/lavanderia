@@ -8,6 +8,7 @@ public interface IServicioRepository
     Task<List<Servicio>> ListarTodosAsync(int negocioId, CancellationToken ct = default);
     Task<List<Servicio>> ListarActivosAsync(int negocioId, CancellationToken ct = default);
     Task<Servicio?> ObtenerPorIdAsync(int id, int negocioId, CancellationToken ct = default);
+    Task<bool> ExisteNombreAsync(string nombre, int negocioId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearAsync(Servicio s, CancellationToken ct = default);
     Task ActualizarAsync(Servicio s, int negocioId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int negocioId, CancellationToken ct = default);
@@ -69,6 +70,26 @@ public class ServicioRepository : IServicioRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadFirstOrDefaultAsync(MapConCategoria, ct);
+    }
+
+    public async Task<bool> ExisteNombreAsync(string nombre, int negocioId, int? excluirId = null, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT CASE WHEN EXISTS (
+                SELECT 1
+                  FROM dbo.Servicio
+                 WHERE NegocioId = @NegocioId
+                   AND EsCargoDelivery = 0
+                   AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(@Nombre)
+                   AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
+        cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@Nombre", nombre.Trim());
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<bool>(ct);
     }
 
     public async Task<List<Servicio>> ListarTodosAsync(int negocioId, CancellationToken ct = default)
@@ -153,6 +174,8 @@ public interface IAreaLavadoRepository
     Task<List<AreaLavado>> ListarActivasAsync(int sedeId, CancellationToken ct = default);
     Task<List<AreaLavado>> ListarTodasAsync(int sedeId, CancellationToken ct = default);
     Task<AreaLavado?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
+    Task<bool> ExisteNombreAsync(string nombre, int sedeId, int? excluirId = null, CancellationToken ct = default);
+    Task<bool> ExisteOrdenAsync(int orden, int sedeId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearAsync(AreaLavado a, CancellationToken ct = default);
     Task ActualizarAsync(AreaLavado a, int sedeId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activa, int sedeId, CancellationToken ct = default);
@@ -206,6 +229,29 @@ public class AreaLavadoRepository : IAreaLavadoRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<bool> ExisteNombreAsync(string nombre, int sedeId, int? excluirId = null, CancellationToken ct = default)
+        => await ExisteAsync("UPPER(LTRIM(RTRIM(Nombre))) = UPPER(@Valor)", nombre.Trim(), sedeId, excluirId, ct);
+
+    public async Task<bool> ExisteOrdenAsync(int orden, int sedeId, int? excluirId = null, CancellationToken ct = default)
+        => await ExisteAsync("Orden = @Valor", orden, sedeId, excluirId, ct);
+
+    private async Task<bool> ExisteAsync(string condicion, object valor, int sedeId, int? excluirId, CancellationToken ct)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM dbo.AreaLavado
+                WHERE SedeId = @SedeId AND {condicion}
+                  AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Valor", valor);
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<bool>(ct);
     }
 
     public async Task<int> CrearAsync(AreaLavado a, CancellationToken ct = default)

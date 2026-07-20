@@ -21,13 +21,17 @@ public class PersonalController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<EmpleadoDto>> Crear([FromBody] EmpleadoDto dto, CancellationToken ct)
     {
+        var dni = Limpiar(dto.Dni);
+        var celular = Limpiar(dto.Celular);
+        var error = await ValidarDuplicadosAsync(dni, celular, null, ct);
+        if (error is not null) return error;
         var id = await _repo.CrearAsync(new Empleado
         {
             SedeId = SedeId!.Value,
             Nombre = dto.Nombre.Trim(),
-            Dni = dto.Dni?.Trim(),
-            Celular = dto.Celular?.Trim(),
-            Cargo = dto.Cargo?.Trim(),
+            Dni = dni,
+            Celular = celular,
+            Cargo = Limpiar(dto.Cargo),
             FechaIngreso = dto.FechaIngreso,
             Activo = dto.Activo
         }, ct);
@@ -41,10 +45,14 @@ public class PersonalController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
         if (existente is null) return NotFound();
 
+        var dni = Limpiar(dto.Dni);
+        var celular = Limpiar(dto.Celular);
+        var error = await ValidarDuplicadosAsync(dni, celular, id, ct);
+        if (error is not null) return error;
         existente.Nombre = dto.Nombre.Trim();
-        existente.Dni = dto.Dni?.Trim();
-        existente.Celular = dto.Celular?.Trim();
-        existente.Cargo = dto.Cargo?.Trim();
+        existente.Dni = dni;
+        existente.Celular = celular;
+        existente.Cargo = Limpiar(dto.Cargo);
         existente.FechaIngreso = dto.FechaIngreso;
         existente.Activo = dto.Activo;
         await _repo.ActualizarAsync(existente, SedeId!.Value, ct);
@@ -80,4 +88,16 @@ public class PersonalController : TenantAwareControllerBase
         FechaIngreso = e.FechaIngreso,
         Activo = e.Activo
     };
+
+    private async Task<ConflictObjectResult?> ValidarDuplicadosAsync(string? dni, string? celular, int? excluirId, CancellationToken ct)
+    {
+        if (dni is not null && await _repo.ExisteDniAsync(dni, SedeId!.Value, excluirId, ct))
+            return Conflict(new { mensaje = "Ya existe un empleado con ese DNI en esta sede." });
+        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeId!.Value, excluirId, ct))
+            return Conflict(new { mensaje = "Ya existe un empleado con ese celular en esta sede." });
+        return null;
+    }
+
+    private static string? Limpiar(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 }

@@ -1,19 +1,18 @@
 <div class="page">
-  <header class="cab">
-    <div>
-      <h2>Reporte de Cuadres Diarios</h2>
-      <p>Cierres de caja del mes, con corte, ingresos digitales y días sin cuadrar.</p>
-    </div>
+  <app-page-header icono="calendar" color="verde" titulo="Reporte de cuadres diarios"
+    subtitulo="Revisa los cierres de caja, ingresos digitales y días pendientes de cuadrar."
+    volverTexto="Reportes" (volver)="volver()">
     <div class="cab__acciones">
       <div class="campo-mes">
         <label for="mes-cuadres">Mes</label>
         <input id="mes-cuadres" type="month" [(ngModel)]="mesFiltro" (change)="cargar()" />
       </div>
       <button type="button" class="btn btn--secundario" [attr.aria-expanded]="expandido()" (click)="toggleExpandido()">
-        {{ expandido() ? 'Mostrar menos' : 'Mostrar más' }}
+        <app-icon [name]="expandido() ? 'eye-off' : 'eye'" [size]="16"></app-icon>
+        {{ expandido() ? 'Menos detalle' : 'Más detalle' }}
       </button>
     </div>
-  </header>
+  </app-page-header>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>

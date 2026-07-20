@@ -43,13 +43,6 @@
     </div>
   </header>
 
-  @if (avisoSuscripcion(); as aviso) {
-    <div class="subscription-alert" [class.subscription-alert--critical]="aviso.tipo === 'VENCIDA'" role="alert">
-      <app-icon [name]="aviso.tipo === 'VENCIDA' ? 'warning' : 'calendar'" [size]="18"></app-icon>
-      <span>{{ aviso.mensaje }}</span>
-    </div>
-  }
-
   @if (mostrarOnboarding()) {
     <section class="onboarding" aria-labelledby="onboarding-title">
       <div class="onboarding__header">

@@ -25,12 +25,15 @@ public class SedesController : TenantAwareControllerBase
     [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<SedeDto>> Crear([FromBody] SedeDto dto, CancellationToken ct)
     {
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, ct: ct))
+            return Conflict(new { mensaje = "Ya existe una sede con ese nombre." });
         var id = await _repo.CrearAsync(new Sede
         {
             NegocioId = NegocioId,
-            Nombre = dto.Nombre.Trim(),
-            Direccion = dto.Direccion,
-            Telefono = dto.Telefono,
+            Nombre = nombre,
+            Direccion = Limpiar(dto.Direccion),
+            Telefono = Limpiar(dto.Telefono),
             Activo = dto.Activo
         }, ct);
         var creada = await _repo.ObtenerPorIdAsync(id, ct);
@@ -44,9 +47,12 @@ public class SedesController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, ct);
         if (existente is null || existente.NegocioId != NegocioId) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
-        existente.Direccion = dto.Direccion;
-        existente.Telefono = dto.Telefono;
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, id, ct))
+            return Conflict(new { mensaje = "Ya existe otra sede con ese nombre." });
+        existente.Nombre = nombre;
+        existente.Direccion = Limpiar(dto.Direccion);
+        existente.Telefono = Limpiar(dto.Telefono);
         existente.Activo = dto.Activo;
         await _repo.ActualizarAsync(existente, NegocioId, ct);
         return NoContent();
@@ -70,4 +76,7 @@ public class SedesController : TenantAwareControllerBase
         Telefono = s.Telefono,
         Activo = s.Activo
     };
+
+    private static string? Limpiar(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 }

@@ -2,13 +2,17 @@
   <app-page-header icono="package" color="morado" titulo="Inventario"
     subtitulo="Stock de consumibles: detergente, bolsas, suavizante, etc.">
     @if (tab() === 'insumos') {
-      <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
+      <button type="button" class="btn btn--primario" (click)="abrirCrearInsumo()">
+        <app-icon name="plus" [size]="16"></app-icon> Nuevo insumo
+      </button>
     }
   </app-page-header>
 
-  <div class="tabs">
-    <button class="tabs__item" [class.is-active]="tab()==='insumos'" (click)="cambiarTab('insumos')">Insumos</button>
-    <button class="tabs__item" [class.is-active]="tab()==='historial'" (click)="cambiarTab('historial')">Historial</button>
+  <div class="tabs" role="tablist" aria-label="Vistas del inventario">
+    <button type="button" role="tab" class="tabs__item" [attr.aria-selected]="tab()==='insumos'"
+      [class.is-active]="tab()==='insumos'" (click)="cambiarTab('insumos')">Insumos</button>
+    <button type="button" role="tab" class="tabs__item" [attr.aria-selected]="tab()==='historial'"
+      [class.is-active]="tab()==='historial'" (click)="cambiarTab('historial')">Historial</button>
   </div>
 
   @if (tab() === 'insumos') {
@@ -23,49 +27,54 @@
         <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
       </app-empty-state>
     } @else {
-      <!-- Desktop: tabla -->
-      <div class="card tabla-wrap">
-        <table class="tabla">
-          <thead>
-            <tr><th>Nombre</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>Última compra</th><th>Estado</th><th></th></tr>
-          </thead>
-          <tbody>
-            @for (i of insumosPaginados(); track i.id) {
-              <tr [class.inactivo]="!i.activo">
-                <td class="nombre">{{ i.nombre }}</td>
-                <td>{{ i.unidadMedida }}</td>
-                <td class="mono">{{ i.stockActual }}</td>
-                <td class="mono">{{ i.stockMinimo }}</td>
-                <td class="mono">{{ i.ultimaCompra ? (i.ultimaCompra | date:'dd/MM/yy') : '—' }}</td>
-                <td>
-                  @if (!i.activo) {
-                    <span class="badge badge--gris">Inactivo</span>
-                  } @else if (bajoStock(i)) {
-                    <span class="badge badge--rojo"><app-icon name="warning" [size]="13"></app-icon> Stock bajo</span>
-                  } @else {
-                    <span class="badge badge--verde">OK</span>
-                  }
-                </td>
-                <td class="acciones-row">
-                  <button class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">Registrar movimiento</button>
-                  <button class="btn-icon" (click)="abrirEditarInsumo(i)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
-                  <button class="btn-icon" (click)="toggleActivo(i)" [title]="i.activo ? 'Desactivar' : 'Reactivar'">
-                    @if (i.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
-                  </button>
-                  <button class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+      <div class="inventory-summary" [class.inventory-summary--warning]="insumosBajoStock() > 0" role="status">
+        <div class="inventory-summary__icon">
+          <app-icon [name]="insumosBajoStock() > 0 ? 'warning' : 'check'" [size]="18"></app-icon>
+        </div>
+        <div class="inventory-summary__copy">
+          @if (insumosBajoStock() > 0) {
+            <strong>{{ insumosBajoStock() }} {{ insumosBajoStock() === 1 ? 'insumo requiere' : 'insumos requieren' }} reposición</strong>
+            <span>Los productos con stock bajo aparecen primero.</span>
+          } @else {
+            <strong>Inventario abastecido</strong>
+            <span>No hay insumos activos por debajo del mínimo.</span>
+          }
+        </div>
+        <div class="inventory-summary__count"><strong>{{ insumosActivos() }}</strong><span>activos</span></div>
       </div>
 
-      <!-- Mobile: cards -->
-      <div class="cards">
-        @for (i of insumosPaginados(); track i.id) {
-          <div class="card insumo-card" [class.inactivo]="!i.activo">
+      <div class="inventory-tools" aria-label="Filtros de inventario">
+        <label class="inventory-search">
+          <app-icon name="search" [size]="16"></app-icon>
+          <span class="sr-only">Buscar insumo</span>
+          <input type="search" maxlength="80" placeholder="Buscar por nombre o unidad"
+            [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event); cambiarFiltros()" />
+        </label>
+        <select aria-label="Filtrar inventario por estado" [ngModel]="filtroEstado()"
+          (ngModelChange)="filtroEstado.set($event); cambiarFiltros()">
+          <option value="TODOS">Todos los insumos</option>
+          <option value="ACTIVOS">Solo activos</option>
+          <option value="BAJO_STOCK">Requieren reposición</option>
+          <option value="INACTIVOS">Inactivos</option>
+        </select>
+        <span class="inventory-tools__result">{{ insumosFiltrados().length }} resultado{{ insumosFiltrados().length === 1 ? '' : 's' }}</span>
+      </div>
+
+      @if (insumosFiltrados().length === 0) {
+        <app-empty-state icono="busqueda" titulo="Sin coincidencias"
+          mensaje="No hay insumos que coincidan con la búsqueda y el estado seleccionados.">
+          <button type="button" class="btn btn--ghost" (click)="limpiarFiltros()">Limpiar filtros</button>
+        </app-empty-state>
+      } @else {
+        <div class="insumos-grid">
+          @for (i of insumosPaginados(); track i.id) {
+          <article class="card insumo-card" [class.inactivo]="!i.activo" [class.insumo-card--low]="i.activo && bajoStock(i)"
+            [class.is-updated]="insumoAnimadoId() === i.id">
             <div class="insumo-card__head">
-              <strong>{{ i.nombre }}</strong>
+              <div class="insumo-card__identity">
+                <div class="insumo-card__icon"><app-icon name="package" [size]="18"></app-icon></div>
+                <div><strong>{{ i.nombre }}</strong><span>{{ i.unidadMedida }}</span></div>
+              </div>
               @if (!i.activo) {
                 <span class="badge badge--gris">Inactivo</span>
               } @else if (bajoStock(i)) {
@@ -74,35 +83,45 @@
                 <span class="badge badge--verde">OK</span>
               }
             </div>
-            <div class="insumo-card__body">
-              <div><span>Unidad:</span> {{ i.unidadMedida }}</div>
-              <div><span>Stock actual:</span> <strong>{{ i.stockActual }}</strong></div>
-              <div><span>Stock mínimo:</span> {{ i.stockMinimo }}</div>
-              <div><span>Última compra:</span> {{ i.ultimaCompra ? (i.ultimaCompra | date:'dd/MM/yy') : '—' }}</div>
+
+            <div class="insumo-card__stock">
+              <div class="insumo-card__actual"><strong>{{ i.stockActual | number:'1.0-2' }}</strong><span>{{ i.unidadMedida }}</span></div>
+              <div class="insumo-card__minimum"><span>Mínimo</span><strong>{{ i.stockMinimo | number:'1.0-2' }}</strong></div>
             </div>
+
+            <div class="stock-meter" aria-hidden="true"><span [style.width.%]="nivelStock(i)"></span></div>
+
+            <div class="insumo-card__meta">
+              <span>Última compra</span>
+              <strong>{{ i.ultimaCompra ? (i.ultimaCompra | date:'dd MMM yyyy') : 'Sin compras registradas' }}</strong>
+            </div>
+
             <div class="insumo-card__acciones">
-              <button class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">Registrar movimiento</button>
+              <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">
+                <app-icon name="refresh" [size]="14"></app-icon> Movimiento
+              </button>
               <div class="insumo-card__iconos">
-                <button class="btn-icon" (click)="abrirEditarInsumo(i)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
-                <button class="btn-icon" (click)="toggleActivo(i)" [title]="i.activo ? 'Desactivar' : 'Reactivar'">
+                <button type="button" class="btn-icon" (click)="abrirEditarInsumo(i)" title="Editar" [attr.aria-label]="'Editar ' + i.nombre"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button type="button" class="btn-icon" (click)="toggleActivo(i)" [title]="i.activo ? 'Desactivar' : 'Reactivar'" [attr.aria-label]="(i.activo ? 'Desactivar ' : 'Reactivar ') + i.nombre">
                   @if (i.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
                 </button>
-                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+                <button type="button" class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" title="Eliminar" [attr.aria-label]="'Eliminar ' + i.nombre"><app-icon name="trash" [size]="15"></app-icon></button>
               </div>
             </div>
-          </div>
-        }
-      </div>
+          </article>
+          }
+        </div>
 
-      <div class="card paginacion-wrap">
-        <app-paginacion
-          [pagina]="paginaInsumos()"
-          [tamanoPagina]="tamanoPaginaInsumos()"
-          [total]="insumos().length"
-          (paginaChange)="cambiarPaginaInsumos($event)"
-          (tamanoPaginaChange)="cambiarTamanoPaginaInsumos($event)">
-        </app-paginacion>
-      </div>
+        <div class="card paginacion-wrap">
+          <app-paginacion
+            [pagina]="paginaInsumos()"
+            [tamanoPagina]="tamanoPaginaInsumos()"
+            [total]="insumosFiltrados().length"
+            (paginaChange)="cambiarPaginaInsumos($event)"
+            (tamanoPaginaChange)="cambiarTamanoPaginaInsumos($event)">
+          </app-paginacion>
+        </div>
+      }
     }
   } @else {
     <div class="card filtros">
@@ -114,7 +133,7 @@
         <label>Hasta</label>
         <input type="date" [(ngModel)]="hastaHistorial" />
       </div>
-      <button class="btn btn--secundario" (click)="cargarHistorial()">Filtrar</button>
+      <button type="button" class="btn btn--secundario" (click)="cargarHistorial()">Filtrar</button>
     </div>
 
     @if (cargandoHistorial()) {
@@ -180,30 +199,34 @@
 
 @if (modalInsumo()) {
   <div class="modal-backdrop" (click)="cerrarModalInsumo()"></div>
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-insumo">
     <div class="modal__header">
-      <h3>{{ editandoInsumo() ? 'Editar insumo' : 'Nuevo insumo' }}</h3>
-      <button class="modal__close" (click)="cerrarModalInsumo()"><app-icon name="close" [size]="16"></app-icon></button>
+      <h3 id="titulo-insumo">{{ editandoInsumo() ? 'Editar insumo' : 'Nuevo insumo' }}</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar formulario de insumo" (click)="cerrarModalInsumo()"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <form (submit)="guardarInsumo(); $event.preventDefault()">
       <div class="modal__body">
-        <label>Nombre *</label>
-        <input type="text" [(ngModel)]="formInsumo.nombre" name="nombre" placeholder="Ej: Detergente en polvo" />
+        <label for="insumo-nombre">Nombre *</label>
+        <input id="insumo-nombre" type="text" required minlength="2" maxlength="80"
+          [(ngModel)]="formInsumo.nombre" name="nombre" placeholder="Ej: Detergente en polvo" />
 
         <div class="row-2">
           <div>
-            <label>Unidad de medida *</label>
-            <input type="text" [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: kg, litro, unidad" />
+            <label for="insumo-unidad">Unidad de medida *</label>
+            <input id="insumo-unidad" type="text" required maxlength="20"
+              [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: kg, litro, unidad" />
           </div>
           <div>
-            <label>Stock mínimo</label>
-            <input type="number" min="0" step="0.01" [(ngModel)]="formInsumo.stockMinimo" name="stockMinimo" />
+            <label for="insumo-minimo">Stock mínimo</label>
+            <input id="insumo-minimo" type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
+              [(ngModel)]="formInsumo.stockMinimo" name="stockMinimo" />
           </div>
         </div>
 
         @if (!editandoInsumo()) {
-          <label>Stock inicial</label>
-          <input type="number" min="0" step="0.01" [(ngModel)]="formInsumo.stockActual" name="stockActual" />
+          <label for="insumo-inicial">Stock inicial</label>
+          <input id="insumo-inicial" type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
+            [(ngModel)]="formInsumo.stockActual" name="stockActual" />
         }
 
         <label class="checkbox-row">
@@ -212,7 +235,7 @@
         </label>
 
         @if (errorFormInsumo()) {
-          <div class="modal__error">{{ errorFormInsumo() }}</div>
+          <div class="modal__error" role="alert">{{ errorFormInsumo() }}</div>
         }
       </div>
 
@@ -228,16 +251,16 @@
 
 @if (confirmarEliminar(); as i) {
   <div class="modal-backdrop" (click)="confirmarEliminar.set(null)"></div>
-  <div class="modal modal--sm">
+  <div class="modal modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="titulo-eliminar-insumo">
     <div class="modal__header">
-      <h3>¿Eliminar insumo?</h3>
-      <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+      <h3 id="titulo-eliminar-insumo">¿Eliminar insumo?</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar confirmación" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
       <p>Vas a eliminar <strong>{{ i.nombre }}</strong>. Quedará desactivado y podrás reactivarlo luego.</p>
       <div class="modal__actions">
-        <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
-        <button class="btn btn--danger" [disabled]="guardandoInsumo()" (click)="eliminar()">
+        <button type="button" class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
+        <button type="button" class="btn btn--danger" [disabled]="guardandoInsumo()" (click)="eliminar()">
           {{ guardandoInsumo() ? 'Eliminando…' : 'Sí, eliminar' }}
         </button>
       </div>
@@ -247,16 +270,16 @@
 
 @if (confirmarDesactivar(); as i) {
   <div class="modal-backdrop" (click)="confirmarDesactivar.set(null)"></div>
-  <div class="modal modal--sm">
+  <div class="modal modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="titulo-desactivar-insumo">
     <div class="modal__header">
-      <h3>¿Desactivar insumo?</h3>
-      <button class="modal__close" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+      <h3 id="titulo-desactivar-insumo">¿Desactivar insumo?</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar confirmación" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
       <p><strong>{{ i.nombre }}</strong> ya no podrá recibir movimientos de stock hasta que lo reactives.</p>
       <div class="modal__actions">
-        <button class="btn btn--ghost" (click)="confirmarDesactivar.set(null)">Cancelar</button>
-        <button class="btn btn--danger" (click)="confirmarDesactivarOk()">Sí, desactivar</button>
+        <button type="button" class="btn btn--ghost" (click)="confirmarDesactivar.set(null)">Cancelar</button>
+        <button type="button" class="btn btn--danger" (click)="confirmarDesactivarOk()">Sí, desactivar</button>
       </div>
     </div>
   </div>
@@ -264,10 +287,10 @@
 
 @if (modalMovimiento()) {
   <div class="modal-backdrop" (click)="cerrarModalMovimiento()"></div>
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-movimiento-insumo">
     <div class="modal__header">
-      <h3>Registrar movimiento · {{ insumoMovimiento?.nombre }}</h3>
-      <button class="modal__close" (click)="cerrarModalMovimiento()"><app-icon name="close" [size]="16"></app-icon></button>
+      <h3 id="titulo-movimiento-insumo">Registrar movimiento · {{ insumoMovimiento?.nombre }}</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar registro de movimiento" (click)="cerrarModalMovimiento()"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <form (submit)="confirmarMovimiento(); $event.preventDefault()">
       <div class="modal__body">
@@ -279,7 +302,8 @@
         </div>
 
         <label>Cantidad ({{ insumoMovimiento?.unidadMedida }}) {{ movTipo === 'AJUSTE' ? '· usa negativo para restar' : '' }}</label>
-        <input type="number" step="0.01" [(ngModel)]="movCantidad" name="cantidad" />
+        <input type="number" step="0.01" [min]="movTipo === 'AJUSTE' ? -1000000 : 0.01" max="1000000"
+          inputmode="decimal" required [(ngModel)]="movCantidad" name="cantidad" />
 
         @if (movTipo === 'COMPRA') {
           <label>Fecha de compra <small class="hint">(puedes registrar una compra anterior)</small></label>
@@ -288,7 +312,8 @@
           <div class="row-2">
             <div>
               <label>Costo total (opcional)</label>
-              <input type="number" min="0" step="0.01" [(ngModel)]="movCosto" name="costo" />
+              <input type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
+                [(ngModel)]="movCosto" name="costo" />
             </div>
             @if (movCosto > 0) {
               <div>
@@ -315,10 +340,10 @@
         }
 
         <label>Descripción <small class="hint">(opcional)</small></label>
-        <input type="text" [(ngModel)]="movDescripcion" name="descripcion" placeholder="Ej: compra en Makro" />
+        <input type="text" maxlength="300" [(ngModel)]="movDescripcion" name="descripcion" placeholder="Ej: compra en Makro" />
 
         @if (movCosto > 0 && movTipo === 'COMPRA') {
-          <p class="hint">Esto también se registrará como gasto en el Cuadre de Caja de hoy.</p>
+          <p class="hint">Esto también se registrará como gasto en el Cuadre de Caja de la fecha de compra.</p>
         }
       </div>
 

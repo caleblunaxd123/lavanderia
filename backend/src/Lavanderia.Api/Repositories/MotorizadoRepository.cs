@@ -8,6 +8,7 @@ public interface IMotorizadoRepository
     Task<List<Motorizado>> ListarActivosAsync(int sedeId, CancellationToken ct = default);
     Task<List<Motorizado>> ListarTodosAsync(int sedeId, CancellationToken ct = default);
     Task<Motorizado?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
+    Task<bool> ExisteCelularAsync(string celular, int sedeId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearAsync(Motorizado m, CancellationToken ct = default);
     Task ActualizarAsync(Motorizado m, int sedeId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int sedeId, CancellationToken ct = default);
@@ -58,6 +59,23 @@ public class MotorizadoRepository : IMotorizadoRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<bool> ExisteCelularAsync(string celular, int sedeId, int? excluirId = null, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM dbo.Motorizado
+                WHERE SedeId = @SedeId AND Celular = @Celular
+                  AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Celular", celular);
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<bool>(ct);
     }
 
     public async Task<int> CrearAsync(Motorizado m, CancellationToken ct = default)

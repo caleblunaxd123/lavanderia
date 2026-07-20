@@ -7,6 +7,8 @@ public interface IEmpleadoRepository
 {
     Task<List<Empleado>> ListarTodosAsync(int sedeId, CancellationToken ct = default);
     Task<Empleado?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
+    Task<bool> ExisteDniAsync(string dni, int sedeId, int? excluirId = null, CancellationToken ct = default);
+    Task<bool> ExisteCelularAsync(string celular, int sedeId, int? excluirId = null, CancellationToken ct = default);
     Task<int> CrearAsync(Empleado e, CancellationToken ct = default);
     Task ActualizarAsync(Empleado e, int sedeId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int sedeId, CancellationToken ct = default);
@@ -49,6 +51,31 @@ public class EmpleadoRepository : IEmpleadoRepository
         cmd.AddParam("@Id", id);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public Task<bool> ExisteDniAsync(string dni, int sedeId, int? excluirId = null, CancellationToken ct = default)
+        => ExisteDatoAsync("Dni", dni, sedeId, excluirId, ct);
+
+    public Task<bool> ExisteCelularAsync(string celular, int sedeId, int? excluirId = null, CancellationToken ct = default)
+        => ExisteDatoAsync("Celular", celular, sedeId, excluirId, ct);
+
+    private async Task<bool> ExisteDatoAsync(string columna, string valor, int sedeId, int? excluirId, CancellationToken ct)
+    {
+        if (columna is not ("Dni" or "Celular"))
+            throw new ArgumentOutOfRangeException(nameof(columna));
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM dbo.Empleado
+                WHERE SedeId = @SedeId AND {columna} = @Valor
+                  AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Valor", valor);
+        cmd.AddParam("@ExcluirId", excluirId);
+        return await cmd.ReadScalarAsync<bool>(ct);
     }
 
     public async Task<int> CrearAsync(Empleado e, CancellationToken ct = default)

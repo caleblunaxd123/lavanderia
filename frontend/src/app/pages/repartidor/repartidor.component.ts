@@ -23,6 +23,8 @@ export class RepartidorComponent implements OnInit, OnDestroy {
   private token = '';
   private watchId?: number;
   private ultimoEnvio = 0;
+  private timerActualizacion?: ReturnType<typeof setInterval>;
+  private readonly alRecuperarFoco = () => this.cargarSiVisible();
 
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
@@ -47,10 +49,18 @@ export class RepartidorComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.token = this.route.snapshot.paramMap.get('token') ?? '';
     this.cargar();
+    this.timerActualizacion = setInterval(() => this.cargarSiVisible(), 10_000);
+    window.addEventListener('focus', this.alRecuperarFoco);
   }
 
   ngOnDestroy(): void {
     this.detenerGps();
+    if (this.timerActualizacion) clearInterval(this.timerActualizacion);
+    window.removeEventListener('focus', this.alRecuperarFoco);
+  }
+
+  private cargarSiVisible(): void {
+    if (document.visibilityState === 'visible' && !this.procesando()) this.cargar();
   }
 
   private cargar(): void {

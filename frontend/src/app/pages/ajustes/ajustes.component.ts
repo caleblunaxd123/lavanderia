@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface Ajuste {
   nombre: string;
@@ -301,7 +302,7 @@ const ILUSTRACIONES: Record<string, string> = {
 
 @Component({
   selector: 'app-ajustes',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PageHeaderComponent],
   templateUrl: './ajustes.component.html',
   styleUrl: './ajustes.component.scss'
 })

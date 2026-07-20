@@ -87,6 +87,9 @@ public class RepartidorController : ControllerBase
         if (r.Anulado || string.Equals(r.EstadoProceso, "ENTREGADO", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { mensaje = "Este pedido ya no está en reparto." });
 
+        if (r.RutaIniciadaEn is null)
+            return BadRequest(new { mensaje = "Inicia la ruta antes de compartir la ubicacion." });
+
         await _rutas.ActualizarUbicacionAsync(r.PedidoId, req.Lat, req.Lng, ct);
 
         // Recalcula con la posición recién guardada para devolver estado/distancia al repartidor

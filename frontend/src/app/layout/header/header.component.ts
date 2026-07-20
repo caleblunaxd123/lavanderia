@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 import { Sede } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
+import { AlertasGlobalesService } from '../../core/services/alertas-globales.service';
 import { SedesService } from '../../core/services/sedes.service';
 import { IconComponent, IconName } from '../../shared/icon/icon.component';
 
@@ -33,6 +34,7 @@ export class HeaderComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly config = inject(ConfiguracionService);
   private readonly sedesSvc = inject(SedesService);
+  private readonly alertasSvc = inject(AlertasGlobalesService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -51,12 +53,23 @@ export class HeaderComponent implements OnInit {
   readonly mostrarBadgeSede = computed(() => !!this.usuario()?.sedeNombre);
   readonly puedeCambiarSede = computed(() => this.usuario()?.rol === 'ADMIN' && this.sedes().length > 1);
 
+  readonly atencionAbierta = signal(false);
+  readonly cargandoAtencion = this.alertasSvc.cargando;
+  readonly errorAtencion = this.alertasSvc.error;
+  readonly actualizadoEnAtencion = this.alertasSvc.actualizadoEn;
+  readonly puedeVerAtencion = computed(() => this.tieneModulo('INICIO'));
+  readonly alertasAtencion = computed(() => this.alertasSvc.alertas().filter(alerta => alerta.ambito === 'negocio'));
+  readonly totalAtencion = computed(() =>
+    Math.min(99, this.alertasAtencion().reduce((total, alerta) => total + alerta.cantidad, 0))
+  );
+
   constructor() {
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(e => {
       this.urlActual.set(e.urlAfterRedirects);
+      this.atencionAbierta.set(false);
       this.abrirSeccionActiva();
     });
   }
@@ -65,7 +78,34 @@ export class HeaderComponent implements OnInit {
     if (this.usuario()?.rol === 'ADMIN') {
       this.sedesSvc.listar().subscribe(list => this.sedes.set(list.filter(s => s.activo)));
     }
+    if (this.puedeVerAtencion()) {
+      this.alertasSvc.iniciar();
+    }
     this.abrirSeccionActiva();
+  }
+
+  toggleAtencion() {
+    const abrir = !this.atencionAbierta();
+    this.menuAbierto.set(false);
+    this.sedeMenuAbierto.set(false);
+    this.atencionAbierta.set(abrir);
+    if (abrir && !this.actualizadoEnAtencion() && !this.cargandoAtencion()) this.cargarAtencion();
+  }
+
+  cerrarAtencion() { this.atencionAbierta.set(false); }
+
+  cargarAtencion(silencioso = false) {
+    this.alertasSvc.refrescar(silencioso);
+  }
+
+  actualizadoAtencion(): string {
+    const fecha = this.actualizadoEnAtencion();
+    if (!fecha) return '';
+    return new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit' }).format(fecha);
+  }
+
+  private tieneModulo(modulo: string): boolean {
+    return this.usuario()?.rol === 'ADMIN' || (this.usuario()?.modulosPermitidos ?? []).includes(modulo);
   }
 
   /** Acordeón: abre la sección donde está el usuario (y cierra las demás). */

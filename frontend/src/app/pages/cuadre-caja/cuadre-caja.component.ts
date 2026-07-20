@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -8,6 +9,8 @@ import { ToastService } from '../../core/services/toast.service';
 import { MovimientoCaja, TipoGasto } from '../../core/models/models';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { debounceTime } from 'rxjs';
+import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 
 interface Denominacion {
   valor: number;
@@ -27,13 +30,19 @@ function fechaLocalIso(fecha: Date): string {
   templateUrl: './cuadre-caja.component.html',
   styleUrl: './cuadre-caja.component.scss'
 })
-export class CuadreCajaComponent implements OnInit {
+export class CuadreCajaComponent implements OnInit, OnDestroy {
   private readonly cajaSvc = inject(CajaService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
+  private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly destroyRef = inject(DestroyRef);
+  private timerActualizacion?: ReturnType<typeof setInterval>;
+  private versionMovimientos = 0;
+  private versionUsuarios = 0;
 
   fecha = fechaLocalIso(new Date());
+  readonly fechaMaxima = fechaLocalIso(new Date());
   guardado = false;
 
   // Cuadre por colaborador
@@ -46,9 +55,9 @@ export class CuadreCajaComponent implements OnInit {
   denominaciones = signal<Denominacion[]>([
     { valor: 100, cantidad: 0 },
     { valor: 50, cantidad: 0 },
-    { valor: 20, cantidad: 1 },
-    { valor: 10, cantidad: 2 },
-    { valor: 5, cantidad: 3 },
+    { valor: 20, cantidad: 0 },
+    { valor: 10, cantidad: 0 },
+    { valor: 5, cantidad: 0 },
     { valor: 2, cantidad: 0 },
     { valor: 1, cantidad: 0 },
     { valor: 0.5, cantidad: 0 },
@@ -75,6 +84,13 @@ export class CuadreCajaComponent implements OnInit {
   gastoDescripcion = '';
   guardandoGasto = signal(false);
 
+  constructor() {
+    this.actualizaciones.cambios('caja', 'pedidos', 'foco').pipe(
+      debounceTime(180),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.refrescarDinamicamente());
+  }
+
   ngOnInit() {
     // Si venimos del reporte con ?fecha=YYYY-MM-DD, cuadrar ese día.
     const fechaQp = this.route.snapshot.queryParamMap.get('fecha');
@@ -86,10 +102,20 @@ export class CuadreCajaComponent implements OnInit {
     this.cargarMovimientos();
     this.cargarSugerenciaCajaInicial();
     this.cargarCuadreExistente();
+    this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 15_000);
+  }
+
+  ngOnDestroy() {
+    if (this.timerActualizacion) clearInterval(this.timerActualizacion);
   }
 
   cambiarFecha(fecha: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || fecha > this.fechaMaxima) {
+      this.toast.advertencia('Selecciona una fecha válida que no esté en el futuro.');
+      return;
+    }
     this.fecha = fecha;
+    this.reiniciarConteo();
     this.cargarUsuariosDelDia();
     this.cargarMovimientos();
     this.cargarSugerenciaCajaInicial();
@@ -97,9 +123,11 @@ export class CuadreCajaComponent implements OnInit {
   }
 
   cargarUsuariosDelDia() {
+    const version = ++this.versionUsuarios;
     this.cargandoUsuarios.set(true);
     this.cajaSvc.usuariosDelDia(this.fecha).subscribe({
       next: list => {
+        if (version !== this.versionUsuarios) return;
         this.usuariosDelDia.set(list);
         this.cargandoUsuarios.set(false);
         // Asegura que el usuario seleccionado esté en la lista; si no, elige el actual
@@ -108,15 +136,15 @@ export class CuadreCajaComponent implements OnInit {
           this.usuarioSeleccionadoId.set(this.auth.usuario()?.id ?? (list[0]?.id ?? null));
         }
       },
-      error: () => this.cargandoUsuarios.set(false)
+      error: () => { if (version === this.versionUsuarios) this.cargandoUsuarios.set(false); }
     });
   }
 
   seleccionarUsuario(id: number) {
     if (this.usuarioSeleccionadoId() === id) return;
     this.usuarioSeleccionadoId.set(id);
+    this.reiniciarConteo();
     this.cajaInicial.set(0);
-    this.corte = 0;
     this.nota = '';
     this.guardado = false;
     this.cargarMovimientos();
@@ -156,12 +184,24 @@ export class CuadreCajaComponent implements OnInit {
   }
 
   cargarMovimientos() {
+    const version = ++this.versionMovimientos;
     this.cargandoMovimientos.set(true);
     const uid = this.verTodos() ? undefined : (this.usuarioSeleccionadoId() ?? undefined);
     this.cajaSvc.movimientos(this.fecha, uid).subscribe({
-      next: list => { this.movimientos.set(list); this.cargandoMovimientos.set(false); },
-      error: () => this.cargandoMovimientos.set(false)
+      next: list => {
+        if (version !== this.versionMovimientos) return;
+        this.movimientos.set(list);
+        this.cargandoMovimientos.set(false);
+      },
+      error: () => { if (version === this.versionMovimientos) this.cargandoMovimientos.set(false); }
     });
+  }
+
+  private refrescarDinamicamente() {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (this.cargandoMovimientos() || this.guardandoGasto()) return;
+    this.cargarUsuariosDelDia();
+    this.cargarMovimientos();
   }
 
   gastosDelDia = computed(() => this.movimientos().filter(m => m.tipo === 'GASTO'));
@@ -260,7 +300,11 @@ export class CuadreCajaComponent implements OnInit {
   }
 
   confirmarGasto() {
-    if (this.gastoMonto <= 0) return;
+    if (this.guardandoGasto()) return;
+    if (!Number.isFinite(this.gastoMonto) || this.gastoMonto <= 0 || this.gastoMonto > 100_000) {
+      this.toast.advertencia('Ingresa un gasto mayor a S/ 0.00 y menor o igual a S/ 100,000.00.');
+      return;
+    }
     this.guardandoGasto.set(true);
     this.cajaSvc.registrarGasto(
       this.gastoMonto,
@@ -282,8 +326,9 @@ export class CuadreCajaComponent implements OnInit {
   }
 
   actualizarCantidad(valor: number, cantidad: number) {
+    const cantidadValida = Number.isFinite(cantidad) ? Math.max(0, Math.floor(cantidad)) : 0;
     this.denominaciones.update(list =>
-      list.map(d => d.valor === valor ? { ...d, cantidad: Math.max(0, cantidad) } : d)
+      list.map(d => d.valor === valor ? { ...d, cantidad: cantidadValida } : d)
     );
   }
 
@@ -311,6 +356,22 @@ export class CuadreCajaComponent implements OnInit {
 
   guardarCuadre() {
     if (this.guardando()) return;
+    if (!this.usuarioSeleccionadoId()) {
+      this.toast.advertencia('Selecciona el colaborador cuyo turno deseas cuadrar.');
+      return;
+    }
+    if (!Number.isFinite(this.cajaInicial()) || this.cajaInicial() < 0) {
+      this.toast.advertencia('La caja inicial no puede ser negativa.');
+      return;
+    }
+    if (!Number.isFinite(this.corte) || this.corte < 0) {
+      this.toast.advertencia('El corte no puede ser negativo.');
+      return;
+    }
+    if (this.corte > this.totalContado() + 0.001) {
+      this.toast.advertencia('El corte no puede superar el efectivo contado en caja.');
+      return;
+    }
     // Ya existe un cuadre guardado para esta fecha/usuario: confirmar antes de sobrescribirlo
     // en vez de reemplazarlo en silencio (el conteo anterior se pierde sin aviso).
     if (this.guardado) {
@@ -355,5 +416,13 @@ export class CuadreCajaComponent implements OnInit {
         this.toast.desdeHttp(err, 'No se pudo guardar el cuadre.');
       }
     });
+  }
+
+  private reiniciarConteo() {
+    this.denominaciones.update(list => list.map(d => ({ ...d, cantidad: 0 })));
+    this.corte = 0;
+    this.nota = '';
+    this.guardado = false;
+    this.confirmarRegrabar.set(false);
   }
 }

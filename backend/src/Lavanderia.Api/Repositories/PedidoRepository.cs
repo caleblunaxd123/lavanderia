@@ -676,11 +676,15 @@ public class PedidoRepository : IPedidoRepository
         {
             await using var cmdCheck = conn.CreateCommand();
             cmdCheck.Transaction = tx;
-            cmdCheck.CommandText = "SELECT COUNT(1) FROM dbo.Pedido WHERE Id = @PedidoId AND SedeId = @SedeId";
+            cmdCheck.CommandText = @"
+                SELECT COUNT(1)
+                FROM dbo.Pedido WITH (UPDLOCK, HOLDLOCK)
+                WHERE Id = @PedidoId AND SedeId = @SedeId AND Anulado = 0
+                  AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO')";
             cmdCheck.AddParam("@PedidoId", pedidoId);
             cmdCheck.AddParam("@SedeId", sedeId);
             if (await cmdCheck.ReadScalarAsync<int>(ct) == 0)
-                throw new InvalidOperationException("Pedido no encontrado.");
+                throw new InvalidOperationException("El pedido no existe, está anulado o ya se encuentra finalizado.");
 
             await using var cmdItem = conn.CreateCommand();
             cmdItem.Transaction = tx;
@@ -744,12 +748,16 @@ public class PedidoRepository : IPedidoRepository
         {
             await using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
-            cmd.CommandText = "UPDATE dbo.Pedido SET FechaEntregaEst = @Fecha WHERE Id = @Id AND SedeId = @SedeId";
+            cmd.CommandText = @"
+                UPDATE dbo.Pedido
+                   SET FechaEntregaEst = @Fecha
+                 WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0
+                   AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO')";
             cmd.AddParam("@Fecha", nuevaFecha);
             cmd.AddParam("@Id", pedidoId);
             cmd.AddParam("@SedeId", sedeId);
             var filas = await cmd.ExecuteNonQueryAsync(ct);
-            if (filas == 0) throw new InvalidOperationException("Pedido no encontrado.");
+            if (filas == 0) throw new InvalidOperationException("El pedido no existe, está anulado o ya se encuentra finalizado.");
 
             var nota = string.IsNullOrWhiteSpace(motivo)
                 ? $"Fecha entrega actualizada a {nuevaFecha:dd/MM/yyyy HH:mm}"
@@ -806,7 +814,8 @@ public class PedidoRepository : IPedidoRepository
                    ReferenciaEntrega = @Referencia,
                    LatitudEntrega = @Latitud,
                    LongitudEntrega = @Longitud
-             WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso <> 'ENTREGADO'";
+             WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0
+               AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO')";
         cmd.AddParam("@Direccion", direccion);
         cmd.AddParam("@Distrito", distrito);
         cmd.AddParam("@Referencia", referencia);
@@ -822,7 +831,12 @@ public class PedidoRepository : IPedidoRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "UPDATE dbo.Pedido SET MotorizadoId = @MotorizadoId WHERE Id = @Id AND SedeId = @SedeId";
+        cmd.CommandText = @"
+            UPDATE dbo.Pedido
+               SET MotorizadoId = @MotorizadoId
+             WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0
+               AND Modalidad IN ('Recojo', 'Delivery')
+               AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO')";
         cmd.AddParam("@MotorizadoId", motorizadoId);
         cmd.AddParam("@Id", pedidoId);
         cmd.AddParam("@SedeId", sedeId);

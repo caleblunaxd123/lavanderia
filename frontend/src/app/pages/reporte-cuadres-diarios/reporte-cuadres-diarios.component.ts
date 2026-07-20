@@ -5,10 +5,11 @@ import { Router } from '@angular/router';
 import { CuadreDiarioDia, CuadresDiariosReporte, ReportesService } from '../../core/services/reportes.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-reporte-cuadres-diarios',
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent],
   templateUrl: './reporte-cuadres-diarios.component.html',
   styleUrl: './reporte-cuadres-diarios.component.scss'
 })
@@ -42,6 +43,8 @@ export class ReporteCuadresDiariosComponent implements OnInit {
   }
 
   toggleExpandido() { this.expandido.set(!this.expandido()); }
+
+  volver() { this.router.navigate(['/reportes']); }
 
   claseEstado(estado: string): string {
     return ({ CUADRA: 'badge badge--verde', SOBRA: 'badge badge--naranja', FALTA: 'badge badge--rojo' } as Record<string, string>)[estado]

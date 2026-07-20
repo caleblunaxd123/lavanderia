@@ -322,8 +322,8 @@ public class PedidoService : IPedidoService
             ?? throw new InvalidOperationException("Pedido no encontrado.");
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso == "ENTREGADO")
-            throw new InvalidOperationException("El pedido ya fue entregado, no se puede convertir a Delivery.");
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está finalizado y no se puede convertir a Delivery.");
 
         var clienteDestino = await _clientes.ObtenerPorIdAsync(pedido.ClienteId, negocioId, ct)
             ?? throw new InvalidOperationException("El cliente del pedido no existe.");
@@ -354,8 +354,10 @@ public class PedidoService : IPedidoService
             ?? throw new InvalidOperationException("Pedido no encontrado.");
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso == "ENTREGADO")
-            throw new InvalidOperationException("El pedido ya fue entregado, no se puede reasignar el repartidor.");
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está finalizado y no se puede reasignar el repartidor.");
+        if (!EsPedidoDomicilio(pedido.Modalidad))
+            throw new InvalidOperationException("Solo los pedidos con recojo o entrega a domicilio pueden tener repartidor.");
 
         if (motorizadoId is int id)
         {
@@ -547,8 +549,8 @@ public class PedidoService : IPedidoService
             ?? throw new InvalidOperationException("Pedido no encontrado.");
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso == "ENTREGADO")
-            throw new InvalidOperationException("El pedido ya fue entregado, no puedes agregarle ítems.");
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está finalizado y no admite nuevos ítems.");
 
         var servicio = await _servicios.ObtenerPorIdAsync(req.ServicioId, negocioId, ct)
             ?? throw new InvalidOperationException($"Servicio {req.ServicioId} no existe.");
@@ -575,8 +577,8 @@ public class PedidoService : IPedidoService
             ?? throw new InvalidOperationException("Pedido no encontrado.");
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso == "ENTREGADO")
-            throw new InvalidOperationException("El pedido ya fue entregado.");
+        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está finalizado y no admite cambios de fecha.");
         if (req.Fecha < DateTime.Now.AddMinutes(-5))
             throw new InvalidOperationException("La fecha debe ser posterior al momento actual.");
 

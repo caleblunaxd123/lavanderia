@@ -1,18 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { debounceTime, forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ClientesService, ClienteCumpleanos } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Dashboard, PedidosService } from '../../core/services/pedidos.service';
 import { PersonalService } from '../../core/services/personal.service';
-import { SuscripcionService } from '../../core/services/suscripcion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { MiSuscripcion } from '../../core/models/models';
 import { IconComponent, IconName } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 
 interface PasoOnboarding {
   clave: string;
@@ -44,8 +44,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly config = inject(ConfiguracionService);
   private readonly catalogos = inject(CatalogosService);
   private readonly personalSvc = inject(PersonalService);
-  private readonly suscripcionSvc = inject(SuscripcionService);
   private readonly clientesSvc = inject(ClientesService);
+  private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Clientes que cumplen años dentro de la semana (para alerta de fidelización).
   readonly cumpleanos = signal<ClienteCumpleanos[]>([]);
@@ -54,14 +55,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly cargando = signal(false);
   readonly actualizando = signal(false);
   readonly usuario = this.auth.usuario;
-  readonly suscripcion = signal<MiSuscripcion | null>(null);
   readonly pasosOnboarding = signal<PasoOnboarding[]>([]);
   readonly onboardingCerrado = signal(false);
-
-  readonly avisoSuscripcion = computed(() => {
-    const s = this.suscripcion();
-    return s?.mostrar ? s : null;
-  });
 
   readonly mostrarOnboarding = computed(() =>
     this.usuario()?.rol === 'ADMIN' &&
@@ -185,14 +180,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   });
 
   private timerId?: ReturnType<typeof setInterval>;
+  private versionCarga = 0;
+
+  constructor() {
+    this.actualizaciones.cambios('dashboard', 'pedidos', 'caja', 'inventario', 'facturacion', 'clientes', 'foco').pipe(
+      debounceTime(180),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.cargarSiVisible());
+  }
 
   ngOnInit() {
     this.cargar();
     this.cargarOnboarding();
-    this.suscripcionSvc.mia().subscribe({
-      next: s => this.suscripcion.set(s),
-      error: () => undefined
-    });
     if (this.tieneModulo('CLIENTES')) {
       this.clientesSvc.cumpleanosProximos(7).subscribe({
         next: cs => this.cumpleanos.set(
@@ -200,7 +199,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         error: () => undefined
       });
     }
-    this.timerId = setInterval(() => this.cargar(true), 30_000);
+    this.timerId = setInterval(() => this.cargarSiVisible(), 15_000);
   }
 
   ngOnDestroy() {
@@ -208,21 +207,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   cargar(silencioso = false) {
+    const version = ++this.versionCarga;
     if (silencioso) this.actualizando.set(true);
     else this.cargando.set(true);
 
     this.svc.dashboard().subscribe({
       next: d => {
+        if (version !== this.versionCarga) return;
         this.data.set(d);
         this.cargando.set(false);
         this.actualizando.set(false);
       },
       error: () => {
+        if (version !== this.versionCarga) return;
         this.cargando.set(false);
         this.actualizando.set(false);
         if (!silencioso) this.toast.error('No se pudo cargar el resumen. Intenta nuevamente.');
       }
     });
+  }
+
+  private cargarSiVisible() {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (!this.cargando() && !this.actualizando()) this.cargar(true);
   }
 
   cerrarOnboarding() {

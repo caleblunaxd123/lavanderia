@@ -10,6 +10,14 @@
     }
     <strong>{{ negocio().nombreNegocio }}</strong>
   </div>
+  @if (puedeVerAtencion()) {
+    <button type="button" class="mtop__attention" [class.has-alerts]="totalAtencion() > 0"
+      (click)="toggleAtencion()" title="Atención operativa" aria-label="Abrir atención operativa"
+      [attr.aria-expanded]="atencionAbierta()">
+      <app-icon name="bell" [size]="19"></app-icon>
+      @if (totalAtencion() > 0) { <span>{{ totalAtencion() }}</span> }
+    </button>
+  }
   <button type="button" class="mtop__logout" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M4 12h12"/>
@@ -104,6 +112,21 @@
     </div>
   }
 
+  @if (puedeVerAtencion()) {
+    <button type="button" class="sidebar__attention" [class.has-alerts]="totalAtencion() > 0"
+      (click)="toggleAtencion()" [attr.aria-expanded]="atencionAbierta()">
+      <span class="sidebar__attention-icon"><app-icon name="bell" [size]="16"></app-icon></span>
+      <span>Atención operativa</span>
+      @if (cargandoAtencion() && !actualizadoEnAtencion()) {
+        <span class="sidebar__attention-loading" aria-label="Actualizando"></span>
+      } @else if (totalAtencion() > 0) {
+        <strong>{{ totalAtencion() }}</strong>
+      } @else {
+        <app-icon name="check" [size]="14"></app-icon>
+      }
+    </button>
+  }
+
   <nav class="sidebar__nav">
     @if (primaryLinks().length) {
       <p class="sidebar__group">General</p>
@@ -131,3 +154,70 @@
     </button>
   </div>
 </aside>
+
+@if (atencionAbierta()) {
+  <button type="button" class="attention-backdrop" (click)="cerrarAtencion()"
+    aria-label="Cerrar atención operativa"></button>
+  <section class="attention-panel" role="dialog" aria-modal="false" aria-labelledby="attention-panel-title">
+    <header class="attention-panel__head">
+      <div>
+        <span>Operación en vivo</span>
+        <h2 id="attention-panel-title">Atención operativa</h2>
+      </div>
+      <div class="attention-panel__head-actions">
+        <button type="button" (click)="cargarAtencion()" [disabled]="cargandoAtencion()"
+          title="Actualizar alertas" aria-label="Actualizar alertas">
+          <app-icon name="refresh" [size]="16"></app-icon>
+        </button>
+        <button type="button" (click)="cerrarAtencion()" title="Cerrar" aria-label="Cerrar atención operativa">
+          <app-icon name="close" [size]="16"></app-icon>
+        </button>
+      </div>
+    </header>
+
+    <div class="attention-panel__body">
+      @if (cargandoAtencion() && !actualizadoEnAtencion()) {
+        <div class="attention-state">
+          <span class="attention-state__spinner"></span>
+          <strong>Revisando la operación</strong>
+          <p>Estamos buscando tareas que requieren atención.</p>
+        </div>
+      } @else if (errorAtencion()) {
+        <div class="attention-state attention-state--error">
+          <span><app-icon name="warning" [size]="19"></app-icon></span>
+          <strong>No pudimos actualizar las alertas</strong>
+          <p>Comprueba la conexión y vuelve a intentarlo.</p>
+          <button type="button" (click)="cargarAtencion()">Reintentar</button>
+        </div>
+      } @else if (alertasAtencion().length === 0) {
+        <div class="attention-state attention-state--ok">
+          <span><app-icon name="check" [size]="20"></app-icon></span>
+          <strong>Todo está bajo control</strong>
+          <p>No hay tareas operativas pendientes en este momento.</p>
+        </div>
+      } @else {
+        <div class="attention-list">
+          @for (alerta of alertasAtencion(); track alerta.clave) {
+            <a [routerLink]="alerta.ruta" class="attention-item"
+              [class]="'attention-item attention-item--' + alerta.nivel" (click)="cerrarAtencion()">
+              <span class="attention-item__icon"><app-icon [name]="alerta.icono" [size]="17"></app-icon></span>
+              <span class="attention-item__copy">
+                <strong>{{ alerta.titulo }}</strong>
+                <small>{{ alerta.detalle }}</small>
+              </span>
+              <app-icon name="chevron-right" [size]="16"></app-icon>
+            </a>
+          }
+        </div>
+      }
+    </div>
+
+    <footer class="attention-panel__foot">
+      <span>
+        @if (actualizadoAtencion()) { Actualizado {{ actualizadoAtencion() }} }
+        @else { Resumen de la sede activa }
+      </span>
+      <a routerLink="/inicio" (click)="cerrarAtencion()">Ver resumen completo</a>
+    </footer>
+  </section>
+}

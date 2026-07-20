@@ -12,6 +12,8 @@ namespace Lavanderia.Api.Controllers;
 [Route("api")]
 public class FacturacionElectronicaController : TenantAwareControllerBase
 {
+    private static readonly System.Text.RegularExpressions.Regex SerieBoletaRegex = new("^B[0-9]{3}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex SerieFacturaRegex = new("^F[0-9]{3}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
     private readonly IFacturacionRepository _facturacion;
     private readonly IConfiguracionNegocioRepository _configNegocio;
     private readonly IPedidoRepository _pedidos;
@@ -58,12 +60,26 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     public async Task<IActionResult> GuardarConfiguracion([FromBody] ConfiguracionFacturacionDto dto, CancellationToken ct)
     {
         var existente = await _facturacion.ObtenerConfigAsync(NegocioId, ct) ?? new ConfiguracionFacturacion { NegocioId = NegocioId };
-        existente.RazonSocial = dto.RazonSocial;
-        existente.RucEmisor = dto.RucEmisor;
-        existente.Ambiente = dto.Ambiente == "PRODUCCION" ? "PRODUCCION" : "BETA";
-        existente.SolUsuario = dto.SolUsuario;
-        existente.SerieBoleta = string.IsNullOrWhiteSpace(dto.SerieBoleta) ? "B001" : dto.SerieBoleta;
-        existente.SerieFactura = string.IsNullOrWhiteSpace(dto.SerieFactura) ? "F001" : dto.SerieFactura;
+        var ambiente = dto.Ambiente?.Trim().ToUpperInvariant();
+        var ruc = Limpiar(dto.RucEmisor);
+        var serieBoleta = string.IsNullOrWhiteSpace(dto.SerieBoleta) ? "B001" : dto.SerieBoleta.Trim().ToUpperInvariant();
+        var serieFactura = string.IsNullOrWhiteSpace(dto.SerieFactura) ? "F001" : dto.SerieFactura.Trim().ToUpperInvariant();
+
+        if (ambiente is not ("BETA" or "PRODUCCION"))
+            return BadRequest(new { mensaje = "El ambiente debe ser BETA o PRODUCCION." });
+        if (ruc is not null && !System.Text.RegularExpressions.Regex.IsMatch(ruc, "^[0-9]{11}$"))
+            return BadRequest(new { mensaje = "El RUC emisor debe contener exactamente 11 digitos." });
+        if (!SerieBoletaRegex.IsMatch(serieBoleta))
+            return BadRequest(new { mensaje = "La serie de boleta debe tener el formato B001." });
+        if (!SerieFacturaRegex.IsMatch(serieFactura))
+            return BadRequest(new { mensaje = "La serie de factura debe tener el formato F001." });
+
+        existente.RazonSocial = Limpiar(dto.RazonSocial);
+        existente.RucEmisor = ruc;
+        existente.Ambiente = ambiente;
+        existente.SolUsuario = Limpiar(dto.SolUsuario);
+        existente.SerieBoleta = serieBoleta;
+        existente.SerieFactura = serieFactura;
         existente.Activo = dto.Activo;
 
         if (!string.IsNullOrWhiteSpace(dto.SolClaveNueva))
@@ -102,9 +118,20 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         if (!string.IsNullOrWhiteSpace(dto.CertificadoPasswordNueva))
             existente.CertificadoPasswordCifrada = _secretos.Proteger(dto.CertificadoPasswordNueva);
 
+        if (dto.Activo && (string.IsNullOrWhiteSpace(existente.RazonSocial)
+            || string.IsNullOrWhiteSpace(existente.RucEmisor)
+            || string.IsNullOrWhiteSpace(existente.SolUsuario)
+            || string.IsNullOrWhiteSpace(existente.SolClaveCifrada)
+            || existente.CertificadoPfx is not { Length: > 0 }
+            || string.IsNullOrWhiteSpace(existente.CertificadoPasswordCifrada)))
+            return BadRequest(new { mensaje = "Completa RUC, razon social, credenciales SOL y certificado antes de activar la facturacion electronica." });
+
         await _facturacion.GuardarConfigAsync(existente, ct);
         return NoContent();
     }
+
+    private static string? Limpiar(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 
     [HttpPost("pedidos/{pedidoId:int}/comprobante")]
     [Authorize(Policy = "Modulo:PEDIDOS")]

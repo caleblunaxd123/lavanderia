@@ -21,7 +21,10 @@ public class RolesPersonalController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<RolPersonalDto>> Crear([FromBody] RolPersonalDto dto, CancellationToken ct)
     {
-        var id = await _repo.CrearAsync(new RolPersonal { NegocioId = NegocioId, Nombre = dto.Nombre.Trim(), Activo = dto.Activo }, ct);
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, ct: ct))
+            return Conflict(new { mensaje = "Ya existe un rol de personal con ese nombre." });
+        var id = await _repo.CrearAsync(new RolPersonal { NegocioId = NegocioId, Nombre = nombre, Activo = dto.Activo }, ct);
         var creado = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         return CreatedAtAction(nameof(Listar), Map(creado!));
     }
@@ -32,7 +35,10 @@ public class RolesPersonalController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, NegocioId, id, ct))
+            return Conflict(new { mensaje = "Ya existe otro rol de personal con ese nombre." });
+        existente.Nombre = nombre;
         existente.Activo = dto.Activo;
         await _repo.ActualizarAsync(existente, NegocioId, ct);
         return NoContent();

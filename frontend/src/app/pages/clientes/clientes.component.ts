@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
@@ -14,6 +15,7 @@ import { PaginacionComponent } from '../../shared/paginacion/paginacion.componen
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 
 @Component({
   selector: 'app-clientes',
@@ -21,11 +23,15 @@ import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.direc
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
-export class ClientesComponent implements OnInit {
+export class ClientesComponent implements OnInit, OnDestroy {
   private readonly service = inject(ClientesService);
   private readonly pedidosSvc = inject(PedidosService);
   private readonly toast = inject(ToastService);
+  private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly buscar$ = new Subject<void>();
+  private timerActualizacion?: ReturnType<typeof setInterval>;
+  private versionRecarga = 0;
 
   readonly clientes = signal<Cliente[]>([]);
   readonly cargando = signal(false);
@@ -150,9 +156,18 @@ export class ClientesComponent implements OnInit {
 
   ngOnInit() {
     this.buscar$
-      .pipe(debounceTime(300), distinctUntilChanged())
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.recargar());
+    this.actualizaciones.cambios('clientes', 'pedidos', 'foco').pipe(
+      debounceTime(180),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.refrescarDinamicamente());
     this.recargar();
+    this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 30_000);
+  }
+
+  ngOnDestroy() {
+    if (this.timerActualizacion) clearInterval(this.timerActualizacion);
   }
 
   onBuscarChange() {
@@ -160,19 +175,43 @@ export class ClientesComponent implements OnInit {
     this.buscar$.next();
   }
 
-  recargar() {
-    this.cargando.set(true);
-    this.error.set(null);
+  recargar(silencioso = false) {
+    const version = ++this.versionRecarga;
+    if (!silencioso) {
+      this.cargando.set(true);
+      this.error.set(null);
+    }
     const campo = this.campoBusqueda.toLowerCase();
     this.service.buscar(this.textoBusqueda || undefined, campo, 500).subscribe({
-      next: list => { this.clientes.set(list); this.cargando.set(false); },
-      error: (err: HttpErrorResponse) => {
+      next: list => {
+        if (version !== this.versionRecarga) return;
+        this.clientes.set(list);
         this.cargando.set(false);
-        this.error.set(err.status === 0
-          ? 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.'
-          : (err.error?.mensaje ?? 'Error al cargar clientes.'));
+      },
+      error: (err: HttpErrorResponse) => {
+        if (version !== this.versionRecarga) return;
+        this.cargando.set(false);
+        if (!silencioso) {
+          this.error.set(err.status === 0
+            ? 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.'
+            : (err.error?.mensaje ?? 'Error al cargar clientes.'));
+        }
       }
     });
+  }
+
+  private refrescarDinamicamente() {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    if (this.cargando() || this.guardando() || this.fusionando() || this.guardandoPunto()) return;
+    this.recargar(true);
+    const detalle = this.clienteDetalle();
+    if (detalle) {
+      this.service.obtener(detalle.id).subscribe(actualizado => this.clienteDetalle.set(actualizado));
+      if (this.subTabDetalle() === 'puntos') this.cargarPuntos();
+      if (this.subTabDetalle() === 'ordenes') this.cargarOrdenes();
+    }
+    if (this.tab() === 'frecuentes') this.cargarFrecuentes();
+    if (this.tab() === 'unir') this.cargarTodosClientes();
   }
 
   abrirModal() {

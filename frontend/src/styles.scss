@@ -46,9 +46,17 @@
   --shadow-card: 0 1px 3px rgba(15, 23, 42, .08);
   --shadow-card-hover: 0 8px 20px rgba(15, 23, 42, .12);
 
+  /* ---------- Lienzo de trabajo ---------- */
+  --workspace-max: 1600px;
+  --workspace-form-max: 920px;
+  --workspace-form-compact: 720px;
+  --workspace-gutter: clamp(18px, 2vw, 32px);
+
   /* ---------- Movimiento ---------- */
   --transition-fast: 140ms ease;
   --transition-base: 220ms cubic-bezier(.4, 0, .2, 1);
+  --motion-enter: 260ms cubic-bezier(.22, 1, .36, 1);
+  --motion-emphasis: 420ms cubic-bezier(.22, 1, .36, 1);
 }
 
 html, body {
@@ -169,8 +177,124 @@ a.card:hover,
 /* ===== Desplazamiento del contenido junto al sidebar (nav lateral) ===== */
 .app-content { display: block; }
 @media (min-width: 901px) {
-  .app-content--sidebar { margin-left: 250px; }
+  .app-content--sidebar {
+    min-width: 0;
+    margin-left: 250px;
+  }
+
+  .app-content--sidebar > :not(router-outlet) {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@keyframes workspace-enter {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes surface-enter {
+  from { opacity: 0; translate: 0 6px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-content > :not(router-outlet) {
+    animation: workspace-enter var(--motion-enter);
+  }
+
+  app-page-header {
+    animation: surface-enter 300ms cubic-bezier(.22, 1, .36, 1) 35ms backwards;
+  }
+
+  .modal-backdrop,
+  .drawer-backdrop {
+    animation: overlay-enter 160ms ease-out both;
+  }
+
+  .modal,
+  .modal-detalle,
+  .drawer {
+    animation: surface-enter 220ms cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .btn:not(:disabled):active,
+  a.btn:active {
+    transform: translateY(1px) scale(.985);
+    transition-duration: 70ms;
+  }
+
+  .tabla tbody tr {
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
 }
 @media (max-width: 900px) {
   .app-content--sidebar { padding-top: 56px; }
+}
+
+/*
+ * Todas las vistas internas comparten un lienzo amplio. Las paginas deciden
+ * la densidad de su contenido, pero ya no quedan centradas lejos del sidebar.
+ */
+.app-content.app-content--sidebar .page,
+.app-content.app-content--sidebar app-dashboard .dashboard {
+  width: 100%;
+  max-width: var(--workspace-max);
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: var(--workspace-gutter);
+  padding-left: var(--workspace-gutter);
+}
+
+/* Formularios de configuracion: encabezado ancho y cuerpo legible, alineado a
+   la izquierda. Evita campos gigantes sin volver a desperdiciar el lienzo. */
+.app-content--sidebar :is(
+  app-ajustes-negocio,
+  app-ajustes-permisos,
+  app-ajustes-plantillas-whatsapp,
+  app-ajustes-puntos,
+  app-ajustes-cargo-extra,
+  app-ajustes-metas,
+  app-ajustes-facturacion-electronica,
+  app-ajustes-pagos
+) .page > :not(app-page-header) {
+  width: 100%;
+  max-width: var(--workspace-form-max);
+  margin-right: auto;
+  margin-left: 0;
+}
+
+.app-content--sidebar :is(
+  app-ajustes-puntos,
+  app-ajustes-cargo-extra,
+  app-ajustes-metas
+) .page > :not(app-page-header) {
+  max-width: var(--workspace-form-compact);
+}
+
+@media (max-width: 900px) {
+  .app-content.app-content--sidebar .page,
+  .app-content.app-content--sidebar app-dashboard .dashboard {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .app-content--sidebar :is(
+    app-ajustes-negocio,
+    app-ajustes-permisos,
+    app-ajustes-plantillas-whatsapp,
+    app-ajustes-puntos,
+    app-ajustes-cargo-extra,
+    app-ajustes-metas,
+    app-ajustes-facturacion-electronica,
+    app-ajustes-pagos
+  ) .page > :not(app-page-header) {
+    max-width: none;
+  }
 }

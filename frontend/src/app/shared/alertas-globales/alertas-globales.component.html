@@ -1,0 +1,33 @@
+@if (servicio.alertas().length > 0) {
+  <section class="global-alerts" aria-label="Avisos importantes">
+    <div class="global-alerts__stack">
+      @for (alerta of visibles(); track alerta.clave + alerta.huella) {
+        <article class="global-alert" [class]="'global-alert global-alert--' + alerta.nivel"
+          [attr.role]="alerta.nivel === 'critica' ? 'alert' : 'status'">
+          <span class="global-alert__icon" aria-hidden="true">
+            <app-icon [name]="alerta.icono" [size]="18"></app-icon>
+          </span>
+          <div class="global-alert__copy">
+            <strong>{{ alerta.titulo }}</strong>
+            <span>{{ alerta.detalle }}</span>
+          </div>
+          <a class="global-alert__action" [routerLink]="alerta.ruta">
+            {{ alerta.accion }}
+            <app-icon name="chevron-right" [size]="15"></app-icon>
+          </a>
+          <button type="button" class="global-alert__close" (click)="descartar(alerta)"
+            [attr.aria-label]="'Ocultar aviso: ' + alerta.titulo" title="Ocultar temporalmente">
+            <app-icon name="close" [size]="16"></app-icon>
+          </button>
+        </article>
+      }
+    </div>
+
+    @if (restantes() > 0 || expandido()) {
+      <button type="button" class="global-alerts__toggle" (click)="toggleExpandido()">
+        @if (expandido()) { Ver menos avisos }
+        @else { Mostrar {{ restantes() }} aviso{{ restantes() === 1 ? '' : 's' }} más }
+      </button>
+    }
+  </section>
+}

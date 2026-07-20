@@ -1,4 +1,9 @@
-.page { padding: 20px 24px; }
+.page {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px clamp(18px, 2vw, 32px) 32px;
+}
 
 .grid {
   display: grid;

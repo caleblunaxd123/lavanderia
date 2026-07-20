@@ -224,22 +224,6 @@
   &:hover { background: #0848ad; box-shadow: 0 5px 13px rgba(11, 87, 208, .25); transform: translateY(-1px); }
 }
 
-.subscription-alert {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  margin-bottom: 16px;
-  border: 1px solid #f3c889;
-  border-radius: 8px;
-  background: #fff9ed;
-  color: #8b4d09;
-  font-size: 13.5px;
-  font-weight: 650;
-
-  &--critical { border-color: #f3b4b4; background: #fff2f2; color: #9b2525; }
-}
-
 .onboarding {
   padding: 14px 16px;
   margin-bottom: 16px;

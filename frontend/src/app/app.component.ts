@@ -8,10 +8,11 @@ import { AuthService } from './core/services/auth.service';
 import { ConfiguracionService } from './core/services/configuracion.service';
 import { TenantContextService } from './core/services/tenant-context.service';
 import { ToasterComponent } from './shared/toaster/toaster.component';
+import { AlertasGlobalesComponent } from './shared/alertas-globales/alertas-globales.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaHeaderComponent, ToasterComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaHeaderComponent, AlertasGlobalesComponent, ToasterComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
@@ -33,6 +34,15 @@ export class AppComponent implements OnInit {
     if (r.startsWith('/repartidor/')) return false;  // portal publico del repartidor
     if (this.esPlataforma()) return false;  // usa su propio header minimo
     return true;
+  });
+  readonly mostrarAlertas = computed(() => {
+    const r = this.rutaActual();
+    if (!this.auth.autenticado() || r.startsWith('/login')) return false;
+    return !r.startsWith('/ticket/') &&
+      !r.startsWith('/cuadre-caja/imprimir/') &&
+      !r.startsWith('/seguimiento/') &&
+      !r.startsWith('/repartidor/') &&
+      !r.startsWith('/seleccionar-sede');
   });
 
   ngOnInit() {

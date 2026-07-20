@@ -5,6 +5,7 @@ import { ApplicationConfig, LOCALE_ID, provideZoneChangeDetection } from '@angul
 import { provideRouter, withComponentInputBinding, UrlSerializer } from '@angular/router';
 
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { actualizacionDatosInterceptor } from './core/interceptors/actualizacion-datos.interceptor';
 import { TenantUrlSerializer } from './core/routing/tenant-url-serializer';
 import { routes } from './app.routes';
 
@@ -14,7 +15,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, actualizacionDatosInterceptor])),
     { provide: LOCALE_ID, useValue: 'es-PE' },
     { provide: UrlSerializer, useClass: TenantUrlSerializer },
   ]

@@ -73,6 +73,8 @@ public class CajaController : TenantAwareControllerBase
     {
         var sedeId = SedeId!.Value;
         var usuarioCierreId = req.UsuarioId ?? UsuarioId;
+        if (req.Fecha.Date > DateTime.Today)
+            return BadRequest(new { mensaje = "No se puede guardar un cuadre para una fecha futura." });
         if (usuarioCierreId != UsuarioId && !User.IsInRole("ADMIN"))
             return Forbid();
 

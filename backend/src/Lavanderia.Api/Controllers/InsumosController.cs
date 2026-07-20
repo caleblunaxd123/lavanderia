@@ -28,13 +28,18 @@ public class InsumosController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<InsumoDto>> Crear([FromBody] InsumoDto dto, CancellationToken ct)
     {
+        var nombre = dto.Nombre.Trim();
+        var unidad = dto.UnidadMedida.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, SedeId!.Value, ct: ct))
+            return Conflict(new { mensaje = "Ya existe un insumo con ese nombre en esta sede." });
+
         var id = await _repo.CrearAsync(new Insumo
         {
             SedeId = SedeId!.Value,
-            Nombre = dto.Nombre.Trim(),
-            UnidadMedida = dto.UnidadMedida.Trim(),
+            Nombre = nombre,
+            UnidadMedida = unidad,
             StockActual = Math.Max(0, dto.StockActual),
-            StockMinimo = dto.StockMinimo,
+            StockMinimo = Math.Max(0, dto.StockMinimo),
             Activo = dto.Activo
         }, ct);
         var creado = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
@@ -47,9 +52,13 @@ public class InsumosController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
         if (existente is null) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreAsync(nombre, SedeId.Value, id, ct))
+            return Conflict(new { mensaje = "Ya existe otro insumo con ese nombre en esta sede." });
+
+        existente.Nombre = nombre;
         existente.UnidadMedida = dto.UnidadMedida.Trim();
-        existente.StockMinimo = dto.StockMinimo;
+        existente.StockMinimo = Math.Max(0, dto.StockMinimo);
         existente.Activo = dto.Activo;
         await _repo.ActualizarAsync(existente, SedeId!.Value, ct);
         return NoContent();
@@ -82,6 +91,8 @@ public class InsumosController : TenantAwareControllerBase
 
         var insumo = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
         if (insumo is null) return NotFound();
+        if (!insumo.Activo)
+            return Conflict(new { mensaje = "El insumo está inactivo. Reactívalo antes de registrar movimientos." });
 
         if (req.Tipo != "AJUSTE" && req.Cantidad <= 0)
             return BadRequest(new { mensaje = "La cantidad debe ser mayor a 0." });

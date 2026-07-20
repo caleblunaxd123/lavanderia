@@ -25,7 +25,10 @@ public class TiposGastoAdminController : TenantAwareControllerBase
     [HttpPost]
     public async Task<ActionResult<TipoGastoEditableDto>> Crear([FromBody] TipoGastoEditableDto dto, CancellationToken ct)
     {
-        var id = await _repo.CrearTipoGastoAsync(new TipoGasto { NegocioId = NegocioId, Nombre = dto.Nombre.Trim(), Activo = dto.Activo }, ct);
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreTipoGastoAsync(nombre, NegocioId, ct: ct))
+            return Conflict(new { mensaje = "Ya existe un tipo de gasto con ese nombre." });
+        var id = await _repo.CrearTipoGastoAsync(new TipoGasto { NegocioId = NegocioId, Nombre = nombre, Activo = dto.Activo }, ct);
         var creado = await _repo.ObtenerTipoGastoPorIdAsync(id, NegocioId, ct);
         return CreatedAtAction(nameof(Listar), Map(creado!));
     }
@@ -36,7 +39,10 @@ public class TiposGastoAdminController : TenantAwareControllerBase
         var existente = await _repo.ObtenerTipoGastoPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        existente.Nombre = dto.Nombre.Trim();
+        var nombre = dto.Nombre.Trim();
+        if (await _repo.ExisteNombreTipoGastoAsync(nombre, NegocioId, id, ct))
+            return Conflict(new { mensaje = "Ya existe otro tipo de gasto con ese nombre." });
+        existente.Nombre = nombre;
         existente.Activo = dto.Activo;
         await _repo.ActualizarTipoGastoAsync(existente, NegocioId, ct);
         return NoContent();

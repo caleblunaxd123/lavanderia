@@ -1,4 +1,4 @@
-.page { padding: 20px 24px; max-width: 1000px; margin: 0 auto; }
+.page { padding: 20px 24px; width: 100%; }
 
 .paginacion-wrap { margin-top: 12px; padding: 0; }
 
@@ -35,6 +35,10 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 
   &--primario { background: var(--azul-oscuro); color: #fff; &:disabled { opacity: .5; cursor: not-allowed; } }
   &--ghost { background: transparent; color: #64748b; border: 1px solid var(--gris-borde); }
@@ -44,6 +48,92 @@
 
 .estado { padding: 24px; text-align: center; color: #64748b; }
 .hint { font-size: 11px; color: #94a3b8; font-weight: 400; }
+
+.catalog-summary {
+  min-height: 68px;
+  margin-bottom: 12px;
+  border: 1px solid #dfe6ef;
+  border-radius: 8px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  > div {
+    min-width: 0;
+    padding: 11px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+
+    &:not(:last-child) { border-right: 1px solid #e6ebf2; }
+  }
+
+  span { color: #718096; font-size: 10.5px; font-weight: 700; }
+  strong { color: #263449; font-size: 17px; font-variant-numeric: tabular-nums; }
+}
+
+.catalog-toolbar {
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, 190px) minmax(170px, 220px);
+  gap: 8px;
+
+  > select,
+  .catalog-search {
+    min-height: 40px;
+    border: 1px solid var(--gris-borde);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  > select {
+    width: 100%;
+    padding: 8px 10px;
+    color: #475569;
+    font-size: 12.5px;
+  }
+}
+
+.catalog-search {
+  padding: 0 9px 0 11px;
+  color: #8a97a8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &:focus-within {
+    border-color: var(--azul-oscuro);
+    box-shadow: 0 0 0 3px rgba(11, 87, 208, .1);
+  }
+
+  input {
+    min-width: 0;
+    height: 38px;
+    padding: 0;
+    border: 0 !important;
+    outline: 0;
+    box-shadow: none !important;
+    background: transparent;
+    color: #334155;
+    font: inherit;
+    font-size: 12.5px;
+    flex: 1;
+  }
+
+  button {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: #eef2f7;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
 
 // ---------- Tabla ----------
 .tabla-wrap { padding: 8px; overflow-x: auto; }
@@ -97,9 +187,13 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover { background: #eaf1ff; border-color: var(--azul-oscuro); }
   &--del:hover { background: #fde8e8; border-color: var(--rojo); }
+  &:disabled { opacity: .45; cursor: wait; }
 }
 
 // ---------- Cards mobile ----------
@@ -139,6 +233,7 @@
     border-top: 1px dashed var(--gris-borde);
 
     .btn { flex: 1; }
+    .btn--danger { flex: 0 0 40px; }
   }
 }
 
@@ -243,6 +338,23 @@
   gap: 10px;
 }
 
+.money-input {
+  position: relative;
+
+  > span {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    z-index: 1;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  input { padding-left: 32px !important; }
+}
+
 .checkbox-row {
   display: flex !important;
   align-items: center;
@@ -258,10 +370,32 @@
 @media (max-width: 720px) {
   .page { padding: 14px; }
 
+  .catalog-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    > div:nth-child(2) { border-right: 0; }
+    > div:last-child {
+      grid-column: 1 / -1;
+      border-top: 1px solid #e6ebf2;
+    }
+  }
+
+  .catalog-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    .catalog-search { grid-column: 1 / -1; }
+  }
+
   .page__header {
     .btn { width: 100%; }
   }
 
   .tabla-wrap { display: none; }
   .cards { display: flex; }
+  .row-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 420px) {
+  .catalog-toolbar { grid-template-columns: 1fr; }
+  .catalog-toolbar .catalog-search { grid-column: auto; }
 }

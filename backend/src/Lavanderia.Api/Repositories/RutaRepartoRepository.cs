@@ -118,19 +118,24 @@ public class RutaRepartoRepository : IRutaRepartoRepository
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
         await using var cmd = conn.CreateCommand();
-        // Genera el token solo si falta; el OUTPUT devuelve el vigente de forma atomica.
+        cmd.Transaction = (SqlTransaction)tx;
+        // Pedido tiene un trigger de estados terminales; SQL Server no permite OUTPUT sin
+        // INTO sobre tablas con triggers. La actualizacion y lectura permanecen atomicas.
         cmd.CommandText = @"
             UPDATE dbo.Pedido
                SET TokenRuta = COALESCE(TokenRuta, @Nuevo)
-             OUTPUT INSERTED.TokenRuta
-             WHERE Id = @Id AND SedeId = @SedeId";
+             WHERE Id = @Id AND SedeId = @SedeId;
+            SELECT TokenRuta FROM dbo.Pedido WHERE Id = @Id AND SedeId = @SedeId;";
         cmd.AddParam("@Nuevo", Guid.NewGuid());
         cmd.AddParam("@Id", pedidoId);
         cmd.AddParam("@SedeId", sedeId);
-        // Guid no implementa IConvertible, por eso no se usa ReadScalarAsync<Guid> (usa Convert.ChangeType).
         var result = await cmd.ExecuteScalarAsync(ct);
-        return (Guid)result!;
+        if (result is not Guid token)
+            throw new InvalidOperationException("No se pudo generar el enlace del repartidor para este pedido.");
+        await tx.CommitAsync(ct);
+        return token;
     }
 
     public async Task IniciarRutaAsync(int pedidoId, CancellationToken ct = default)

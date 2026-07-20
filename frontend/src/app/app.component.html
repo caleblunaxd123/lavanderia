@@ -5,6 +5,9 @@
   <app-plataforma-header />
 }
 <main class="app-content" [class.app-content--sidebar]="mostrarHeader()">
+  @if (mostrarAlertas()) {
+    <app-alertas-globales />
+  }
   <router-outlet />
 </main>
 <app-toaster />

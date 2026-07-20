@@ -94,7 +94,9 @@ public class ClienteDto
     [StringLength(20)]
     [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
     public string? Celular { get; set; }
-    [StringLength(15)] public string? Dni { get; set; }
+    [StringLength(8, MinimumLength = 8)]
+    [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 digitos.")]
+    public string? Dni { get; set; }
     [StringLength(20)] public string? DocumentoFiscal { get; set; }
     [StringLength(200)] public string? Direccion { get; set; }
     public int Puntos { get; set; }
@@ -384,7 +386,9 @@ public class EmpleadoDto
 {
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
-    [StringLength(15)] public string? Dni { get; set; }
+    [StringLength(8, MinimumLength = 8)]
+    [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 digitos.")]
+    public string? Dni { get; set; }
     [StringLength(20)]
     [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
     public string? Celular { get; set; }
@@ -599,10 +603,10 @@ public class ConfiguracionFacturacionDto
     public string Ambiente { get; set; } = "BETA"; // BETA | PRODUCCION
     [StringLength(50)] public string? SolUsuario { get; set; }
     /// <summary>Solo se envía al guardar una clave nueva; nunca se devuelve la clave real.</summary>
-    public string? SolClaveNueva { get; set; }
+    [StringLength(200)] public string? SolClaveNueva { get; set; }
     /// <summary>Certificado .pfx en base64; solo se envía al subir uno nuevo.</summary>
-    public string? CertificadoPfxBase64 { get; set; }
-    public string? CertificadoPasswordNueva { get; set; }
+    [StringLength(200000)] public string? CertificadoPfxBase64 { get; set; }
+    [StringLength(200)] public string? CertificadoPasswordNueva { get; set; }
     [StringLength(4, MinimumLength = 4)] public string SerieBoleta { get; set; } = "B001";
     [StringLength(4, MinimumLength = 4)] public string SerieFactura { get; set; } = "F001";
     public bool Activo { get; set; }
