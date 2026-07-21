@@ -20,8 +20,16 @@ export class LoginComponent implements OnInit {
   private readonly config = inject(ConfiguracionService);
   private readonly tenant = inject(TenantContextService);
 
-  readonly nombreNegocio = computed(() => this.config.configuracion().nombreNegocio);
-  readonly logoUrl = computed(() => this.config.configuracion().logoUrl);
+  // Con slug (/lavixa/login) mostramos la marca de esa lavandería; sin slug (/login,
+  // acceso del propietario/plataforma) la pantalla es NEUTRAL: marca del producto "Lavixa",
+  // sin nombre ni logo de ningún negocio en particular.
+  readonly tieneSlug = signal(false);
+  readonly nombreNegocio = computed(() =>
+    this.tieneSlug() ? (this.config.configuracion().nombreNegocio || 'Lavixa') : 'Lavixa');
+  readonly logoUrl = computed(() =>
+    this.tieneSlug() ? this.config.configuracion().logoUrl : null);
+  readonly subtitulo = computed(() =>
+    this.tieneSlug() ? 'Ingresa tus credenciales' : 'Panel de administración');
 
   usuario = '';
   password = '';
@@ -30,11 +38,11 @@ export class LoginComponent implements OnInit {
   mostrarPassword = signal(false);
 
   ngOnInit() {
-    // Marca de la empresa segun el slug de la URL (/lavixa/login); sin slug, cae al
-    // endpoint generico (compatibilidad con accesos sin empresa identificada).
+    // Solo cargamos la marca de una empresa cuando la URL trae su slug (/lavixa/login).
+    // Sin slug no cargamos ninguna config de negocio → la pantalla queda neutral.
     const slug = this.tenant.slug();
-    const obs$ = slug ? this.config.cargarPorSlug(slug) : this.config.cargar();
-    obs$.subscribe({ error: () => {} });
+    this.tieneSlug.set(!!slug);
+    if (slug) this.config.cargarPorSlug(slug).subscribe({ error: () => {} });
   }
 
   submit() {
