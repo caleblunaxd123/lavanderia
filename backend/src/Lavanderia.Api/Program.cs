@@ -131,7 +131,18 @@ if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi();
 builder.Services.AddTransient<SecretProtector>();
 builder.Services.AddHttpClient<SunatSoapClient>();
 builder.Services.AddHttpClient<GeocodificacionService>();
-builder.Services.AddTransient<IFacturacionElectronicaProvider, SunatDirectoProvider>();
+// Proveedor de facturación electrónica seleccionable por configuración:
+//   SUNAT_DIRECTO (default) → firma local + SOAP de SUNAT.
+//   APISUNAT               → PSE en la nube (listo para activar cuando lleguen
+//                             ApiSunat:PersonaId y ApiSunat:PersonaToken de Mekias).
+builder.Services.Configure<Lavanderia.Api.Services.Facturacion.ApiSunatOptions>(builder.Configuration.GetSection("ApiSunat"));
+builder.Services.AddHttpClient<Lavanderia.Api.Services.Facturacion.ApiSunatProvider>();
+var proveedorFe = builder.Configuration["FacturacionElectronica:Proveedor"] ?? "SUNAT_DIRECTO";
+if (string.Equals(proveedorFe, "APISUNAT", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddTransient<IFacturacionElectronicaProvider>(sp =>
+        sp.GetRequiredService<Lavanderia.Api.Services.Facturacion.ApiSunatProvider>());
+else
+    builder.Services.AddTransient<IFacturacionElectronicaProvider, SunatDirectoProvider>();
 builder.Services.AddTransient<ComprobantePdfGenerator>();
 
 // Limites defensivos para los puntos anonimos que pueden disparar trabajo costoso o
