@@ -260,6 +260,8 @@ public class PedidoHistorial
     public string? AreaNombre { get; set; }
     public string EstadoProceso { get; set; } = "";
     public int? UsuarioId { get; set; }
+    public string ActorTipo { get; set; } = "USUARIO";
+    public string? ActorDescripcion { get; set; }
     public DateTime Fecha { get; set; }
     public string? Nota { get; set; }
     public bool NotificadoWsp { get; set; }
@@ -390,9 +392,11 @@ public class ConfiguracionPagos
 {
     public int Id { get; set; }
     public int NegocioId { get; set; }
-    public string Proveedor { get; set; } = "CULQI";
+    public string Proveedor { get; set; } = "IZIPAY";
+    public string? CodigoComercio { get; set; }
     public string? PublicKey { get; set; }
-    public string? SecretKeyCifrada { get; set; }
+    public string? ApiKeyCifrada { get; set; }
+    public string? HashKeyCifrada { get; set; }
     public bool Activo { get; set; }
 }
 
@@ -405,7 +409,7 @@ public class SolicitudPago
     public Guid Token { get; set; }
     public decimal Monto { get; set; }
     public string Estado { get; set; } = "PENDIENTE"; // PENDIENTE | PAGADO | EXPIRADO | CANCELADO
-    public string? CulqiChargeId { get; set; }
+    public string? ProveedorOperacionId { get; set; }
     public DateTime FechaCreacion { get; set; }
     public DateTime FechaExpiracion { get; set; }
     public DateTime? FechaPago { get; set; }

@@ -334,6 +334,47 @@
   color: #475569;
 }
 
+// Descripción del filtro activo (para que se entienda a qué se refiere cada tab).
+.filtro-desc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 12px;
+  font-size: 12.5px;
+  color: #64748b;
+
+  app-icon { color: #94a3b8; flex-shrink: 0; }
+}
+
+// Banner del modo "fuera de tiempo" (llegado desde la alerta del inicio).
+.fuera-tiempo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fef2f2;
+  border: 1px solid #f6cccc;
+
+  &__info { display: flex; align-items: center; gap: 11px; min-width: 0; }
+
+  &__icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; flex-shrink: 0;
+    border-radius: 9px; background: #fee2e2; color: #b42318;
+  }
+
+  &__texto {
+    display: flex; flex-direction: column; line-height: 1.3; min-width: 0;
+    strong { font-size: 14px; color: #991b1b; }
+    span { font-size: 12px; color: #7f1d1d; }
+    b { font-weight: 800; }
+  }
+}
+
 @media (max-width: 480px) {
   .filtros-row {
     align-items: flex-start;
@@ -1999,3 +2040,80 @@
   &__botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   &__botones .btn { flex: 1; min-width: 150px; }
 }
+
+/* ---------- Fotos de evidencia ---------- */
+.fotos-pedido {
+  &__subir {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    select {
+      height: 34px; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 8px;
+      font-size: 12.5px; background: #fff; color: #334155;
+    }
+  }
+  &__boton {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;
+    &.is-cargando { opacity: .65; pointer-events: none; }
+  }
+  &__vacio { font-size: 12.5px; color: #94a3b8; margin: 4px 0 0; }
+  &__nota {
+    display: flex; align-items: center; gap: 5px;
+    margin: 10px 0 0; font-size: 11.5px; color: #64748b;
+    app-icon { color: #94a3b8; }
+  }
+  &__grid {
+    margin-top: 12px;
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+}
+
+.foto-miniatura {
+  position: relative; margin: 0;
+  border-radius: 10px; overflow: hidden;
+  border: 1px solid #e2e8f0; background: #f1f5f9;
+
+  &__ver {
+    display: block; width: 100%; aspect-ratio: 1 / 1;
+    padding: 0; border: 0; cursor: zoom-in; background: #e2e8f0;
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  }
+  &__cargando {
+    display: block; width: 100%; aspect-ratio: 1 / 1;
+    background: linear-gradient(100deg, #eef2f7 30%, #f8fafc 50%, #eef2f7 70%);
+    background-size: 200% 100%; animation: fotoShimmer 1.2s infinite;
+  }
+  figcaption {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 3px 7px; font-size: 10.5px; font-weight: 600; color: #fff;
+    background: linear-gradient(transparent, rgba(0,0,0,.6)); text-align: left;
+  }
+  &__borrar {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px; border: 0; border-radius: 50%;
+    background: rgba(15,23,42,.62); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s ease;
+    &:hover { background: #dc2626; }
+  }
+}
+
+@keyframes fotoShimmer { to { background-position: -200% 0; } }
+
+.foto-lightbox {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(4, 12, 28, .88); cursor: zoom-out;
+  animation: fotoFadeIn .16s ease;
+
+  img { max-width: 94vw; max-height: 90vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); cursor: default; }
+
+  &__cerrar {
+    position: absolute; top: 16px; right: 16px;
+    width: 42px; height: 42px; border: 0; border-radius: 50%;
+    background: rgba(255,255,255,.14); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    &:hover { background: rgba(255,255,255,.28); }
+  }
+}
+
+@keyframes fotoFadeIn { from { opacity: 0; } to { opacity: 1; } }

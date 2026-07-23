@@ -3,10 +3,10 @@ using Lavanderia.Api.Infrastructure;
 using Lavanderia.Api.Repositories;
 using Lavanderia.Api.Services;
 using Lavanderia.Api.Services.Facturacion;
-using Lavanderia.Api.Services.Pagos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.SqlClient;
@@ -18,6 +18,12 @@ using System.Threading.RateLimiting;
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024;
+    options.AddServerHeader = false;
+});
 
 // ------------------------------------------------------------
 // Configuracion
@@ -78,6 +84,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
 
 // Infra
 builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
@@ -107,24 +114,25 @@ builder.Services.AddTransient<IRefreshTokenRepository, RefreshTokenRepository>()
 builder.Services.AddTransient<IGerencialRepository, GerencialRepository>();
 builder.Services.AddTransient<IMotorizadoRepository, MotorizadoRepository>();
 builder.Services.AddTransient<IRutaRepartoRepository, RutaRepartoRepository>();
+builder.Services.AddTransient<IPedidoFotoRepository, PedidoFotoRepository>();
+builder.Services.AddSingleton<Lavanderia.Api.Services.IAlmacenamientoFotos, Lavanderia.Api.Services.AlmacenamientoFotosLocal>();
 
 // Facturacion electronica (SUNAT directo) + Pagos online: SecretProtector cifra credenciales
-// reales (clave SOL, password del certificado .pfx, secret key de Culqi) con las llaves de
+// reales (clave SOL, password del certificado .pfx y futuras claves de Izipay) con las llaves de
 // Data Protection. Sin persistirlas a disco, un reinicio/redeploy sin volumen fijo genera un
 // llavero nuevo y todo lo ya cifrado queda indescifrable (Desproteger lanza excepcion) hasta
 // que el negocio reconfigure sus credenciales a mano.
 var keysPath = builder.Configuration.GetValue<string>("DataProtection:KeysPath")
     ?? Path.Combine(builder.Environment.ContentRootPath, "keys");
-builder.Services.AddDataProtection()
+var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName("Lavanderia")
     .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi();
 builder.Services.AddTransient<SecretProtector>();
 builder.Services.AddHttpClient<SunatSoapClient>();
+builder.Services.AddHttpClient<GeocodificacionService>();
 builder.Services.AddTransient<IFacturacionElectronicaProvider, SunatDirectoProvider>();
 builder.Services.AddTransient<ComprobantePdfGenerator>();
-
-// Pagos online (Culqi)
-builder.Services.AddHttpClient<CulqiService>();
 
 // Limites defensivos para los puntos anonimos que pueden disparar trabajo costoso o
 // solicitudes hacia terceros. En produccion, el proxy debe preservar la IP remota real.
@@ -149,11 +157,21 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
             AutoReplenishment = true
         }));
-    options.AddPolicy("pago-publico", context => RateLimitPartition.GetFixedWindowLimiter(
+    options.AddPolicy("public-read", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
         _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 5,
+            PermitLimit = 120,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+
+    options.AddPolicy("public-write", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "desconocido",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
             AutoReplenishment = true
@@ -175,6 +193,7 @@ builder.Services.AddRateLimiter(options =>
 // Contexto de tenant (negocio/sede) leido de los claims del JWT actual
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<INegocioAccessValidator, NegocioAccessValidator>();
 
 // Servicios de dominio
 builder.Services.AddTransient<IPedidoService, PedidoService>();
@@ -194,6 +213,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwt.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SecretKey)),
             ClockSkew = TimeSpan.FromMinutes(1)
+        };
+        opts.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                if (context.Principal?.IsInRole("PROPIETARIO") == true) return;
+
+                var negocioClaim = context.Principal?.FindFirst("negocioId")?.Value;
+                if (!int.TryParse(negocioClaim, out var negocioId))
+                {
+                    context.Fail("El token no contiene un negocio valido.");
+                    return;
+                }
+
+                var validator = context.HttpContext.RequestServices.GetRequiredService<INegocioAccessValidator>();
+                if (!await validator.PuedeOperarAsync(negocioId, context.HttpContext.RequestAborted))
+                    context.Fail("La empresa o su suscripcion no estan habilitadas.");
+            }
         };
     });
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, ModuloAuthorizationHandler>();
@@ -240,6 +277,34 @@ builder.Services.AddTransient<DbInitializer>();
 // ------------------------------------------------------------
 var app = builder.Build();
 
+var forwardedHeaders = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    ForwardLimit = 1
+};
+// Cloudflare Tunnel reaches the app from localhost, while other reverse proxies may use a
+// private address. The origin itself only listens on loopback in the shared-demo launcher.
+forwardedHeaders.KnownNetworks.Clear();
+forwardedHeaders.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeaders);
+
+if (app.Environment.IsProduction()) app.UseHsts();
+
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var headers = context.Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self), payment=()";
+        headers["Content-Security-Policy"] = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:";
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -284,8 +349,28 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+app.MapGet("/health/live", () => Results.Ok(new { status = "ok", componente = "api" }))
     .AllowAnonymous();
+
+static async Task<IResult> Readiness(ISqlConnectionFactory factory, CancellationToken ct)
+{
+    try
+    {
+        await using var conn = factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1";
+        await cmd.ExecuteScalarAsync(ct);
+        return Results.Ok(new { status = "ok", baseDatos = "disponible" });
+    }
+    catch
+    {
+        return Results.Json(new { status = "degraded", baseDatos = "no disponible" }, statusCode: 503);
+    }
+}
+
+app.MapGet("/health/ready", Readiness).AllowAnonymous();
+app.MapGet("/health", Readiness).AllowAnonymous();
 app.MapControllers();
 
 // Cualquier ruta que no sea de la API ni un archivo estático la resuelve Angular

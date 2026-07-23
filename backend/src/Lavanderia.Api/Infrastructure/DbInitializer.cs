@@ -102,7 +102,7 @@ public class DbInitializer
     {
         var usuario = _config.GetValue<string>("SeedPropietario:Usuario") ?? "propietario";
 
-        var existente = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
+        var existente = await _usuarios.BuscarPropietarioPorUsuarioAsync(usuario, ct);
         if (existente is not null)
         {
             _log.LogInformation("Usuario propietario ya existe, no se crea de nuevo.");

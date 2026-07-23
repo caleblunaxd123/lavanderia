@@ -15,7 +15,7 @@ public interface IPedidoRepository
     Task RegistrarHistorialAsync(PedidoHistorial h, SqlConnection conn, SqlTransaction tx, CancellationToken ct = default);
     Task AvanzarAreaAsync(
         int pedidoId, int? areaEsperada, string estadoEsperado,
-        int? nuevaAreaId, string nuevoEstado, int usuarioId, string? nota,
+        int? nuevaAreaId, string nuevoEstado, int? usuarioId, string? nota, string actorTipo,
         int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorial>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task<Dictionary<string, int>> ContadoresPorEstadoAsync(int sedeId, CancellationToken ct = default);
@@ -27,7 +27,7 @@ public interface IPedidoRepository
     Task AnularAsync(int pedidoId, int usuarioId, string motivo, int sedeId, CancellationToken ct = default);
     Task DonarAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
     Task ReenviarAlmacenAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
-    Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int usuarioId, string? motivo, int sedeId, CancellationToken ct = default);
+    Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int? usuarioId, string? motivo, int sedeId, string actorTipo, CancellationToken ct = default);
     Task<List<PedidoAbandonado>> ListarListosAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
     Task<bool> ActualizarDestinoDeliveryAsync(int pedidoId, string direccion, string distrito, string? referencia,
         decimal? latitud, decimal? longitud, int sedeId, CancellationToken ct = default);
@@ -165,12 +165,16 @@ public class PedidoRepository : IPedidoRepository
         await using var cmd = conn.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = @"
-            INSERT INTO dbo.PedidoHistorial (PedidoId, AreaId, EstadoProceso, UsuarioId, Fecha, Nota, NotificadoWsp)
-            VALUES (@PedidoId, @AreaId, @EstadoProceso, @UsuarioId, @Fecha, @Nota, @NotificadoWsp);";
+            INSERT INTO dbo.PedidoHistorial
+                (PedidoId, AreaId, EstadoProceso, UsuarioId, ActorTipo, ActorDescripcion, Fecha, Nota, NotificadoWsp)
+            VALUES
+                (@PedidoId, @AreaId, @EstadoProceso, @UsuarioId, @ActorTipo, @ActorDescripcion, @Fecha, @Nota, @NotificadoWsp);";
         cmd.AddParam("@PedidoId", h.PedidoId);
         cmd.AddParam("@AreaId", h.AreaId);
         cmd.AddParam("@EstadoProceso", h.EstadoProceso);
         cmd.AddParam("@UsuarioId", h.UsuarioId);
+        cmd.AddParam("@ActorTipo", h.ActorTipo);
+        cmd.AddParam("@ActorDescripcion", h.ActorDescripcion);
         cmd.AddParam("@Fecha", h.Fecha);
         cmd.AddParam("@Nota", h.Nota);
         cmd.AddParam("@NotificadoWsp", h.NotificadoWsp);
@@ -258,13 +262,13 @@ public class PedidoRepository : IPedidoRepository
             where = filtro?.ToLowerInvariant() switch
             {
                 "pendientes" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
-                "listos"     => " WHERE p.SedeId = @SedeId AND p.EstadoProceso = 'LISTO' AND p.Anulado = 0 ",
+                "listos" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso = 'LISTO' AND p.Anulado = 0 ",
                 "entregados" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso = 'ENTREGADO' ",
                 // "Otros": entregados + anulados + donados (todo lo que no es un pedido activo)
-                "otros"      => " WHERE p.SedeId = @SedeId AND (p.EstadoProceso = 'ENTREGADO' OR p.Anulado = 1) ",
+                "otros" => " WHERE p.SedeId = @SedeId AND (p.EstadoProceso = 'ENTREGADO' OR p.Anulado = 1) ",
                 // "Últimos": los 500 más recientes sin filtro (limitado por paginación)
-                "ultimos"    => " WHERE p.SedeId = @SedeId ",
-                _            => " WHERE p.SedeId = @SedeId AND p.Anulado = 0 "
+                "ultimos" => " WHERE p.SedeId = @SedeId ",
+                _ => " WHERE p.SedeId = @SedeId AND p.Anulado = 0 "
             };
 
             if (string.Equals(filtro, "fecha", StringComparison.OrdinalIgnoreCase))
@@ -323,9 +327,9 @@ public class PedidoRepository : IPedidoRepository
         {
             "pendientes" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
             "en-proceso" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
-            "con-deuda"  => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.Anulado = 0 AND p.MontoPagado + 0.01 < p.Total ",
+            "con-deuda" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.Anulado = 0 AND p.MontoPagado + 0.01 < p.Total ",
             "entregados" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso = 'ENTREGADO' ",
-            _            => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId "
+            _ => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId "
         };
         cmd.AddParam("@ClienteId", clienteId);
         cmd.AddParam("@SedeId", sedeId);
@@ -401,7 +405,7 @@ public class PedidoRepository : IPedidoRepository
 
     public async Task AvanzarAreaAsync(
         int pedidoId, int? areaEsperada, string estadoEsperado,
-        int? nuevaAreaId, string nuevoEstado, int usuarioId, string? nota,
+        int? nuevaAreaId, string nuevoEstado, int? usuarioId, string? nota, string actorTipo,
         int sedeId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
@@ -467,7 +471,9 @@ public class PedidoRepository : IPedidoRepository
                 UPDATE dbo.Pedido
                    SET AreaActualId = @AreaId,
                        EstadoProceso = @Estado,
-                       FechaEntregaReal = CASE WHEN @Estado = 'ENTREGADO' THEN SYSDATETIME() ELSE FechaEntregaReal END
+                       FechaEntregaReal = CASE WHEN @Estado = 'ENTREGADO' THEN SYSDATETIME() ELSE FechaEntregaReal END,
+                       TokenRuta = CASE WHEN @Estado = 'ENTREGADO' THEN NULL ELSE TokenRuta END,
+                       TokenRutaExpiraEn = CASE WHEN @Estado = 'ENTREGADO' THEN NULL ELSE TokenRutaExpiraEn END
                  WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0";
             cmd.AddParam("@AreaId", nuevaAreaId);
             cmd.AddParam("@Estado", nuevoEstado);
@@ -481,6 +487,8 @@ public class PedidoRepository : IPedidoRepository
                 AreaId = nuevaAreaId,
                 EstadoProceso = nuevoEstado,
                 UsuarioId = usuarioId,
+                ActorTipo = actorTipo,
+                ActorDescripcion = actorTipo == "USUARIO" ? null : actorTipo,
                 Fecha = DateTime.Now,
                 Nota = nota
             }, conn, tx, ct);
@@ -501,7 +509,7 @@ public class PedidoRepository : IPedidoRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT h.Id, h.PedidoId, h.AreaId, a.Nombre AS AreaNombre,
-                   h.EstadoProceso, h.UsuarioId, h.Fecha, h.Nota, h.NotificadoWsp
+                   h.EstadoProceso, h.UsuarioId, h.ActorTipo, h.ActorDescripcion, h.Fecha, h.Nota, h.NotificadoWsp
             FROM dbo.PedidoHistorial h
             INNER JOIN dbo.Pedido p ON p.Id = h.PedidoId
             LEFT JOIN dbo.AreaLavado a ON a.Id = h.AreaId
@@ -517,6 +525,8 @@ public class PedidoRepository : IPedidoRepository
             AreaNombre = r.GetNullableString("AreaNombre"),
             EstadoProceso = r.GetString(r.GetOrdinal("EstadoProceso")),
             UsuarioId = r.GetNullableInt("UsuarioId"),
+            ActorTipo = r.GetString(r.GetOrdinal("ActorTipo")),
+            ActorDescripcion = r.GetNullableString("ActorDescripcion"),
             Fecha = r.GetDateTime(r.GetOrdinal("Fecha")),
             Nota = r.GetNullableString("Nota"),
             NotificadoWsp = r.GetBoolean(r.GetOrdinal("NotificadoWsp"))
@@ -739,7 +749,7 @@ public class PedidoRepository : IPedidoRepository
         }
     }
 
-    public async Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int usuarioId, string? motivo, int sedeId, CancellationToken ct = default)
+    public async Task ActualizarFechaEntregaAsync(int pedidoId, DateTime nuevaFecha, int? usuarioId, string? motivo, int sedeId, string actorTipo, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
@@ -786,6 +796,8 @@ public class PedidoRepository : IPedidoRepository
                 AreaId = areaId,
                 EstadoProceso = estado,
                 UsuarioId = usuarioId,
+                ActorTipo = actorTipo,
+                ActorDescripcion = actorTipo == "USUARIO" ? null : actorTipo,
                 Fecha = DateTime.Now,
                 Nota = nota
             }, conn, tx, ct);
@@ -856,7 +868,9 @@ public class PedidoRepository : IPedidoRepository
                 UPDATE dbo.Pedido
                    SET Anulado = 1,
                        EstadoProceso = 'ANULADO',
-                       MotivoAnulacion = @Motivo
+                       MotivoAnulacion = @Motivo,
+                       TokenRuta = NULL,
+                       TokenRutaExpiraEn = NULL
                  WHERE Id = @Id AND Anulado = 0 AND SedeId = @SedeId";
             cmd.AddParam("@Motivo", motivo);
             cmd.AddParam("@Id", pedidoId);
@@ -893,7 +907,7 @@ public class PedidoRepository : IPedidoRepository
             cmd.Transaction = tx;
             // Solo se dona lo que está en custodia (LISTO) y no anulado.
             cmd.CommandText = @"
-                UPDATE dbo.Pedido SET EstadoProceso = 'DONADO'
+            UPDATE dbo.Pedido SET EstadoProceso = 'DONADO', TokenRuta = NULL, TokenRutaExpiraEn = NULL
                  WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso = 'LISTO'";
             cmd.AddParam("@Id", pedidoId);
             cmd.AddParam("@SedeId", sedeId);

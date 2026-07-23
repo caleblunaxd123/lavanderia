@@ -2,7 +2,7 @@
 
 Sistema web para lavanderias en Peru. Cubre operacion diaria, caja, clientes,
 promociones, reportes, inventario, configuracion multiempresa/multisede y
-facturacion electronica SUNAT.
+facturacion electronica SUNAT (en pausa operativa) y preparacion de pagos Izipay.
 
 ## Estructura
 
@@ -20,7 +20,8 @@ Lavanderia/
 - Backend: .NET 9 Web API, ADO.NET (`Microsoft.Data.SqlClient`), SQL Server 2019+, JWT Bearer, BCrypt.
 - Frontend: Angular 20 standalone, Signals, lazy loading, interceptor JWT, guards por modulo.
 - PDF/QR: QuestPDF y QRCoder para tickets/comprobantes.
-- Facturacion electronica: generacion UBL, firma XML y envio SUNAT directo.
+- Facturacion electronica: modulo implementado pero en pausa operativa hasta que el negocio decida activarlo.
+- Pagos online: transicion a Izipay preparada; permanece desactivada hasta recibir credenciales y aprobar sandbox.
 - SaaS: `Negocio` por empresa, `Sede` por sucursal y rutas publicas tipo `/:empresaSlug/login`.
 
 ## Arranque local
@@ -62,6 +63,19 @@ npm start
 Abre `http://localhost:4200`. Para modo SaaS usa una ruta con slug, por ejemplo
 `http://localhost:4200/lavixa/login`.
 
+## Demo HTTPS compartida
+
+En Windows, ejecuta `C:\Users\Caleb\Iniciar-Lavixa.bat`. El lanzador:
+
+- aplica el script SQL de endurecimiento de forma idempotente;
+- compila Angular y sincroniza el frontend real dentro del API;
+- publica .NET en `Release` con secretos locales fuera del repositorio;
+- valida `/health/ready` y abre un Quick Tunnel HTTPS de Cloudflare;
+- copia al portapapeles la ruta `/{slug}/login` que se comparte con el cliente.
+
+Las URL `trycloudflare.com` cambian en cada arranque y son solo para pruebas. Para una
+publicacion estable se debe usar un Cloudflare Tunnel administrado con dominio propio.
+
 ## Modulos principales
 
 - Login, sesion JWT y seleccion de sede.
@@ -71,7 +85,8 @@ Abre `http://localhost:4200`. Para modo SaaS usa una ruta con slug, por ejemplo
 - Inventario: tarjetas de stock, busqueda, movimientos, compras y alertas de reposicion.
 - Reportes: ventas, pedidos, clientes, servicios y productividad.
 - Ajustes: negocio, sedes, usuarios, permisos, servicios, categorias, areas, tipos de gasto, puntos y plantillas.
-- Facturacion electronica: configuracion fiscal, certificado, emision y comprobantes.
+- Facturacion electronica: configuracion fiscal, certificado, emision y comprobantes (stand by).
+- Pagos online: configuracion segura de credenciales Izipay, aun sin activacion de cobros.
 
 ## Modelo SaaS
 
@@ -79,6 +94,7 @@ Cada empresa de lavanderia se modela como `Negocio` y puede tener una o varias `
 
 - La URL publica usa `/:empresaSlug/login`.
 - El login valida que el usuario pertenezca al negocio de la URL.
+- El mismo nombre de usuario puede existir en empresas diferentes; la unicidad es por negocio.
 - Los usuarios quedan vinculados a `NegocioId` y opcionalmente a una `SedeId`.
 - Un admin con `SedeId = NULL` puede elegir sede activa despues del login.
 - Catalogos y clientes viven por negocio.
@@ -100,6 +116,9 @@ El sistema esta adaptado a movil:
 - Los repositorios filtran por `NegocioId` o `SedeId` segun el modulo.
 - El cambio de sede respeta la sede fija del usuario.
 - Las credenciales SUNAT se protegen con Data Protection.
+- Las credenciales futuras de Izipay se cifran con Data Protection y nunca regresan al navegador.
+- Las suscripciones `VENCIDA` y `SUSPENDIDA` bloquean login, renovacion y tokens activos.
+- Los enlaces publicos tienen rate limiting; los enlaces del repartidor expiran y se revocan al entregar.
 - `appsettings.Development.json` queda fuera de Git para configuracion local sensible.
 
 ## Endpoints utiles
@@ -107,6 +126,7 @@ El sistema esta adaptado a movil:
 - `POST /api/auth/login`
 - `POST /api/auth/seleccionar-sede`
 - `GET /health`
+- `GET /health/live`, `GET /health/ready`
 - `GET /api/configuracion/publico/{slug}`
 - `GET /api/pedidos`, `POST /api/pedidos`, `POST /api/pedidos/{id}/avanzar`
 - `GET /api/insumos`, `POST /api/insumos/{id}/movimientos`
@@ -116,7 +136,8 @@ El sistema esta adaptado a movil:
 
 ```powershell
 dotnet build Lavanderia.sln
+dotnet test Lavanderia.sln
 cd frontend
 npm run build
-npm test -- --watch=false
+npm run test:ci
 ```

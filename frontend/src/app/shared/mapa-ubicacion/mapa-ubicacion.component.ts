@@ -1,5 +1,8 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import * as L from 'leaflet';
+import { environment } from '../../../environments/environment';
 import { IconComponent } from '../icon/icon.component';
 
 export interface UbicacionMapa {
@@ -9,6 +12,19 @@ export interface UbicacionMapa {
   direccion?: string;
   /** Distrito resuelto desde el mapa. */
   distrito?: string;
+  /** Forma en que el operador confirmó el destino. */
+  origen: 'busqueda' | 'mapa' | 'gps';
+  /** Etiqueta completa devuelta por el geocodificador, útil para validación visual. */
+  etiqueta?: string;
+}
+
+interface ResultadoDireccion {
+  id: string;
+  latitud: number;
+  longitud: number;
+  direccion?: string;
+  distrito?: string;
+  etiqueta: string;
 }
 
 @Component({
@@ -20,15 +36,21 @@ export interface UbicacionMapa {
 })
 export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestroy {
   private readonly zone = inject(NgZone);
+  private readonly http = inject(HttpClient);
 
   @ViewChild('mapa', { static: true }) mapaElement!: ElementRef<HTMLDivElement>;
   @Input() latitud: number | null = null;
   @Input() longitud: number | null = null;
+  @Input() direccion = '';
+  @Input() distrito = '';
+  @Input() confirmada = false;
   @Output() ubicacionChange = new EventEmitter<UbicacionMapa | null>();
 
   ubicando = false;
   geocodificando = false;
+  buscandoDireccion = false;
   errorUbicacion = '';
+  resultados: ResultadoDireccion[] = [];
 
   private mapa?: L.Map;
   private marcador?: L.CircleMarker;
@@ -46,7 +68,7 @@ export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestr
     }).addTo(this.mapa);
 
     this.mapa.on('click', ({ latlng }: L.LeafletMouseEvent) => {
-      this.zone.run(() => this.establecerPunto(latlng.lat, latlng.lng, true));
+      this.zone.run(() => this.establecerPunto(latlng.lat, latlng.lng, true, 'mapa'));
     });
 
     this.actualizarMarcador(false);
@@ -76,7 +98,7 @@ export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestr
     navigator.geolocation.getCurrentPosition(
       posicion => this.zone.run(() => {
         this.ubicando = false;
-        this.establecerPunto(posicion.coords.latitude, posicion.coords.longitude, true);
+        this.establecerPunto(posicion.coords.latitude, posicion.coords.longitude, true, 'gps');
       }),
       (err: GeolocationPositionError) => this.zone.run(() => {
         this.ubicando = false;
@@ -95,7 +117,52 @@ export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestr
     this.longitud = null;
     this.marcador?.remove();
     this.marcador = undefined;
+    this.resultados = [];
+    this.errorUbicacion = '';
     this.ubicacionChange.emit(null);
+  }
+
+  async buscarDireccion(): Promise<void> {
+    const direccion = this.direccion.trim();
+    const distrito = this.distrito.trim();
+    this.errorUbicacion = '';
+    this.resultados = [];
+
+    if (direccion.length < 4 || !distrito) {
+      this.errorUbicacion = 'Escribe una dirección y selecciona el distrito antes de buscar.';
+      return;
+    }
+
+    this.buscandoDireccion = true;
+    try {
+      const params = new HttpParams().set('direccion', direccion).set('distrito', distrito);
+      this.resultados = await firstValueFrom(this.http.get<ResultadoDireccion[]>(
+        `${environment.apiUrl}/geocodificacion/buscar`, { params }
+      ));
+      if (this.resultados.length === 0) {
+        this.errorUbicacion = 'El mapa no reconoció esa dirección. Revisa calle, número y distrito, o marca el punto manualmente.';
+      }
+    } catch {
+      this.errorUbicacion = 'No pudimos consultar el mapa. Intenta nuevamente o marca el punto manualmente.';
+    } finally {
+      this.buscandoDireccion = false;
+    }
+  }
+
+  seleccionarResultado(resultado: ResultadoDireccion): void {
+    this.latitud = resultado.latitud;
+    this.longitud = resultado.longitud;
+    this.errorUbicacion = '';
+    this.resultados = [];
+    this.actualizarMarcador(true);
+    this.ubicacionChange.emit({
+      latitud: resultado.latitud,
+      longitud: resultado.longitud,
+      direccion: this.direccion.trim(),
+      distrito: this.distrito.trim(),
+      etiqueta: resultado.etiqueta,
+      origen: 'busqueda'
+    });
   }
 
   ngOnDestroy(): void {
@@ -106,7 +173,12 @@ export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestr
     return Number.isFinite(this.latitud) && Number.isFinite(this.longitud);
   }
 
-  private establecerPunto(latitud: number, longitud: number, emitir: boolean): void {
+  private establecerPunto(
+    latitud: number,
+    longitud: number,
+    emitir: boolean,
+    origen: 'mapa' | 'gps' = 'mapa'
+  ): void {
     this.latitud = Number(latitud.toFixed(6));
     this.longitud = Number(longitud.toFixed(6));
     this.errorUbicacion = '';
@@ -119,33 +191,29 @@ export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestr
     this.reverseGeocode(lat, lon).then(dir => {
       this.zone.run(() => {
         this.geocodificando = false;
-        this.ubicacionChange.emit({ latitud: lat, longitud: lon, direccion: dir?.direccion, distrito: dir?.distrito });
+        if (!dir?.etiqueta) {
+          this.errorUbicacion = 'El punto quedó marcado, pero el mapa no pudo reconocer su dirección. Intenta nuevamente.';
+        }
+        this.ubicacionChange.emit({
+          latitud: lat, longitud: lon, direccion: dir?.direccion,
+          distrito: dir?.distrito, etiqueta: dir?.etiqueta, origen
+        });
       });
     }).catch(() => {
       this.zone.run(() => {
         this.geocodificando = false;
-        this.ubicacionChange.emit({ latitud: lat, longitud: lon });
+        this.errorUbicacion = 'El punto quedó marcado, pero el mapa no pudo reconocer su dirección. Intenta nuevamente.';
+        this.ubicacionChange.emit({ latitud: lat, longitud: lon, origen });
       });
     });
   }
 
   /** Reverse geocoding gratuito con Nominatim (OpenStreetMap) — sin API key. */
-  private async reverseGeocode(lat: number, lon: number): Promise<{ direccion?: string; distrito?: string } | null> {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 6000);
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1&accept-language=es`;
-      const resp = await fetch(url, { signal: ctrl.signal, headers: { 'Accept': 'application/json' } });
-      if (!resp.ok) return null;
-      const data = await resp.json();
-      const a = data.address ?? {};
-      const calle = [a.road, a.house_number].filter(Boolean).join(' ').trim();
-      const direccion = calle || (typeof data.display_name === 'string' ? data.display_name.split(',')[0] : undefined);
-      const distrito = a.city_district || a.suburb || a.town || a.quarter || a.neighbourhood || a.village || undefined;
-      return { direccion: direccion || undefined, distrito };
-    } finally {
-      clearTimeout(t);
-    }
+  private async reverseGeocode(lat: number, lon: number): Promise<{ direccion?: string; distrito?: string; etiqueta?: string } | null> {
+    const params = new HttpParams().set('latitud', lat).set('longitud', lon);
+    return firstValueFrom(this.http.get<ResultadoDireccion>(
+      `${environment.apiUrl}/geocodificacion/reversa`, { params }
+    ));
   }
 
   private actualizarMarcador(centrar: boolean): void {

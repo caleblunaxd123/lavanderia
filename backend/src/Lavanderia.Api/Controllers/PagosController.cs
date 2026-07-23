@@ -12,8 +12,7 @@ namespace Lavanderia.Api.Controllers;
 [Authorize(Policy = "Modulo:AJUSTES")]
 public class PagosController : TenantAwareControllerBase
 {
-    private static readonly Regex PublicKeyRegex = new("^pk_(test|live)_[A-Za-z0-9]+$", RegexOptions.Compiled);
-    private static readonly Regex SecretKeyRegex = new("^sk_(test|live)_[A-Za-z0-9]+$", RegexOptions.Compiled);
+    private static readonly Regex CodigoComercioValido = new("^[A-Za-z0-9_-]{3,50}$", RegexOptions.Compiled);
 
     private readonly IPagosRepository _pagos;
     private readonly SecretProtector _secretos;
@@ -31,10 +30,13 @@ public class PagosController : TenantAwareControllerBase
         var c = await _pagos.ObtenerConfigAsync(NegocioId, ct);
         return Ok(new ConfiguracionPagosDto
         {
-            Proveedor = c?.Proveedor ?? "CULQI",
+            Proveedor = "IZIPAY",
+            CodigoComercio = c?.CodigoComercio,
             PublicKey = c?.PublicKey,
-            Activo = c?.Activo ?? false,
-            TieneSecretKey = !string.IsNullOrEmpty(c?.SecretKeyCifrada)
+            Activo = false,
+            TieneApiKey = !string.IsNullOrEmpty(c?.ApiKeyCifrada),
+            TieneHashKey = !string.IsNullOrEmpty(c?.HashKeyCifrada),
+            IntegracionDisponible = false
         });
     }
 
@@ -42,57 +44,46 @@ public class PagosController : TenantAwareControllerBase
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> GuardarConfiguracion([FromBody] ConfiguracionPagosDto dto, CancellationToken ct)
     {
-        var existente = await _pagos.ObtenerConfigAsync(NegocioId, ct) ?? new ConfiguracionPagos { NegocioId = NegocioId };
-        var proveedor = string.IsNullOrWhiteSpace(dto.Proveedor) ? "CULQI" : dto.Proveedor.Trim().ToUpperInvariant();
-        var publicKey = string.IsNullOrWhiteSpace(dto.PublicKey) ? null : dto.PublicKey.Trim();
-        var secretKeyNueva = string.IsNullOrWhiteSpace(dto.SecretKeyNueva) ? null : dto.SecretKeyNueva.Trim();
+        if (!string.Equals(dto.Proveedor, "IZIPAY", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { mensaje = "El proveedor definido para la nueva integracion es Izipay." });
 
-        if (proveedor != "CULQI")
-            return BadRequest(new { mensaje = "El unico proveedor de pagos disponible actualmente es CULQI." });
-
-        if (publicKey is not null && !PublicKeyRegex.IsMatch(publicKey))
-            return BadRequest(new { mensaje = "La llave pública de Culqi no tiene un formato válido." });
-
-        if (secretKeyNueva is not null && !SecretKeyRegex.IsMatch(secretKeyNueva))
-            return BadRequest(new { mensaje = "La llave secreta de Culqi no tiene un formato válido." });
-
-        var entornoPublico = ObtenerEntorno(publicKey);
-        var entornoSecreto = ObtenerEntorno(secretKeyNueva);
-        if (entornoSecreto is null && !string.IsNullOrWhiteSpace(existente.SecretKeyCifrada))
-        {
-            try
+        if (dto.Activo)
+            return BadRequest(new
             {
-                entornoSecreto = ObtenerEntorno(_secretos.Desproteger(existente.SecretKeyCifrada));
-            }
-            catch
-            {
-                if (dto.Activo)
-                    return BadRequest(new { mensaje = "La llave secreta guardada no se puede leer. Ingresa una nueva antes de activar los pagos." });
-            }
-        }
-        if (entornoPublico is not null && entornoSecreto is not null && entornoPublico != entornoSecreto)
-            return BadRequest(new { mensaje = "La llave pública y la llave secreta deben ser del mismo entorno (test o live)." });
+                mensaje = "Izipay aun no puede activarse. Primero deben completarse la integracion, las credenciales y las pruebas en sandbox."
+            });
 
-        var tieneSecreta = secretKeyNueva is not null || !string.IsNullOrWhiteSpace(existente.SecretKeyCifrada);
-        if (dto.Activo && (publicKey is null || !tieneSecreta))
-            return BadRequest(new { mensaje = "Para activar pagos online debes guardar la llave pública y la llave secreta." });
+        var codigoComercio = Normalizar(dto.CodigoComercio);
+        var publicKey = Normalizar(dto.PublicKey);
+        var apiKeyNueva = Normalizar(dto.ApiKeyNueva);
+        var hashKeyNueva = Normalizar(dto.HashKeyNueva);
 
-        existente.Proveedor = proveedor;
+        if (codigoComercio is not null && !CodigoComercioValido.IsMatch(codigoComercio))
+            return BadRequest(new { mensaje = "El codigo de comercio contiene caracteres no validos." });
+        if (publicKey is not null && publicKey.Length < 50)
+            return BadRequest(new { mensaje = "La llave publica RSA de Izipay parece incompleta." });
+        if (apiKeyNueva is not null && apiKeyNueva.Length < 8)
+            return BadRequest(new { mensaje = "La clave API de Izipay parece incompleta." });
+        if (hashKeyNueva is not null && hashKeyNueva.Length < 8)
+            return BadRequest(new { mensaje = "La clave Hash de Izipay parece incompleta." });
+
+        var existente = await _pagos.ObtenerConfigAsync(NegocioId, ct)
+            ?? new ConfiguracionPagos { NegocioId = NegocioId };
+
+        existente.Proveedor = "IZIPAY";
+        existente.CodigoComercio = codigoComercio;
         existente.PublicKey = publicKey;
-        existente.Activo = dto.Activo;
-
-        if (secretKeyNueva is not null)
-            existente.SecretKeyCifrada = _secretos.Proteger(secretKeyNueva);
+        existente.Activo = false;
+        if (apiKeyNueva is not null) existente.ApiKeyCifrada = _secretos.Proteger(apiKeyNueva);
+        if (hashKeyNueva is not null) existente.HashKeyCifrada = _secretos.Proteger(hashKeyNueva);
 
         await _pagos.GuardarConfigAsync(existente, ct);
         return NoContent();
     }
 
-    private static string? ObtenerEntorno(string? key)
+    private static string? Normalizar(string? valor)
     {
-        if (string.IsNullOrWhiteSpace(key)) return null;
-        return key.Contains("_test_", StringComparison.OrdinalIgnoreCase) ? "test"
-            : key.Contains("_live_", StringComparison.OrdinalIgnoreCase) ? "live"
-            : null;
+        var limpio = valor?.Trim();
+        return string.IsNullOrWhiteSpace(limpio) ? null : limpio;
     }
 }

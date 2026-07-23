@@ -1,45 +1,64 @@
 <div class="login">
-  <div class="login__card">
-    <div class="login__brand">
+  <!-- Panel izquierdo: marca (producto o lavandería) -->
+  <aside class="login__brand-pane">
+    <div class="login__brand-inner">
       @if (logoUrl()) {
-        <img [src]="logoUrl()" [alt]="nombreNegocio()" />
+        <img [src]="logoUrl()" [alt]="nombreNegocio()" class="login__brand-logo" />
       } @else {
-        <div class="login__logo-fallback">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <div class="login__brand-drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M12 2c3 4 6 7.5 6 11.5A6 6 0 1 1 6 13.5C6 9.5 9 6 12 2Z" />
           </svg>
         </div>
       }
-      <h1>{{ nombreNegocio() }}</h1>
-      <p>{{ subtitulo() }}</p>
+      <h1 class="login__brand-name">{{ nombreNegocio() }}</h1>
+      <p class="login__brand-tagline">
+        {{ tieneSlug() ? 'Sistema de gestión' : productoTagline }}
+      </p>
     </div>
+    <p class="login__brand-foot">
+      Tecnología de <strong>{{ productoNombre }}</strong>
+    </p>
+  </aside>
 
-    <form (submit)="submit(); $event.preventDefault()">
-      <label for="login-usuario">Usuario</label>
-      <input id="login-usuario" type="text" [(ngModel)]="usuario" name="usuario"
-             autocomplete="username" placeholder="admin" required minlength="3" />
+  <!-- Panel derecho: formulario de ingreso -->
+  <main class="login__form-pane">
+    <div class="login__card">
+      <header class="login__head">
+        <h2>Iniciar sesión</h2>
+        <p>{{ subtitulo() }}</p>
+      </header>
 
-      <label for="login-password">Contraseña</label>
-      <div class="login__password">
-        <input id="login-password" [type]="mostrarPassword() ? 'text' : 'password'" [(ngModel)]="password"
-               name="password" autocomplete="current-password" placeholder="••••••••" required minlength="4" />
-        <button type="button" class="login__password-toggle" (click)="mostrarPassword.set(!mostrarPassword())"
-                [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-                [attr.title]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
-          <app-icon [name]="mostrarPassword() ? 'eye-off' : 'eye'" [size]="18"></app-icon>
+      <form (submit)="submit(); $event.preventDefault()">
+        <label for="login-usuario">Usuario</label>
+        <input id="login-usuario" type="text" [(ngModel)]="usuario" name="usuario"
+               autocomplete="username" placeholder="admin" required minlength="3" />
+
+        <label for="login-password">Contraseña</label>
+        <div class="login__password">
+          <input id="login-password" [type]="mostrarPassword() ? 'text' : 'password'" [(ngModel)]="password"
+                 name="password" autocomplete="current-password" placeholder="••••••••" required minlength="4" />
+          <button type="button" class="login__password-toggle" (click)="mostrarPassword.set(!mostrarPassword())"
+                  [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  [attr.title]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            <app-icon [name]="mostrarPassword() ? 'eye-off' : 'eye'" [size]="18"></app-icon>
+          </button>
+        </div>
+
+        @if (error()) {
+          <div class="login__error" role="alert">{{ error() }}</div>
+        }
+
+        <button type="submit" class="login__btn" [class.is-loading]="cargando()" [disabled]="cargando()"
+                [attr.aria-busy]="cargando()">
+          {{ cargando() ? 'Ingresando…' : 'Ingresar' }}
         </button>
-      </div>
+      </form>
 
-      @if (error()) {
-        <div class="login__error" role="alert">{{ error() }}</div>
-      }
-
-      <button type="submit" class="login__btn" [class.is-loading]="cargando()" [disabled]="cargando()"
-              [attr.aria-busy]="cargando()">
-        {{ cargando() ? 'Ingresando…' : 'Ingresar' }}
-      </button>
-    </form>
-
-    <p class="login__foot">Sistema de gestión de lavandería</p>
-  </div>
+      <p class="login__foot">
+        Al ingresar, si tu cuenta gestiona varias sedes, podrás elegir la sede después.
+      </p>
+      <p class="login__dev">{{ desarrolladorCredito }}</p>
+    </div>
+  </main>
 </div>

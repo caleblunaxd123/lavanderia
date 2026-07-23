@@ -9,11 +9,15 @@ import { InfoTooltipComponent } from '../../shared/info-tooltip/info-tooltip.com
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 const VACIO: ConfiguracionPagos = {
-  proveedor: 'CULQI',
+  proveedor: 'IZIPAY',
+  codigoComercio: '',
   publicKey: '',
-  secretKeyNueva: null,
+  apiKeyNueva: null,
+  hashKeyNueva: null,
   activo: false,
-  tieneSecretKey: false
+  tieneApiKey: false,
+  tieneHashKey: false,
+  integracionDisponible: false
 };
 
 @Component({
@@ -33,7 +37,10 @@ export class AjustesPagosComponent implements OnInit {
 
   ngOnInit() {
     this.svc.obtenerConfiguracion().subscribe({
-      next: c => { this.form.set({ ...c, secretKeyNueva: null }); this.cargando.set(false); },
+      next: c => {
+        this.form.set({ ...c, apiKeyNueva: null, hashKeyNueva: null });
+        this.cargando.set(false);
+      },
       error: () => { this.cargando.set(false); this.toast.error('No se pudo cargar la configuración.'); }
     });
   }

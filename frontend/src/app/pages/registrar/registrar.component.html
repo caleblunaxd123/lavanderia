@@ -8,9 +8,6 @@
         <button type="button" class="modalidad__btn" [class.is-active]="modalidad==='Recojo'" (click)="cambiarModalidad('Recojo')">Recojo</button>
         <button type="button" class="modalidad__btn" [class.is-active]="modalidad==='Delivery'" (click)="cambiarModalidad('Delivery')">Delivery</button>
       </div>
-      <button type="button" class="btn btn--primario" [disabled]="!puedeRegistrar" (click)="registrarOrden()">
-        {{ registrando() ? 'Registrando...' : 'Registrar' }}
-      </button>
     </div>
   </app-page-header>
 
@@ -218,12 +215,14 @@
               <label for="direccion-entrega">Dirección exacta *</label>
               <input id="direccion-entrega" type="text" maxlength="250"
                      placeholder="Av., calle, número, Mz., lote, urbanización"
-                     [(ngModel)]="direccionEntrega" />
+                     [ngModel]="direccionEntrega"
+                     (ngModelChange)="actualizarDireccionEntrega($event)" />
 
               <label for="distrito-entrega">Distrito *</label>
               <input id="distrito-entrega" type="text" maxlength="100" list="distritos-entrega-sugeridos"
                      placeholder="Escribe o selecciona un distrito"
-                     [(ngModel)]="distritoEntrega" />
+                     [ngModel]="distritoEntrega"
+                     (ngModelChange)="actualizarDistritoEntrega($event)" />
               <datalist id="distritos-entrega-sugeridos">
                 @for (distrito of distritos; track distrito) {
                   <option [value]="distrito"></option>
@@ -238,6 +237,9 @@
               <app-mapa-ubicacion
                 [latitud]="latitudEntrega"
                 [longitud]="longitudEntrega"
+                [direccion]="direccionEntrega"
+                [distrito]="distritoEntrega"
+                [confirmada]="ubicacionEntregaConfirmada"
                 (ubicacionChange)="actualizarUbicacion($event)">
               </app-mapa-ubicacion>
             </section>
@@ -274,11 +276,6 @@
 
           <p class="hint"><app-icon name="calendar" [size]="13"></app-icon> <strong>{{ fechaEntregaEstimada() | date:'EEEE d MMM, h:mm a' }}</strong></p>
           <p class="hint hint--sub">Si hay demora, luego ajustas la fecha en el detalle del pedido y el cliente recibe el nuevo horario por WhatsApp.</p>
-
-          <label class="label-obs">Observaciones del pedido <small class="hint">(opcional)</small></label>
-          <textarea rows="2" [(ngModel)]="observacionesPedido"
-            placeholder="Indicaciones generales de todo el pedido (ej. entregar solo al titular, no usar suavizante...)"></textarea>
-          <p class="hint hint--sub">Se imprime en el ticket y la ve el personal de producción.</p>
         </div>
 
         <div class="card paso">
@@ -364,6 +361,22 @@
           </label>
         </div>
       </div>
+    </div>
+
+    <!-- Barra de acción fija: siempre visible (web) y al final del formulario (móvil) -->
+    <div class="barra-registrar">
+      <div class="barra-registrar__total">
+        <span>Total del pedido</span>
+        <strong>S/ {{ totalFinal().toFixed(2) }}</strong>
+      </div>
+      @if (!puedeRegistrar && validacionPedido) {
+        <span class="barra-registrar__aviso">{{ validacionPedido }}</span>
+      }
+      <button type="button" class="btn btn--primario barra-registrar__btn"
+        [disabled]="!puedeRegistrar" (click)="registrarOrden()">
+        <app-icon name="check" [size]="17"></app-icon>
+        {{ registrando() ? 'Registrando…' : 'Registrar pedido' }}
+      </button>
     </div>
   }
 </div>

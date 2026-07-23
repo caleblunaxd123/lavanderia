@@ -33,6 +33,7 @@ public class RepartidorController : ControllerBase
     }
 
     [HttpGet("{token:guid}")]
+    [EnableRateLimiting("public-read")]
     public async Task<ActionResult<RepartidorPedidoDto>> Obtener(Guid token, CancellationToken ct)
     {
         var r = await _rutas.ObtenerPorTokenAsync(token, ct);
@@ -62,6 +63,7 @@ public class RepartidorController : ControllerBase
     }
 
     [HttpPost("{token:guid}/iniciar-ruta")]
+    [EnableRateLimiting("public-write")]
     public async Task<IActionResult> IniciarRuta(Guid token, CancellationToken ct)
     {
         var r = await _rutas.ObtenerPorTokenAsync(token, ct);
@@ -114,6 +116,7 @@ public class RepartidorController : ControllerBase
     }
 
     [HttpPost("{token:guid}/entregado")]
+    [EnableRateLimiting("public-write")]
     public async Task<IActionResult> Entregado(Guid token, CancellationToken ct)
     {
         var r = await _rutas.ObtenerPorTokenAsync(token, ct);
@@ -126,8 +129,9 @@ public class RepartidorController : ControllerBase
 
         try
         {
-            await _pedidoService.AvanzarSiguienteAreaAsync(r.PedidoId, r.UsuarioId, r.SedeId, recibidoPor: null, ct);
+            await _pedidoService.AvanzarSiguienteAreaAsync(r.PedidoId, null, r.SedeId, null, "REPARTIDOR", ct);
             await _rutas.MarcarNotifAsync(r.PedidoId, "llegada", ct);
+            await _rutas.RevocarTokenAsync(r.PedidoId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)

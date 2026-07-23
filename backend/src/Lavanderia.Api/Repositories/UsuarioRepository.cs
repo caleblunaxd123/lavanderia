@@ -6,6 +6,8 @@ namespace Lavanderia.Api.Repositories;
 public interface IUsuarioRepository
 {
     Task<Usuario?> BuscarPorUsuarioAsync(string usuario, CancellationToken ct = default);
+    Task<Usuario?> BuscarPorUsuarioAsync(string usuario, int negocioId, CancellationToken ct = default);
+    Task<Usuario?> BuscarPropietarioPorUsuarioAsync(string usuario, CancellationToken ct = default);
     /// <summary>Sin filtro de negocio: solo para que un usuario lea/renueve SU PROPIA sesión (Me/SeleccionarSede).</summary>
     Task<Usuario?> ObtenerPorIdAsync(int id, CancellationToken ct = default);
     /// <summary>Con filtro de negocio: para el CRUD de administración (evita IDOR entre negocios).</summary>
@@ -52,7 +54,37 @@ public class UsuarioRepository : IUsuarioRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = BaseSelect + " WHERE u.Usuario = @Usuario";
+        cmd.CommandText = BaseSelect + @"
+            WHERE u.Usuario = @Usuario
+              AND u.Activo = 1
+              AND 1 = (
+                  SELECT COUNT(1)
+                  FROM dbo.Usuario ux
+                  WHERE ux.Usuario = @Usuario AND ux.Activo = 1
+              )";
+        cmd.AddParam("@Usuario", usuario);
+        return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<Usuario?> BuscarPorUsuarioAsync(string usuario, int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = BaseSelect + " WHERE u.Usuario = @Usuario AND u.NegocioId = @NegocioId";
+        cmd.AddParam("@Usuario", usuario);
+        cmd.AddParam("@NegocioId", negocioId);
+        return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<Usuario?> BuscarPropietarioPorUsuarioAsync(string usuario, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = BaseSelect + @"
+            INNER JOIN dbo.Negocio n ON n.Id = u.NegocioId
+            WHERE u.Usuario = @Usuario AND r.Codigo = 'PROPIETARIO' AND n.Slug = 'plataforma-interna'";
         cmd.AddParam("@Usuario", usuario);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
     }

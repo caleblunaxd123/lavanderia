@@ -51,7 +51,22 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest req, CancellationToken ct)
     {
-        var usuario = await _usuarios.BuscarPorUsuarioAsync(req.Usuario, ct);
+        Negocio? negocioDeLaUrl = null;
+        Usuario? usuario;
+
+        if (!string.IsNullOrWhiteSpace(req.EmpresaSlug))
+        {
+            negocioDeLaUrl = await _negocios.ObtenerPorSlugIncluyendoInactivoAsync(req.EmpresaSlug.Trim(), ct);
+            usuario = negocioDeLaUrl is null
+                ? null
+                : await _usuarios.BuscarPorUsuarioAsync(req.Usuario.Trim(), negocioDeLaUrl.Id, ct);
+        }
+        else
+        {
+            // Conserva el acceso historico por /login cuando el usuario es unico.
+            // Si el nombre existe en varios tenants, la ruta con slug evita ambiguedades.
+            usuario = await _usuarios.BuscarPorUsuarioAsync(req.Usuario.Trim(), ct);
+        }
         if (usuario is null || !usuario.Activo)
             return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
 
@@ -59,17 +74,18 @@ public class AuthController : ControllerBase
             return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
 
         var negocioUsuario = await _negocios.ObtenerPorIdAsync(usuario.NegocioId, ct);
-        if (negocioUsuario is null || (!negocioUsuario.Activo && usuario.RolCodigo != "PROPIETARIO"))
+        if (usuario.RolCodigo != "PROPIETARIO" && !NegocioAccessRules.PuedeOperar(negocioUsuario))
         {
-            var contacto = string.IsNullOrWhiteSpace(_celularPlataforma) ? "" : $" al Número {_celularPlataforma}";
-            return Unauthorized(new { mensaje = $"La empresa está suspendida. Contacta al administrador de la plataforma{contacto}." });
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                mensaje = NegocioAccessRules.MensajeBloqueo(negocioUsuario, _celularPlataforma)
+            });
         }
 
         // Si la URL trae el slug de una empresa, el usuario autenticado debe pertenecer a ella.
         // Sin esto, cualquier usuario global podria "entrar" visualmente por la URL de otra empresa.
         if (!string.IsNullOrWhiteSpace(req.EmpresaSlug))
         {
-            var negocioDeLaUrl = await _negocios.ObtenerPorSlugAsync(req.EmpresaSlug, ct);
             if (negocioDeLaUrl is null || negocioDeLaUrl.Id != usuario.NegocioId)
                 return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
         }
@@ -108,10 +124,13 @@ public class AuthController : ControllerBase
             return Unauthorized(new { mensaje = "Sesión expirada. Inicia sesión de nuevo." });
 
         var negocio = await _negocios.ObtenerPorIdAsync(usuario.NegocioId, ct);
-        if (negocio is null || (!negocio.Activo && usuario.RolCodigo != "PROPIETARIO"))
+        if (usuario.RolCodigo != "PROPIETARIO" && !NegocioAccessRules.PuedeOperar(negocio))
         {
             await _refreshTokens.RevocarAsync(hash, ct);
-            return Unauthorized(new { mensaje = "La empresa está suspendida. Contacta al administrador de la plataforma." });
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                mensaje = NegocioAccessRules.MensajeBloqueo(negocio, _celularPlataforma)
+            });
         }
 
         if (usuario.SedeId is int sedeId)

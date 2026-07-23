@@ -1,6 +1,8 @@
 @if (volverTexto) {
-  <button type="button" class="ph__volver" (click)="volver.emit()">
-    <app-icon name="arrow-left" [size]="14"></app-icon> {{ volverTexto }}
+  <button type="button" class="ph__volver" (click)="volver.emit()"
+    [attr.aria-label]="'Volver a ' + volverTexto" [attr.title]="'Volver a ' + volverTexto">
+    <span class="ph__volver-flecha"><app-icon name="arrow-left" [size]="16"></app-icon></span>
+    <span>Volver a {{ volverTexto }}</span>
   </button>
 }
 <header class="ph" [attr.data-color]="color">

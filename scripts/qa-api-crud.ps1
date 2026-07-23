@@ -222,10 +222,8 @@ try {
     }
     Test-Call "Pagos online: consultar configuracion" GET "/api/pagos/configuracion" -Expected 200 | Out-Null
     Test-Call "Pagos online: rechaza proveedor no soportado" PUT "/api/pagos/configuracion" @{ proveedor = "PAYPAL"; activo = $false } -Expected 400 | Out-Null
-    Test-Call "Pagos online: rechaza llave invalida" PUT "/api/pagos/configuracion" @{ proveedor = "CULQI"; publicKey = "invalida"; activo = $false } -Expected 400 | Out-Null
-    $testPublicKey = "pk_" + "test_Qa123"
-    $testSecretKey = "sk_" + "live_Qa123"
-    Test-Call "Pagos online: rechaza entornos mezclados" PUT "/api/pagos/configuracion" @{ proveedor = "CULQI"; publicKey = $testPublicKey; secretKeyNueva = $testSecretKey; activo = $false } -Expected 400 | Out-Null
+    Test-Call "Pagos online: rechaza llave RSA incompleta" PUT "/api/pagos/configuracion" @{ proveedor = "IZIPAY"; publicKey = "invalida"; activo = $false } -Expected 400 | Out-Null
+    Test-Call "Pagos online: bloquea activacion pendiente" PUT "/api/pagos/configuracion" @{ proveedor = "IZIPAY"; activo = $true } -Expected 400 | Out-Null
     Test-Call "Facturacion: consultar configuracion" GET "/api/facturacion/configuracion" -Expected 200 | Out-Null
     Test-Call "Facturacion: rechaza ambiente invalido" PUT "/api/facturacion/configuracion" @{ ambiente = "OTRO"; serieBoleta = "B001"; serieFactura = "F001"; activo = $false } -Expected 400 | Out-Null
     Test-Call "Facturacion: rechaza RUC no numerico" PUT "/api/facturacion/configuracion" @{ rucEmisor = "ABCDEFGHIJK"; ambiente = "BETA"; serieBoleta = "B001"; serieFactura = "F001"; activo = $false } -Expected 400 | Out-Null

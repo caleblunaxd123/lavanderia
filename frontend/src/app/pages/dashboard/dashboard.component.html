@@ -147,7 +147,7 @@
           } @else {
             <div class="alert-list">
               @for (alerta of alertas(); track alerta.clave) {
-                <a [routerLink]="alerta.ruta" class="alert-item" [class]="'alert-item alert-item--' + alerta.nivel">
+                <a [routerLink]="alerta.ruta" [queryParams]="alerta.queryParams ?? null" class="alert-item" [class]="'alert-item alert-item--' + alerta.nivel">
                   <span class="alert-item__icon"><app-icon [name]="alerta.icono" [size]="18"></app-icon></span>
                   <span class="alert-item__copy"><strong>{{ alerta.titulo }}</strong><small>{{ alerta.detalle }}</small></span>
                   <span class="alert-item__action">{{ alerta.accion }}<app-icon name="chevron-right" [size]="16"></app-icon></span>

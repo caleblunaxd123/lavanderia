@@ -32,7 +32,8 @@ export interface SeguimientoPedido {
   montoPagado: number;
   saldo: number;
   requierePago: boolean;
-  publicKeyCulqi?: string | null;
+  proveedorPagos: string;
+  mensajePagoOnline?: string | null;
   motorizadoNombre?: string | null;
   motorizadoCelular?: string | null;
   puedeReprogramar: boolean;
@@ -44,15 +45,17 @@ export interface SeguimientoPedido {
   motorizadoUbicadoEn?: string | null;
   distanciaMetros?: number | null;
   etaMinutos?: number | null;
+  // Fotos de evidencia visibles para el cliente
+  fotos?: SeguimientoFoto[];
+}
+
+export interface SeguimientoFoto {
+  id: number;
+  momento: string;
+  fecha: string;
 }
 
 export type EstadoRuta = 'SIN_RUTA' | 'EN_RUTA' | 'CERCA' | 'LLEGO' | 'ENTREGADO';
-
-export interface ResultadoCobro {
-  exito: boolean;
-  mensaje?: string | null;
-  saldoPendiente: number;
-}
 
 /** Consumido por la página pública de seguimiento/pago — sin sesión de empleado. */
 @Injectable({ providedIn: 'root' })
@@ -62,10 +65,6 @@ export class PagoPublicoService {
 
   obtener(token: string) {
     return this.http.get<SeguimientoPedido>(`${this.base}/${token}`);
-  }
-
-  cobrar(token: string, culqiTokenId: string, email: string) {
-    return this.http.post<ResultadoCobro>(`${this.base}/${token}/cobrar`, { culqiTokenId, email });
   }
 
   reprogramar(token: string, nuevaFecha: string) {

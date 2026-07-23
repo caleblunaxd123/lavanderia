@@ -8,6 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { AlertasGlobalesService } from '../../core/services/alertas-globales.service';
 import { SedesService } from '../../core/services/sedes.service';
+import { DESARROLLADOR_CREDITO } from '../../core/util/marca';
 import { IconComponent, IconName } from '../../shared/icon/icon.component';
 
 interface SubLink {
@@ -40,6 +41,7 @@ export class HeaderComponent implements OnInit {
 
   readonly usuario = this.auth.usuario;
   readonly negocio = computed(() => this.config.configuracion());
+  readonly desarrolladorCredito = DESARROLLADOR_CREDITO;
 
   readonly menuAbierto = signal(false);
   readonly urlActual = signal(this.router.url);

@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, DestroyRef, ElementRef, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
 import { AreaLavado, Pedido, PedidoAbandonado, Servicio } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
@@ -21,6 +21,7 @@ import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
 import { debounceTime } from 'rxjs';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
+import { FotoPedido, FotosPedidoService, MomentoFoto } from '../../core/services/fotos-pedido.service';
 
 type Filtro = 'pendientes' | 'otros' | 'ultimos' | 'fecha';
 type TipoFecha = 'ingreso' | 'entrega';
@@ -50,7 +51,21 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly facturacionSvc = inject(FacturacionService);
   private readonly motorizadosSvc = inject(MotorizadosService);
   private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly fotosSvc = inject(FotosPedidoService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+
+  // ---- Fotos de evidencia del pedido abierto ----
+  readonly fotosPedido = signal<Array<FotoPedido & { url: string | null }>>([]);
+  readonly cargandoFotos = signal(false);
+  readonly subiendoFoto = signal(false);
+  readonly momentoFotoNueva = signal<MomentoFoto>('RECEPCION');
+  readonly fotoAmpliada = signal<string | null>(null);
+
+  // Modo "fuera de tiempo": llega desde la alerta del inicio (?ver=fuera-de-tiempo).
+  // Muestra SOLO los pedidos cuya fecha de entrega/recojo ya venció.
+  readonly soloFueraDeTiempo = signal(false);
   readonly emitiendoComprobante = signal(false);
 
   readonly pedidos = signal<Pedido[]>([]);
@@ -99,6 +114,18 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     return `Filtrando por fecha de ${etiquetaCampo}: ${desde} a ${hasta}`;
   });
 
+  // Explicación corta del filtro activo, para que se entienda a qué se refiere cada uno.
+  readonly descripcionFiltro = computed<string | null>(() => {
+    if (this.busqueda().trim()) return null;
+    switch (this.filtro()) {
+      case 'ultimos': return 'Los pedidos más recientes, de todos los estados.';
+      case 'pendientes': return 'Pedidos aún en proceso: recibidos, en producción o listos sin entregar.';
+      case 'otros': return 'Pedidos ya entregados o anulados (fuera del flujo activo).';
+      case 'fecha': return null; // el resumen del rango ya se muestra en su propia tarjeta
+      default: return null;
+    }
+  });
+
   claseFila(p: Pedido): string {
     if (p.anulado) return 'fila--anulado';
     if (p.estadoProceso === 'ENTREGADO') return 'fila--entregado';
@@ -119,6 +146,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     const f = this.filtrosColumna();
     const norm = (s: string) => (s || '').toLowerCase();
     return this.pedidos().filter(p =>
+      (!this.soloFueraDeTiempo() || this.entregaVencida(p)) &&
       (!f.numero || String(p.numero).includes(f.numero.trim())) &&
       (!f.cliente || norm(p.clienteNombre ?? '').includes(norm(f.cliente))) &&
       (!f.dni || norm(p.clienteDni ?? '').includes(norm(f.dni))) &&
@@ -127,6 +155,16 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       (!f.estado || norm(p.estadoProceso).includes(norm(f.estado))) &&
       (!f.pago || norm(p.estadoPago).includes(norm(f.pago)))
     );
+  });
+
+  // Total y saldo por cobrar del conjunto "fuera de tiempo" (para el resumen del banner).
+  readonly resumenFueraDeTiempo = computed(() => {
+    const lista = this.pedidosFiltrados();
+    return {
+      cantidad: lista.length,
+      totalDinero: lista.reduce((acc, p) => acc + (p.total ?? 0), 0),
+      saldoPorCobrar: lista.reduce((acc, p) => acc + this.saldoPedido(p), 0),
+    };
   });
 
   readonly kanbanColumns = computed<KanbanColumn[]>(() => {
@@ -273,11 +311,37 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.catalogos.areasLavado().subscribe(a => this.areas.set(a));
     this.catalogos.servicios().subscribe(s => this.servicios.set(s));
     this.whatsapp.cargar();
-    this.recargar();
     this.cargarAbandonados();
     this.cargarMetaMensual();
     this.motorizadosSvc.listarActivos().subscribe(m => this.motorizadosActivos.set(m));
     this.timerId = setInterval(() => this.refrescarDinamicamente(), 10_000);
+
+    // La carga inicial (y los cambios de ?ver=…) dependen del query param: si viene
+    // "fuera-de-tiempo" (desde la alerta del inicio) mostramos solo los pedidos vencidos.
+    let primera = true;
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      const fuera = params.get('ver') === 'fuera-de-tiempo';
+      if (fuera) {
+        this.soloFueraDeTiempo.set(true);
+        this.filtro.set('pendientes');
+        this.busqueda.set('');
+        this.vista.set('lista');
+        this.tamanoPagina.set(100);
+        this.pagina.set(1);
+        this.recargar();
+      } else {
+        const estaba = this.soloFueraDeTiempo();
+        this.soloFueraDeTiempo.set(false);
+        if (estaba) this.tamanoPagina.set(15);
+        if (primera || estaba) this.recargar();
+      }
+      primera = false;
+    });
+  }
+
+  /** Sale del modo "fuera de tiempo" volviendo al listado normal. */
+  salirFueraDeTiempo() {
+    this.router.navigate([], { relativeTo: this.route, queryParams: {} });
   }
 
   ngAfterViewInit() {
@@ -343,6 +407,12 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   cambiarFiltro(f: Filtro) {
+    // Elegir un filtro sale del modo "fuera de tiempo" y limpia el query param.
+    if (this.soloFueraDeTiempo()) {
+      this.soloFueraDeTiempo.set(false);
+      this.tamanoPagina.set(15);
+      this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+    }
     this.filtro.set(f);
     this.busqueda.set('');
     this.pagina.set(1);
@@ -425,9 +495,81 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       next: h => { this.historial.set(h); this.cargandoHistorial.set(false); },
       error: () => this.cargandoHistorial.set(false)
     });
+    this.cargarFotos(p.id);
   }
 
-  cerrarDetalle() { this.pedidoAbierto.set(null); }
+  cerrarDetalle() {
+    this.liberarUrlsFotos();
+    this.fotosPedido.set([]);
+    this.fotoAmpliada.set(null);
+    this.pedidoAbierto.set(null);
+  }
+
+  // ---------- Fotos de evidencia ----------
+  private liberarUrlsFotos() {
+    for (const f of this.fotosPedido()) { if (f.url) URL.revokeObjectURL(f.url); }
+  }
+
+  private cargarFotos(pedidoId: number) {
+    this.liberarUrlsFotos();
+    this.fotosPedido.set([]);
+    this.cargandoFotos.set(true);
+    this.fotosSvc.listar(pedidoId).subscribe({
+      next: fotos => {
+        this.fotosPedido.set(fotos.map(f => ({ ...f, url: null })));
+        this.cargandoFotos.set(false);
+        for (const f of fotos) {
+          this.fotosSvc.urlArchivo(pedidoId, f.id).subscribe({
+            next: url => this.fotosPedido.update(lista => lista.map(x => x.id === f.id ? { ...x, url } : x)),
+            error: () => {}
+          });
+        }
+      },
+      error: () => this.cargandoFotos.set(false)
+    });
+  }
+
+  async onFotoSeleccionada(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    const p = this.pedidoAbierto();
+    if (!archivo || !p) return;
+    if (!archivo.type.startsWith('image/')) {
+      this.toast.advertencia('Selecciona una imagen.');
+      input.value = '';
+      return;
+    }
+    this.subiendoFoto.set(true);
+    try {
+      const comprimida = await this.fotosSvc.comprimir(archivo);
+      this.fotosSvc.subir(p.id, comprimida, this.momentoFotoNueva()).subscribe({
+        next: () => { this.subiendoFoto.set(false); this.toast.exito('Foto agregada'); this.cargarFotos(p.id); },
+        error: (err: HttpErrorResponse) => { this.subiendoFoto.set(false); this.toast.desdeHttp(err, 'No se pudo subir la foto.'); }
+      });
+    } catch {
+      this.subiendoFoto.set(false);
+      this.toast.error('No se pudo procesar la imagen.');
+    }
+    input.value = '';
+  }
+
+  eliminarFoto(fotoId: number) {
+    const p = this.pedidoAbierto();
+    if (!p) return;
+    this.fotosSvc.eliminar(p.id, fotoId).subscribe({
+      next: () => {
+        const f = this.fotosPedido().find(x => x.id === fotoId);
+        if (f?.url) URL.revokeObjectURL(f.url);
+        this.fotosPedido.update(lista => lista.filter(x => x.id !== fotoId));
+        this.toast.info('Foto eliminada');
+      },
+      error: () => this.toast.error('No se pudo eliminar la foto.')
+    });
+  }
+
+  etiquetaMomento(m: MomentoFoto): string {
+    return m === 'RECEPCION' ? 'Recepción' : m === 'ENTREGA' ? 'Entrega' : 'Otro';
+  }
 
   avanzarEtapa(p: Pedido) {
     if (this.flujoInconsistente(p)) {
@@ -526,6 +668,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   referenciaEntregaConversion = '';
   latitudEntregaConversion: number | null = null;
   longitudEntregaConversion: number | null = null;
+  ubicacionConversionConfirmada = false;
 
   asignarMotorizado(p: Pedido, motorizadoIdTexto: string) {
     if (this.asignandoMotorizado()) return;
@@ -552,6 +695,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.referenciaEntregaConversion = p.referenciaEntrega ?? '';
     this.latitudEntregaConversion = p.latitudEntrega ?? null;
     this.longitudEntregaConversion = p.longitudEntrega ?? null;
+    this.ubicacionConversionConfirmada = p.latitudEntrega != null && p.longitudEntrega != null;
     this.modalDestinoDelivery.set(true);
   }
 
@@ -564,6 +708,19 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   actualizarUbicacionConversion(ubicacion: UbicacionMapa | null) {
     this.latitudEntregaConversion = ubicacion?.latitud ?? null;
     this.longitudEntregaConversion = ubicacion?.longitud ?? null;
+    this.ubicacionConversionConfirmada = !!ubicacion?.etiqueta;
+    if (ubicacion?.direccion) this.direccionEntregaConversion = ubicacion.direccion;
+    if (ubicacion?.distrito) this.distritoEntregaConversion = ubicacion.distrito;
+  }
+
+  actualizarDireccionConversion(valor: string) {
+    if (valor !== this.direccionEntregaConversion) this.ubicacionConversionConfirmada = false;
+    this.direccionEntregaConversion = valor;
+  }
+
+  actualizarDistritoConversion(valor: string) {
+    if (valor !== this.distritoEntregaConversion) this.ubicacionConversionConfirmada = false;
+    this.distritoEntregaConversion = valor;
   }
 
   confirmarConversionDelivery() {
@@ -571,6 +728,10 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!p || this.convirtiendoDelivery()) return;
     if (!this.direccionEntregaConversion.trim() || !this.distritoEntregaConversion) {
       this.toast.advertencia('Completa la dirección exacta y el distrito de entrega.');
+      return;
+    }
+    if (this.latitudEntregaConversion === null || this.longitudEntregaConversion === null || !this.ubicacionConversionConfirmada) {
+      this.toast.advertencia('Confirma la dirección y el punto exacto en el mapa.');
       return;
     }
     if (this.convirtiendoDelivery()) return;

@@ -93,7 +93,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.AvanzarSiguienteAreaAsync(id, UsuarioId, SedeId!.Value, req?.RecibidoPor, ct);
+            await _service.AvanzarSiguienteAreaAsync(id, UsuarioId, SedeId!.Value, req?.RecibidoPor, "USUARIO", ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -220,7 +220,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.CambiarFechaEntregaAsync(id, req, UsuarioId, SedeId!.Value, ct);
+            await _service.CambiarFechaEntregaAsync(id, req, UsuarioId, SedeId!.Value, "USUARIO", ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -290,6 +290,8 @@ public class PedidosController : TenantAwareControllerBase
         if (ruta is null) return NotFound(new { mensaje = "Pedido no encontrado." });
         if (!string.Equals(ruta.Modalidad, "Delivery", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { mensaje = "El seguimiento del repartidor solo aplica a pedidos Delivery." });
+        if (ruta.Anulado || ruta.EstadoProceso is "ENTREGADO" or "ANULADO" or "DONADO")
+            return BadRequest(new { mensaje = "El pedido ya finalizó y no puede generar un enlace de repartidor." });
 
         var token = await _rutas.AsegurarTokenAsync(id, SedeId!.Value, ct);
         return Ok(new LinkRepartidorDto(token));

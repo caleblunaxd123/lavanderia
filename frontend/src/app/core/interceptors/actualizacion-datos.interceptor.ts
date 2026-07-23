@@ -19,7 +19,7 @@ function canalesPara(url: string): CanalActualizacion[] {
   const ruta = url.toLowerCase();
   if (ruta.includes('/auth/')) return [];
   if (ruta.includes('/repartidor/')) return ['reparto', 'pedidos', 'dashboard'];
-  if (ruta.includes('/pago-publico/') || ruta.includes('/pagos/culqi')) return ['pedidos', 'dashboard', 'caja', 'clientes'];
+  if (ruta.includes('/pago-publico/')) return ['pedidos', 'dashboard', 'caja', 'clientes'];
   if (ruta.includes('/pedidos')) return ['pedidos', 'dashboard', 'caja', 'clientes', 'facturacion'];
   if (ruta.includes('/clientes')) return ['clientes', 'dashboard'];
   if (ruta.includes('/insumos')) return ['inventario', 'dashboard', 'caja'];

@@ -4,10 +4,14 @@ import { environment } from '../../../environments/environment';
 
 export interface ConfiguracionPagos {
   proveedor: string;
+  codigoComercio?: string | null;
   publicKey?: string | null;
-  secretKeyNueva?: string | null;
+  apiKeyNueva?: string | null;
+  hashKeyNueva?: string | null;
   activo: boolean;
-  tieneSecretKey: boolean;
+  tieneApiKey: boolean;
+  tieneHashKey: boolean;
+  integracionDisponible: boolean;
 }
 
 /** Configuración (ADMIN) de la pasarela de pagos online del negocio. */

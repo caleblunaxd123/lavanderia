@@ -13,6 +13,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { IconComponent, IconName } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
+import { formatearDuracion as fmtDuracion } from '../../core/util/duracion';
 
 interface PasoOnboarding {
   clave: string;
@@ -27,6 +28,7 @@ interface AlertaInicio {
   detalle: string;
   accion: string;
   ruta: string;
+  queryParams?: Record<string, string>;
   nivel: 'critica' | 'advertencia' | 'informativa';
   icono: IconName;
 }
@@ -88,6 +90,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         detalle: `Pedido #${primero.numero} lleva ${this.formatearDuracion(primero.minutosEnArea)} en ${primero.areaNombre}${adicionales > 0 ? ` y hay ${adicionales} más` : ''}.`,
         accion: 'Revisar pedidos',
         ruta: '/pedidos',
+        queryParams: { ver: 'fuera-de-tiempo' },
         nivel: 'critica',
         icono: 'warning'
       });
@@ -276,10 +279,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   formatearDuracion(minutos: number): string {
-    if (minutos < 60) return `${minutos} min`;
-    const horas = Math.floor(minutos / 60);
-    const resto = minutos % 60;
-    return resto > 0 ? `${horas} h ${resto} min` : `${horas} h`;
+    return fmtDuracion(minutos);
   }
 
   private claveCierre(): string {

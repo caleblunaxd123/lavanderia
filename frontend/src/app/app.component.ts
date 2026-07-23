@@ -58,8 +58,15 @@ export class AppComponent implements OnInit {
         if (primeraNavegacion) {
           primeraNavegacion = false;
           const slug = this.tenant.slug();
-          const obs$ = slug ? this.config.cargarPorSlug(slug) : this.config.cargar();
-          obs$.subscribe({ error: () => {} });
+          // Login neutral (/login, sin slug): NUNCA cargar la marca de un negocio —
+          // la pantalla es del PRODUCTO (LaviSystem), no de ninguna lavandería, aun
+          // si quedó una sesión abierta de un tenant.
+          const enLoginNeutral = !slug && this.rutaActual().startsWith('/login');
+          if (slug) {
+            this.config.cargarPorSlug(slug).subscribe({ error: () => {} });
+          } else if (this.auth.autenticado() && !enLoginNeutral) {
+            this.config.cargar().subscribe({ error: () => {} });
+          }
         }
       });
   }

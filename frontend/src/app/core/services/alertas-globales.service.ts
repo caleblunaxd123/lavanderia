@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { NegociosPlataformaService } from './negocios-plataforma.service';
 import { Dashboard, PedidosService } from './pedidos.service';
 import { SuscripcionService } from './suscripcion.service';
+import { formatearDuracion as fmtDuracion } from '../util/duracion';
 
 export type NivelAlertaGlobal = 'critica' | 'advertencia' | 'informativa' | 'exito';
 export type IconoAlertaGlobal = 'warning' | 'calendar' | 'phone-alert' | 'package' | 'check' | 'note' | 'info' | 'users';
@@ -17,6 +18,7 @@ export interface AlertaGlobal {
   detalle: string;
   accion: string;
   ruta: string;
+  queryParams?: Record<string, string>;
   nivel: NivelAlertaGlobal;
   icono: IconoAlertaGlobal;
   cantidad: number;
@@ -61,6 +63,12 @@ export class AlertasGlobalesService {
   iniciar(): void {
     const usuario = this.auth.usuario();
     if (!usuario) return;
+    if (usuario.rol !== 'PROPIETARIO' && !usuario.sedeId) {
+      this.detener();
+      this.todas.set([]);
+      this.cargando.set(false);
+      return;
+    }
     const nuevoContexto = `${usuario.rol}:${usuario.negocioId}:${usuario.sedeId ?? 'sin-sede'}`;
     if (this.contexto === nuevoContexto && this.timer) return;
 
@@ -82,6 +90,11 @@ export class AlertasGlobalesService {
   refrescar(silencioso = false): void {
     const usuario = this.auth.usuario();
     if (!usuario) return;
+    if (usuario.rol !== 'PROPIETARIO' && !usuario.sedeId) {
+      this.todas.set([]);
+      this.cargando.set(false);
+      return;
+    }
     const generacion = ++this.generacion;
     if (!silencioso) this.cargando.set(true);
     this.error.set(false);
@@ -156,7 +169,8 @@ export class AlertasGlobalesService {
         clave: 'estancados', huella: `${d.totalPedidosEstancados}:${primero?.pedidoId ?? 0}`,
         titulo: `${d.totalPedidosEstancados} pedido${d.totalPedidosEstancados === 1 ? '' : 's'} fuera de tiempo`,
         detalle: primero ? `La orden #${primero.numero} lleva ${this.formatearDuracion(primero.minutosEnArea)} en ${primero.areaNombre}.` : 'Hay pedidos que excedieron el tiempo esperado de su etapa.',
-        accion: 'Revisar pedidos', ruta: '/pedidos', nivel: 'critica', icono: 'warning',
+        accion: 'Revisar pedidos', ruta: '/pedidos', queryParams: { ver: 'fuera-de-tiempo' },
+        nivel: 'critica', icono: 'warning',
         cantidad: d.totalPedidosEstancados, ambito: 'negocio'
       });
     }
@@ -243,10 +257,7 @@ export class AlertasGlobalesService {
   }
 
   private formatearDuracion(minutos: number): string {
-    if (minutos < 60) return `${minutos} min`;
-    const horas = Math.floor(minutos / 60);
-    const resto = minutos % 60;
-    return resto ? `${horas} h ${resto} min` : `${horas} h`;
+    return fmtDuracion(minutos);
   }
 
   private idDescarte(alerta: AlertaGlobal): string {

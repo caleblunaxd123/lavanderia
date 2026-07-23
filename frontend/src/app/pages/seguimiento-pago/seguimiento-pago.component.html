@@ -104,6 +104,22 @@
           </div>
         }
 
+        @if (d.fotos && d.fotos.length > 0) {
+          <div class="fotos-cliente">
+            <h3 class="fotos-cliente__titulo">📷 Fotos de tus prendas</h3>
+            <div class="fotos-cliente__grid">
+              @for (foto of d.fotos; track foto.id) {
+                <figure class="foto-cliente" (click)="fotoAmpliada.set(fotoUrl(foto.id))"
+                  (keydown.enter)="fotoAmpliada.set(fotoUrl(foto.id))" role="button" tabindex="0"
+                  [attr.aria-label]="'Ampliar foto ' + etiquetaMomento(foto.momento)">
+                  <img [src]="fotoUrl(foto.id)" [alt]="etiquetaMomento(foto.momento)" loading="lazy" />
+                  <figcaption>{{ etiquetaMomento(foto.momento) }}</figcaption>
+                </figure>
+              }
+            </div>
+          </div>
+        }
+
         <div class="montos">
           <div class="montos__fila">
             <span>Total del pedido</span>
@@ -123,17 +139,8 @@
 
         @if (d.saldo <= 0.01) {
           <p class="aviso aviso--ok">Tu pedido ya está pagado. Gracias.</p>
-        } @else if (d.requierePago) {
-          <button type="button" class="btn-pagar" [disabled]="procesando()" [attr.aria-busy]="procesando()" (click)="abrirPago()">
-            {{ procesando() ? 'Procesando...' : 'Pagar S/ ' + d.saldo.toFixed(2) }}
-          </button>
-          <p class="hint">Pago seguro con {{ metodosPagoDisponibles() }}. El estado se actualizará aquí mismo al confirmarse.</p>
         } @else {
-          <p class="aviso">Los pagos online no están disponibles en este momento. Coordina el pago directamente con la lavandería.</p>
-        }
-
-        @if (mensajeCobro()) {
-          <p class="mensaje-cobro" role="status" aria-live="polite">{{ mensajeCobro() }}</p>
+          <p class="aviso">{{ d.mensajePagoOnline || 'Coordina el pago directamente con la lavandería.' }}</p>
         }
 
         @if (d.telefonoNegocio || d.direccionNegocio) {
@@ -176,5 +183,12 @@
         {{ reprogramando() ? 'Guardando…' : 'Confirmar' }}
       </button>
     </div>
+  </div>
+}
+
+@if (fotoAmpliada(); as urlFoto) {
+  <div class="foto-lightbox" (click)="fotoAmpliada.set(null)">
+    <button type="button" class="foto-lightbox__cerrar" (click)="fotoAmpliada.set(null)" aria-label="Cerrar">✕</button>
+    <img [src]="urlFoto" alt="Foto ampliada" (click)="$event.stopPropagation()" />
   </div>
 }

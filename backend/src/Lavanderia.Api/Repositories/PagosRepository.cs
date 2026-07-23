@@ -17,9 +17,9 @@ public interface IPagosRepository
     /// pestañas cobren el mismo pedido al mismo tiempo.</summary>
     Task<bool> IntentarIniciarCobroAsync(int id, CancellationToken ct = default);
     Task RestaurarPendienteAsync(int id, CancellationToken ct = default);
-    Task MarcarRequiereConciliacionAsync(int id, string culqiChargeId, CancellationToken ct = default);
+    Task MarcarRequiereConciliacionAsync(int id, string proveedorOperacionId, CancellationToken ct = default);
     /// <summary>Marca la solicitud como pagada solo si estaba siendo procesada.</summary>
-    Task<bool> MarcarPagadoAsync(int id, string culqiChargeId, CancellationToken ct = default);
+    Task<bool> MarcarPagadoAsync(int id, string proveedorOperacionId, CancellationToken ct = default);
 }
 
 public class PagosRepository : IPagosRepository
@@ -28,7 +28,7 @@ public class PagosRepository : IPagosRepository
     public PagosRepository(ISqlConnectionFactory factory) => _factory = factory;
 
     private const string ConfigSelect = @"
-        SELECT Id, NegocioId, Proveedor, PublicKey, SecretKeyCifrada, Activo
+        SELECT Id, NegocioId, Proveedor, CodigoComercio, PublicKey, ApiKeyCifrada, HashKeyCifrada, Activo
         FROM dbo.ConfiguracionPagos";
 
     private static ConfiguracionPagos MapConfig(SqlDataReader r) => new()
@@ -36,8 +36,10 @@ public class PagosRepository : IPagosRepository
         Id = r.GetInt32(r.GetOrdinal("Id")),
         NegocioId = r.GetInt32(r.GetOrdinal("NegocioId")),
         Proveedor = r.GetString(r.GetOrdinal("Proveedor")),
+        CodigoComercio = r.GetNullableString("CodigoComercio"),
         PublicKey = r.GetNullableString("PublicKey"),
-        SecretKeyCifrada = r.GetNullableString("SecretKeyCifrada"),
+        ApiKeyCifrada = r.GetNullableString("ApiKeyCifrada"),
+        HashKeyCifrada = r.GetNullableString("HashKeyCifrada"),
         Activo = r.GetBoolean(r.GetOrdinal("Activo"))
     };
 
@@ -63,24 +65,28 @@ public class PagosRepository : IPagosRepository
                 ON target.NegocioId = src.NegocioId
             WHEN MATCHED THEN UPDATE SET
                 Proveedor = @Proveedor,
+                CodigoComercio = @CodigoComercio,
                 PublicKey = @PublicKey,
-                SecretKeyCifrada = COALESCE(@SecretKeyCifrada, target.SecretKeyCifrada),
+                ApiKeyCifrada = COALESCE(@ApiKeyCifrada, target.ApiKeyCifrada),
+                HashKeyCifrada = COALESCE(@HashKeyCifrada, target.HashKeyCifrada),
                 Activo = @Activo,
                 FechaActualizacion = SYSDATETIME()
             WHEN NOT MATCHED THEN INSERT
-                (NegocioId, Proveedor, PublicKey, SecretKeyCifrada, Activo)
+                (NegocioId, Proveedor, CodigoComercio, PublicKey, ApiKeyCifrada, HashKeyCifrada, Activo)
                 VALUES
-                (@NegocioId, @Proveedor, @PublicKey, @SecretKeyCifrada, @Activo);";
+                (@NegocioId, @Proveedor, @CodigoComercio, @PublicKey, @ApiKeyCifrada, @HashKeyCifrada, @Activo);";
         cmd.AddParam("@NegocioId", c.NegocioId);
         cmd.AddParam("@Proveedor", c.Proveedor);
+        cmd.AddParam("@CodigoComercio", c.CodigoComercio);
         cmd.AddParam("@PublicKey", c.PublicKey);
-        cmd.AddParam("@SecretKeyCifrada", c.SecretKeyCifrada);
+        cmd.AddParam("@ApiKeyCifrada", c.ApiKeyCifrada);
+        cmd.AddParam("@HashKeyCifrada", c.HashKeyCifrada);
         cmd.AddParam("@Activo", c.Activo);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
     private const string SolicitudSelect = @"
-        SELECT Id, NegocioId, SedeId, PedidoId, Token, Monto, Estado, CulqiChargeId,
+        SELECT Id, NegocioId, SedeId, PedidoId, Token, Monto, Estado, ProveedorOperacionId,
                FechaCreacion, FechaExpiracion, FechaPago
         FROM dbo.SolicitudPago";
 
@@ -93,7 +99,7 @@ public class PagosRepository : IPagosRepository
         Token = r.GetGuid(r.GetOrdinal("Token")),
         Monto = r.GetDecimal(r.GetOrdinal("Monto")),
         Estado = r.GetString(r.GetOrdinal("Estado")),
-        CulqiChargeId = r.GetNullableString("CulqiChargeId"),
+        ProveedorOperacionId = r.GetNullableString("ProveedorOperacionId"),
         FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion")),
         FechaExpiracion = r.GetDateTime(r.GetOrdinal("FechaExpiracion")),
         FechaPago = r.GetNullableDateTime("FechaPago")
@@ -188,31 +194,31 @@ public class PagosRepository : IPagosRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task MarcarRequiereConciliacionAsync(int id, string culqiChargeId, CancellationToken ct = default)
+    public async Task MarcarRequiereConciliacionAsync(int id, string proveedorOperacionId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             UPDATE dbo.SolicitudPago
-               SET Estado = 'CONCILIAR', CulqiChargeId = @ChargeId, FechaPago = SYSDATETIME()
+               SET Estado = 'CONCILIAR', ProveedorOperacionId = @OperacionId, FechaPago = SYSDATETIME()
              WHERE Id = @Id AND Estado = 'PROCESANDO'";
         cmd.AddParam("@Id", id);
-        cmd.AddParam("@ChargeId", culqiChargeId);
+        cmd.AddParam("@OperacionId", proveedorOperacionId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    public async Task<bool> MarcarPagadoAsync(int id, string culqiChargeId, CancellationToken ct = default)
+    public async Task<bool> MarcarPagadoAsync(int id, string proveedorOperacionId, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             UPDATE dbo.SolicitudPago
-               SET Estado = 'PAGADO', CulqiChargeId = @ChargeId, FechaPago = SYSDATETIME()
+               SET Estado = 'PAGADO', ProveedorOperacionId = @OperacionId, FechaPago = SYSDATETIME()
              WHERE Id = @Id AND Estado = 'PROCESANDO'";
         cmd.AddParam("@Id", id);
-        cmd.AddParam("@ChargeId", culqiChargeId);
+        cmd.AddParam("@OperacionId", proveedorOperacionId);
         var filas = await cmd.ExecuteNonQueryAsync(ct);
         return filas > 0;
     }

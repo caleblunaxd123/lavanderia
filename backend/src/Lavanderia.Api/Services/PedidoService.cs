@@ -12,7 +12,7 @@ public interface IPedidoService
     Task<PagedResultDto<PedidoDto>> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task AvanzarAreaAsync(int pedidoId, AvanzarAreaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
-    Task AvanzarSiguienteAreaAsync(int pedidoId, int usuarioId, int sedeId, string? recibidoPor = null, CancellationToken ct = default);
+    Task AvanzarSiguienteAreaAsync(int pedidoId, int? usuarioId, int sedeId, string? recibidoPor = null, string actorTipo = "USUARIO", CancellationToken ct = default);
     Task<DashboardDto> DashboardAsync(int negocioId, int sedeId, CancellationToken ct = default);
     Task<PedidoContadoresDto> ContadoresAsync(int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, RegistrarPagoRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
@@ -20,7 +20,7 @@ public interface IPedidoService
     Task AnularAsync(int pedidoId, string motivo, int usuarioId, int negocioId, int sedeId, CancellationToken ct = default);
     Task DonarAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
     Task ReenviarAlmacenAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
-    Task CambiarFechaEntregaAsync(int pedidoId, CambiarFechaEntregaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
+    Task CambiarFechaEntregaAsync(int pedidoId, CambiarFechaEntregaRequest req, int? usuarioId, int sedeId, string actorTipo = "USUARIO", CancellationToken ct = default);
     Task<List<PedidoAbandonadoDto>> ListarAbandonadosAsync(int diasMinimo, int sedeId, CancellationToken ct = default);
     Task<int> SiguienteNumeroAsync(int sedeId, CancellationToken ct = default);
     Task ConvertirADeliveryAsync(int pedidoId, ConvertirDeliveryRequest req, int negocioId, int sedeId, CancellationToken ct = default);
@@ -295,8 +295,12 @@ public class PedidoService : IPedidoService
             {
                 await _clientes.AgregarMovimientoPuntosAsync(new MovimientoPuntos
                 {
-                    ClienteId = clienteId, Puntos = puntosACanjear, Tipo = "RESTA",
-                    Motivo = $"Canje en pedido #{numero}", UsuarioId = usuarioId, PedidoId = pedidoId
+                    ClienteId = clienteId,
+                    Puntos = puntosACanjear,
+                    Tipo = "RESTA",
+                    Motivo = $"Canje en pedido #{numero}",
+                    UsuarioId = usuarioId,
+                    PedidoId = pedidoId
                 }, negocioId, ct);
             }
 
@@ -305,8 +309,12 @@ public class PedidoService : IPedidoService
             {
                 await _clientes.AgregarMovimientoPuntosAsync(new MovimientoPuntos
                 {
-                    ClienteId = clienteId, Puntos = puntosGanados, Tipo = "SUMA",
-                    Motivo = $"Pedido #{numero}", UsuarioId = usuarioId, PedidoId = pedidoId
+                    ClienteId = clienteId,
+                    Puntos = puntosGanados,
+                    Tipo = "SUMA",
+                    Motivo = $"Pedido #{numero}",
+                    UsuarioId = usuarioId,
+                    PedidoId = pedidoId
                 }, negocioId, ct);
             }
         }
@@ -471,7 +479,7 @@ public class PedidoService : IPedidoService
         await _pedidos.AvanzarAreaAsync(
             pedidoId, pedido.AreaActualId, pedido.EstadoProceso,
             siguiente.AreaId, siguiente.Estado, usuarioId,
-            string.IsNullOrWhiteSpace(req.Nota) ? siguiente.Nota : req.Nota.Trim(), sedeId, ct);
+            string.IsNullOrWhiteSpace(req.Nota) ? siguiente.Nota : req.Nota.Trim(), "USUARIO", sedeId, ct);
     }
 
     public async Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default)
@@ -484,12 +492,14 @@ public class PedidoService : IPedidoService
             AreaNombre = h.AreaNombre,
             EstadoProceso = h.EstadoProceso,
             Fecha = h.Fecha,
+            ActorTipo = h.ActorTipo,
+            ActorDescripcion = h.ActorDescripcion,
             Nota = h.Nota,
             NotificadoWsp = h.NotificadoWsp
         }).ToList();
     }
 
-    public async Task AvanzarSiguienteAreaAsync(int pedidoId, int usuarioId, int sedeId, string? recibidoPor = null, CancellationToken ct = default)
+    public async Task AvanzarSiguienteAreaAsync(int pedidoId, int? usuarioId, int sedeId, string? recibidoPor = null, string actorTipo = "USUARIO", CancellationToken ct = default)
     {
         var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
             ?? throw new InvalidOperationException("Pedido no encontrado.");
@@ -508,14 +518,17 @@ public class PedidoService : IPedidoService
                 throw new InvalidOperationException(
                     $"El pedido tiene saldo pendiente de S/ {pedido.Total - pedido.MontoPagado:F2}. Registra el pago antes de entregar.");
 
-            siguiente = siguiente with { Nota = !string.IsNullOrWhiteSpace(recibidoPor)
+            siguiente = siguiente with
+            {
+                Nota = !string.IsNullOrWhiteSpace(recibidoPor)
                 ? $"Entregado a {recibidoPor.Trim()} (recogido por tercero, no el titular)"
-                : "Entregado al cliente" };
+                : "Entregado al cliente"
+            };
         }
 
         await _pedidos.AvanzarAreaAsync(
             pedidoId, pedido.AreaActualId, pedido.EstadoProceso,
-            siguiente.AreaId, siguiente.Estado, usuarioId, siguiente.Nota, sedeId, ct);
+            siguiente.AreaId, siguiente.Estado, usuarioId, siguiente.Nota, actorTipo, sedeId, ct);
     }
 
     public async Task RegistrarPagoAsync(int pedidoId, RegistrarPagoRequest req, int usuarioId, int sedeId, CancellationToken ct = default)
@@ -571,7 +584,7 @@ public class PedidoService : IPedidoService
         }, sedeId, ct);
     }
 
-    public async Task CambiarFechaEntregaAsync(int pedidoId, CambiarFechaEntregaRequest req, int usuarioId, int sedeId, CancellationToken ct = default)
+    public async Task CambiarFechaEntregaAsync(int pedidoId, CambiarFechaEntregaRequest req, int? usuarioId, int sedeId, string actorTipo = "USUARIO", CancellationToken ct = default)
     {
         var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
             ?? throw new InvalidOperationException("Pedido no encontrado.");
@@ -582,7 +595,7 @@ public class PedidoService : IPedidoService
         if (req.Fecha < DateTime.Now.AddMinutes(-5))
             throw new InvalidOperationException("La fecha debe ser posterior al momento actual.");
 
-        await _pedidos.ActualizarFechaEntregaAsync(pedidoId, req.Fecha, usuarioId, req.Motivo, sedeId, ct);
+        await _pedidos.ActualizarFechaEntregaAsync(pedidoId, req.Fecha, usuarioId, req.Motivo, sedeId, actorTipo, ct);
     }
 
     public async Task AnularAsync(int pedidoId, string motivo, int usuarioId, int negocioId, int sedeId, CancellationToken ct = default)
@@ -818,8 +831,8 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException("Indica la dirección exacta de entrega para el Delivery.");
         if (string.IsNullOrWhiteSpace(distrito))
             throw new InvalidOperationException("Selecciona el distrito de entrega para el Delivery.");
-        if (latitud.HasValue != longitud.HasValue)
-            throw new InvalidOperationException("La ubicación del mapa está incompleta. Vuelve a marcar el punto de entrega.");
+        if (!latitud.HasValue || !longitud.HasValue)
+            throw new InvalidOperationException("Confirma el punto exacto de entrega en el mapa.");
         if (latitud is < -90 or > 90 || longitud is < -180 or > 180)
             throw new InvalidOperationException("Las coordenadas del punto de entrega no son válidas.");
     }

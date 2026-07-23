@@ -61,8 +61,8 @@ public class ClienteRepository : IClienteRepository
             whereExtra = campo?.ToLowerInvariant() switch
             {
                 "celular" => " AND Celular LIKE @Texto",
-                "dni"     => " AND Dni LIKE @Texto",
-                _         => " AND Nombre LIKE @Texto"
+                "dni" => " AND Dni LIKE @Texto",
+                _ => " AND Nombre LIKE @Texto"
             };
             cmd.AddParam("@Texto", $"%{texto}%");
         }

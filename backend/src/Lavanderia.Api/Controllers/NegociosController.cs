@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Lavanderia.Api.Auth;
 using Lavanderia.Api.Domain;
 using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
@@ -39,10 +40,12 @@ public class NegociosController : ControllerBase
     private readonly IRolPermisoRepository _permisos;
     private readonly IServicioRepository _servicios;
     private readonly IConfiguracionNegocioRepository _configuracion;
+    private readonly INegocioAccessValidator _accessValidator;
 
     public NegociosController(INegocioRepository negocios, ISedeRepository sedes,
         IUsuarioRepository usuarios, IRolRepository roles, IRolPermisoRepository permisos,
-        IServicioRepository servicios, IConfiguracionNegocioRepository configuracion)
+        IServicioRepository servicios, IConfiguracionNegocioRepository configuracion,
+        INegocioAccessValidator accessValidator)
     {
         _negocios = negocios;
         _sedes = sedes;
@@ -51,6 +54,7 @@ public class NegociosController : ControllerBase
         _permisos = permisos;
         _servicios = servicios;
         _configuracion = configuracion;
+        _accessValidator = accessValidator;
     }
 
     [HttpGet]
@@ -78,10 +82,6 @@ public class NegociosController : ControllerBase
         var adminEmail = NormalizarOpcional(req.AdminEmail);
         if (!EmailValido(titularEmail) || !EmailValido(adminEmail))
             return BadRequest(new { mensaje = "El email ingresado no tiene un formato valido." });
-
-        var usuarioExistente = await _usuarios.BuscarPorUsuarioAsync(adminUsuario, ct);
-        if (usuarioExistente is not null)
-            return Conflict(new { mensaje = "Ya existe un usuario con ese nombre de acceso." });
 
         var rolAdmin = await _roles.BuscarPorCodigoAsync("ADMIN", ct)
             ?? throw new InvalidOperationException("Rol ADMIN no encontrado.");
@@ -154,6 +154,7 @@ public class NegociosController : ControllerBase
     {
         var actualizado = await _negocios.CambiarEstadoAsync(id, req.Activo, ct);
         if (!actualizado) return NotFound(new { mensaje = "Empresa no encontrada." });
+        _accessValidator.Invalidar(id);
         return NoContent();
     }
 
@@ -237,6 +238,7 @@ public class NegociosController : ControllerBase
         if (!estados.Contains(estado)) return BadRequest(new { mensaje = "Estado de suscripción inválido." });
 
         await _negocios.ActualizarSuscripcionAsync(id, plan, estado, req.MontoMensual, req.ProximoPago, ct);
+        _accessValidator.Invalidar(id);
         return NoContent();
     }
 

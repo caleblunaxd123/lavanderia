@@ -33,3 +33,9 @@ Thumbs.db
 ~$*
 *.tmp
 backend/src/Lavanderia.Api/wwwroot/
+
+# Fotos de evidencia locales (se respaldan a Drive, no al repo)
+backend/**/App_Data/
+
+# Config local de herramientas (Claude Code)
+.claude/

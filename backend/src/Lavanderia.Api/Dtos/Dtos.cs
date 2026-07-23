@@ -226,6 +226,8 @@ public class PedidoHistorialDto
     public string? AreaNombre { get; set; }
     public string EstadoProceso { get; set; } = "";
     public DateTime Fecha { get; set; }
+    public string ActorTipo { get; set; } = "USUARIO";
+    public string? ActorDescripcion { get; set; }
     public string? Nota { get; set; }
     public bool NotificadoWsp { get; set; }
 }
@@ -721,15 +723,19 @@ public record CambiarEstadoNegocioRequest(bool Activo);
 public record MiSuscripcionDto(bool Mostrar, string Tipo, string Mensaje,
     DateOnly? ProximoPago, int? DiasParaVencer, string EstadoSuscripcion);
 
-// ---------- Pagos online (Culqi) ----------
+// ---------- Pagos online (Izipay) ----------
 public class ConfiguracionPagosDto
 {
-    public string Proveedor { get; set; } = "CULQI";
-    [StringLength(200)] public string? PublicKey { get; set; }
-    /// <summary>Solo se envía al guardar una clave nueva; nunca se devuelve la clave real.</summary>
-    public string? SecretKeyNueva { get; set; }
+    public string Proveedor { get; set; } = "IZIPAY";
+    [StringLength(50)] public string? CodigoComercio { get; set; }
+    [StringLength(5000)] public string? PublicKey { get; set; }
+    /// <summary>Solo se aceptan al reemplazar credenciales; las claves reales nunca se devuelven.</summary>
+    [StringLength(500)] public string? ApiKeyNueva { get; set; }
+    [StringLength(500)] public string? HashKeyNueva { get; set; }
     public bool Activo { get; set; }
-    public bool TieneSecretKey { get; set; }
+    public bool TieneApiKey { get; set; }
+    public bool TieneHashKey { get; set; }
+    public bool IntegracionDisponible { get; set; }
 }
 
 public class ConvertirDeliveryRequest
@@ -769,7 +775,8 @@ public class SeguimientoPedidoDto
     public decimal MontoPagado { get; set; }
     public decimal Saldo { get; set; }
     public bool RequierePago { get; set; }
-    public string? PublicKeyCulqi { get; set; }
+    public string ProveedorPagos { get; set; } = "IZIPAY";
+    public string? MensajePagoOnline { get; set; }
     public string? MotorizadoNombre { get; set; }
     public string? MotorizadoCelular { get; set; }
     public bool PuedeReprogramar { get; set; }
@@ -786,9 +793,19 @@ public class SeguimientoPedidoDto
     public int? DistanciaMetros { get; set; }
     /// <summary>Minutos estimados de llegada (heuristica a 18 km/h urbano).</summary>
     public int? EtaMinutos { get; set; }
+
+    /// <summary>Fotos de evidencia visibles para el cliente (recepcion/entrega).</summary>
+    public List<SeguimientoFotoDto> Fotos { get; set; } = new();
 }
 
 public record SeguimientoPedidoItemDto(string Nombre, decimal Cantidad);
+
+/// <summary>Foto de evidencia tal como la ve el cliente en el seguimiento publico. La URL se
+/// arma en el frontend con el token del enlace.</summary>
+public record SeguimientoFotoDto(int Id, string Momento, DateTime Fecha);
+
+/// <summary>Foto de evidencia para el panel del personal.</summary>
+public record FotoPedidoDto(int Id, string Momento, DateTime Fecha, int TamanoBytes);
 
 /// <summary>Vista que ve el repartidor al abrir su link publico de reparto.</summary>
 public class RepartidorPedidoDto
@@ -826,12 +843,6 @@ public class UbicacionRepartidorResultDto
 }
 
 public record ReprogramarPedidoPublicoRequest([Required] DateTime NuevaFecha);
-
-public class CobrarSolicitudPagoRequest
-{
-    [Required, StringLength(100, MinimumLength = 10)] public string CulqiTokenId { get; set; } = "";
-    [Required, EmailAddress, StringLength(120)] public string Email { get; set; } = "";
-}
 
 public class CobrarSolicitudPagoResultDto
 {

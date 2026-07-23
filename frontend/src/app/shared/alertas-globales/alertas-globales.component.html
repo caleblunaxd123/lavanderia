@@ -11,7 +11,7 @@
             <strong>{{ alerta.titulo }}</strong>
             <span>{{ alerta.detalle }}</span>
           </div>
-          <a class="global-alert__action" [routerLink]="alerta.ruta">
+          <a class="global-alert__action" [routerLink]="alerta.ruta" [queryParams]="alerta.queryParams ?? null">
             {{ alerta.accion }}
             <app-icon name="chevron-right" [size]="15"></app-icon>
           </a>

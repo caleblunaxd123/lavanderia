@@ -1,32 +1,45 @@
 :host { display: block; margin-bottom: 18px; }
 
+// Botón "Volver" — mismo lugar (arriba a la izquierda) y mismo aspecto en TODAS
+// las pantallas, para que el usuario siempre sepa dónde está el regreso.
 .ph__volver {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 10px;
-  padding: 5px 11px 5px 8px;
-  background: #fff;
-  border: 1px solid var(--gris-borde);
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 7px 15px 7px 7px;
+  background: #eef4ff;
+  border: 1px solid #cfe0fb;
   border-radius: 999px;
-  color: #475569;
-  font-size: 12.5px;
-  font-weight: 600;
+  color: #0b57d0;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
 
-  app-icon { transition: transform .15s ease; }
+  .ph__volver-flecha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #0b57d0;
+    color: #fff;
+    transition: transform .15s ease;
+  }
 
   &:hover {
-    background: #f1f5f9;
-    color: #0b57d0;
-    border-color: #cdd8ea;
-    app-icon { transform: translateX(-2px); }
+    background: #dfeafe;
+    border-color: #b6ccf5;
+    box-shadow: 0 3px 10px rgba(11, 87, 208, .16);
+    .ph__volver-flecha { transform: translateX(-2px); }
   }
+  &:active { transform: translateY(1px); }
   &:focus-visible {
     outline: none;
     border-color: #0b57d0;
-    box-shadow: 0 0 0 3px rgba(11, 87, 208, .18);
+    box-shadow: 0 0 0 3px rgba(11, 87, 208, .22);
   }
 }
 

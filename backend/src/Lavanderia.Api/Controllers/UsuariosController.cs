@@ -62,7 +62,7 @@ public class UsuariosController : ControllerBase
         if (!await RolAdministrableAsync(dto.RolId, ct))
             return BadRequest(new { mensaje = "El rol seleccionado no es válido para un usuario del negocio." });
 
-        var existente = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
+        var existente = await _usuarios.BuscarPorUsuarioAsync(usuario, NegocioIdActual, ct);
         if (existente is not null)
             return Conflict(new { mensaje = "Ya existe un usuario con ese nombre de acceso." });
 
@@ -115,7 +115,7 @@ public class UsuariosController : ControllerBase
 
         if (!string.Equals(existente.UsuarioLogin, usuario, StringComparison.OrdinalIgnoreCase))
         {
-            var tomado = await _usuarios.BuscarPorUsuarioAsync(usuario, ct);
+            var tomado = await _usuarios.BuscarPorUsuarioAsync(usuario, NegocioIdActual, ct);
             if (tomado is not null && tomado.Id != id)
                 return Conflict(new { mensaje = "Ya existe un usuario con ese nombre de acceso." });
         }

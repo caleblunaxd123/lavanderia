@@ -26,6 +26,7 @@ public class RutaReparto
     public string EstadoProceso { get; set; } = "";
     public bool Anulado { get; set; }
     public DateTime? RutaIniciadaEn { get; set; }
+    public DateTime? TokenRutaExpiraEn { get; set; }
     public decimal? MotorizadoLat { get; set; }
     public decimal? MotorizadoLng { get; set; }
     public DateTime? MotorizadoUbicadoEn { get; set; }
@@ -42,6 +43,7 @@ public interface IRutaRepartoRepository
     Task<RutaReparto?> ObtenerPorPedidoAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     /// <summary>Devuelve el token de reparto del pedido, creandolo si aun no existe.</summary>
     Task<Guid> AsegurarTokenAsync(int pedidoId, int sedeId, CancellationToken ct = default);
+    Task RevocarTokenAsync(int pedidoId, CancellationToken ct = default);
     Task IniciarRutaAsync(int pedidoId, CancellationToken ct = default);
     Task ActualizarUbicacionAsync(int pedidoId, decimal lat, decimal lng, CancellationToken ct = default);
     /// <summary>flag: "ruta" | "cerca" | "llegada".</summary>
@@ -58,7 +60,7 @@ public class RutaRepartoRepository : IRutaRepartoRepository
                c.Nombre AS ClienteNombre, c.Celular AS ClienteCelular,
                p.DireccionEntrega, p.DistritoEntrega, p.ReferenciaEntrega,
                p.LatitudEntrega, p.LongitudEntrega, p.Total, p.MontoPagado,
-               p.EstadoProceso, p.Anulado, p.RutaIniciadaEn,
+               p.EstadoProceso, p.Anulado, p.RutaIniciadaEn, p.TokenRutaExpiraEn,
                p.MotorizadoLat, p.MotorizadoLng, p.MotorizadoUbicadoEn,
                p.NotifRutaEnviada, p.NotifCercaEnviada, p.NotifLlegadaEnviada
         FROM dbo.Pedido p
@@ -85,6 +87,7 @@ public class RutaRepartoRepository : IRutaRepartoRepository
         EstadoProceso = r.GetString(r.GetOrdinal("EstadoProceso")),
         Anulado = r.GetBoolean(r.GetOrdinal("Anulado")),
         RutaIniciadaEn = r.GetNullableDateTime("RutaIniciadaEn"),
+        TokenRutaExpiraEn = r.GetNullableDateTime("TokenRutaExpiraEn"),
         MotorizadoLat = r.GetNullableDecimal("MotorizadoLat"),
         MotorizadoLng = r.GetNullableDecimal("MotorizadoLng"),
         MotorizadoUbicadoEn = r.GetNullableDateTime("MotorizadoUbicadoEn"),
@@ -98,7 +101,7 @@ public class RutaRepartoRepository : IRutaRepartoRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = BaseSelect + " WHERE p.TokenRuta = @Token";
+        cmd.CommandText = BaseSelect + " WHERE p.TokenRuta = @Token AND p.TokenRutaExpiraEn > SYSDATETIME()";
         cmd.AddParam("@Token", token);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
     }
@@ -125,8 +128,16 @@ public class RutaRepartoRepository : IRutaRepartoRepository
         // INTO sobre tablas con triggers. La actualizacion y lectura permanecen atomicas.
         cmd.CommandText = @"
             UPDATE dbo.Pedido
-               SET TokenRuta = COALESCE(TokenRuta, @Nuevo)
-             WHERE Id = @Id AND SedeId = @SedeId;
+               SET TokenRuta = CASE
+                       WHEN TokenRuta IS NULL OR TokenRutaExpiraEn IS NULL OR TokenRutaExpiraEn <= SYSDATETIME() THEN @Nuevo
+                       ELSE TokenRuta
+                   END,
+                   TokenRutaExpiraEn = CASE
+                       WHEN TokenRuta IS NULL OR TokenRutaExpiraEn IS NULL OR TokenRutaExpiraEn <= SYSDATETIME() THEN DATEADD(DAY, 7, SYSDATETIME())
+                       ELSE TokenRutaExpiraEn
+                   END
+             WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0
+               AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO');
             SELECT TokenRuta FROM dbo.Pedido WHERE Id = @Id AND SedeId = @SedeId;";
         cmd.AddParam("@Nuevo", Guid.NewGuid());
         cmd.AddParam("@Id", pedidoId);
@@ -136,6 +147,16 @@ public class RutaRepartoRepository : IRutaRepartoRepository
             throw new InvalidOperationException("No se pudo generar el enlace del repartidor para este pedido.");
         await tx.CommitAsync(ct);
         return token;
+    }
+
+    public async Task RevocarTokenAsync(int pedidoId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Pedido SET TokenRuta = NULL, TokenRutaExpiraEn = NULL WHERE Id = @Id";
+        cmd.AddParam("@Id", pedidoId);
+        await cmd.ExecuteNonQueryAsync(ct);
     }
 
     public async Task IniciarRutaAsync(int pedidoId, CancellationToken ct = default)

@@ -5,8 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { EstadoRuta, PagoPublicoService, SeguimientoPedido } from '../../core/services/pago-publico.service';
 import { MapaSeguimientoComponent } from '../../shared/mapa-seguimiento/mapa-seguimiento.component';
-
-declare const CulqiCheckout: any;
+import { environment } from '../../../environments/environment';
 
 const INTERVALO_NORMAL_MS = 10_000;
 const INTERVALO_EN_RUTA_MS = 5_000;
@@ -22,8 +21,6 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   private readonly svc = inject(PagoPublicoService);
 
   private token = '';
-  private culqiListo = false;
-  private culqiCheckout: any | null = null;
   private timerId?: ReturnType<typeof setInterval>;
   private intervaloActualMs = INTERVALO_NORMAL_MS;
   private estadoRutaPrevio: EstadoRuta | null = null;
@@ -35,13 +32,22 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
   readonly data = signal<SeguimientoPedido | null>(null);
-  readonly procesando = signal(false);
-  readonly mensajeCobro = signal<string | null>(null);
 
   readonly modalReprogramar = signal(false);
   readonly reprogramando = signal(false);
   readonly errorReprogramar = signal<string | null>(null);
   nuevaFecha = '';
+
+  readonly fotoAmpliada = signal<string | null>(null);
+
+  /** URL pública de una foto de evidencia (servida por el token del enlace). */
+  fotoUrl(fotoId: number): string {
+    return `${environment.apiUrl}/pago-publico/${this.token}/fotos/${fotoId}`;
+  }
+
+  etiquetaMomento(m: string): string {
+    return m === 'RECEPCION' ? 'Al recibir' : m === 'ENTREGA' ? 'Al entregar' : 'Foto';
+  }
 
   ngOnInit() {
     this.token = this.route.snapshot.paramMap.get('token') ?? '';
@@ -75,7 +81,6 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
         this.cargando.set(false);
         this.aplicarTema(d);
         this.procesarEstadoRuta(d);
-        if (d.requierePago && d.publicKeyCulqi) this.cargarScriptCulqi(d.publicKeyCulqi);
       },
       error: (err: HttpErrorResponse) => {
         this.cargando.set(false);
@@ -119,96 +124,6 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   private aplicarTema(d: SeguimientoPedido) {
     document.documentElement.style.setProperty('--color-primario-cliente', d.colorPrimario || '#0b57d0');
     document.title = `${d.nombreNegocio} · Pedido #${d.numeroPedido}`;
-  }
-
-  private cargarScriptCulqi(publicKey: string) {
-    if (this.culqiListo && typeof CulqiCheckout !== 'undefined') {
-      this.configurarCulqi(publicKey);
-      return;
-    }
-
-    const existente = document.getElementById('culqi-checkout-script');
-    if (existente) {
-      existente.addEventListener('load', () => this.configurarCulqi(publicKey), { once: true });
-      existente.addEventListener('error', () => this.informarErrorCargaCulqi(), { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = 'culqi-checkout-script';
-    script.src = 'https://js.culqi.com/checkout-js';
-    script.onload = () => {
-      this.culqiListo = true;
-      this.configurarCulqi(publicKey);
-    };
-    script.onerror = () => this.informarErrorCargaCulqi();
-    document.body.appendChild(script);
-  }
-
-  private informarErrorCargaCulqi() {
-    this.culqiListo = false;
-    this.culqiCheckout = null;
-    this.mensajeCobro.set('No se pudo cargar la pasarela de pago. Revisa tu conexion e intenta nuevamente.');
-  }
-
-  private configurarCulqi(publicKey: string) {
-    const d = this.data();
-    if (!d || typeof CulqiCheckout === 'undefined') return;
-
-    const admiteYape = d.saldo <= 2000;
-    const metodosPago = {
-      tarjeta: true,
-      yape: admiteYape,
-      billetera: false,
-      bancaMovil: false,
-      agente: false,
-      cuotealo: false
-    };
-    const config = {
-      settings: {
-        title: d.nombreNegocio,
-        currency: 'PEN',
-        amount: Math.round(d.saldo * 100),
-      },
-      client: {},
-      options: {
-        lang: 'es',
-        modal: true,
-        installments: true,
-        paymentMethods: metodosPago,
-        paymentMethodsSort: Object.keys(metodosPago).filter(metodo => metodosPago[metodo as keyof typeof metodosPago])
-      },
-      appearance: {
-        hiddenCulqiLogo: false,
-        hiddenBannerContent: false,
-        hiddenEmail: false,
-        menuType: 'sidebar',
-        buttonCardPayText: `Pagar S/ ${d.saldo.toFixed(2)}`
-      }
-    };
-
-    this.culqiCheckout = new CulqiCheckout(publicKey, config);
-    this.culqiCheckout.culqi = () => {
-      if (this.culqiCheckout?.token) {
-        this.confirmarPago(this.culqiCheckout.token.id, this.culqiCheckout.token.email);
-        this.culqiCheckout.close();
-      } else if (this.culqiCheckout?.error) {
-        this.mensajeCobro.set(this.culqiCheckout.error.user_message ?? 'No se pudo procesar el pago.');
-      }
-    };
-  }
-
-  abrirPago() {
-    if (!this.culqiCheckout) {
-      this.mensajeCobro.set('La pasarela de pago aún está cargando. Intenta de nuevo en unos segundos.');
-      return;
-    }
-    this.mensajeCobro.set(null);
-    this.culqiCheckout.open();
-  }
-
-  metodosPagoDisponibles(): string {
-    return (this.data()?.saldo ?? 0) <= 2000 ? 'tarjeta o Yape' : 'tarjeta';
   }
 
   abrirWhatsappNegocio() {
@@ -303,18 +218,4 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
     return `https://www.openstreetmap.org/?mlat=${d.latitudEntrega}&mlon=${d.longitudEntrega}#map=18/${d.latitudEntrega}/${d.longitudEntrega}`;
   }
 
-  private confirmarPago(culqiTokenId: string, email: string) {
-    this.procesando.set(true);
-    this.svc.cobrar(this.token, culqiTokenId, email).subscribe({
-      next: r => {
-        this.procesando.set(false);
-        this.mensajeCobro.set(r.mensaje ?? null);
-        if (r.exito) this.cargar();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.procesando.set(false);
-        this.mensajeCobro.set(err.error?.mensaje ?? 'No se pudo procesar el pago.');
-      }
-    });
-  }
 }

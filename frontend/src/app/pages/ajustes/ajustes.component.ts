@@ -328,7 +328,7 @@ export class AjustesComponent {
       { nombre: 'Plantillas de WhatsApp', descripcion: 'Mensajes automáticos por etapa del proceso', icono: this.svg('whatsapp'), ruta: '/ajustes/plantillas-whatsapp' },
       { nombre: 'Facturación Electrónica', descripcion: 'Emite boletas y facturas electrónicas ante SUNAT directamente desde el sistema', icono: this.svg('factura'), ruta: '/ajustes/facturacion-electronica' },
       { nombre: 'Comprobantes emitidos', descripcion: 'Historial de boletas y facturas electrónicas emitidas', icono: this.svg('factura'), ruta: '/facturacion/comprobantes' },
-      { nombre: 'Pagos online', descripcion: 'Configura Culqi para que tus clientes paguen por la web (tarjeta o Yape) en vez de al repartidor', icono: this.svg('gastos'), ruta: '/ajustes/pagos' },
+      { nombre: 'Pagos online', descripcion: 'Prepara Izipay para cobrar de forma segura desde el portal de seguimiento', icono: this.svg('gastos'), ruta: '/ajustes/pagos' },
     ];
   }
 

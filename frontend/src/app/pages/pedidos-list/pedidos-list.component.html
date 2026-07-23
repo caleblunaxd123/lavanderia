@@ -64,19 +64,23 @@
 
   <div class="filtros-row">
     <div class="filtros" [class.filtros--deshabilitado]="!!busqueda()">
-      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='pendientes'" (click)="cambiarFiltro('pendientes')">
-        @if (totalPendientesTab() > 0) { <span class="filtros__badge">{{ totalPendientesTab() }}</span> }
-        Pendientes
-      </button>
-      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='otros'" (click)="cambiarFiltro('otros')">
-        @if (totalOtrosTab() > 0) { <span class="filtros__badge">{{ totalOtrosTab() }}</span> }
-        Otros
-      </button>
-      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='ultimos'" (click)="cambiarFiltro('ultimos')">
+      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='ultimos' && !soloFueraDeTiempo()"
+        (click)="cambiarFiltro('ultimos')" title="Los pedidos más recientes, de todos los estados">
         @if (totalUltimosTab() > 0) { <span class="filtros__badge">{{ totalUltimosTab() }}</span> }
         Últimos
       </button>
-      <button class="filtros__item" [class.is-active]="filtro()==='fecha'" (click)="modalTipoConsulta.set(true)">
+      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='pendientes' && !soloFueraDeTiempo()"
+        (click)="cambiarFiltro('pendientes')" title="Pedidos aún en proceso (sin entregar)">
+        @if (totalPendientesTab() > 0) { <span class="filtros__badge">{{ totalPendientesTab() }}</span> }
+        Pendientes
+      </button>
+      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='otros' && !soloFueraDeTiempo()"
+        (click)="cambiarFiltro('otros')" title="Pedidos ya entregados o anulados">
+        @if (totalOtrosTab() > 0) { <span class="filtros__badge">{{ totalOtrosTab() }}</span> }
+        Otros
+      </button>
+      <button class="filtros__item" [class.is-active]="filtro()==='fecha' && !soloFueraDeTiempo()"
+        (click)="modalTipoConsulta.set(true)" title="Filtrar por rango de fechas">
         Fecha
       </button>
     </div>
@@ -114,6 +118,21 @@
       </div>
     }
   </div>
+
+  @if (soloFueraDeTiempo()) {
+    <div class="fuera-tiempo-banner">
+      <div class="fuera-tiempo-banner__info">
+        <span class="fuera-tiempo-banner__icon"><app-icon name="warning" [size]="18"></app-icon></span>
+        <div class="fuera-tiempo-banner__texto">
+          <strong>Fuera de tiempo — {{ resumenFueraDeTiempo().cantidad }} pedido{{ resumenFueraDeTiempo().cantidad === 1 ? '' : 's' }}</strong>
+          <span>Su entrega o recojo ya venció · Monto total <b>S/ {{ resumenFueraDeTiempo().totalDinero | number:'1.2-2' }}</b> · Falta cobrar <b>S/ {{ resumenFueraDeTiempo().saldoPorCobrar | number:'1.2-2' }}</b></span>
+        </div>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="salirFueraDeTiempo()">Ver todos los pedidos</button>
+    </div>
+  } @else if (descripcionFiltro(); as desc) {
+    <p class="filtro-desc"><app-icon name="info" [size]="13"></app-icon> {{ desc }}</p>
+  }
 
   @if (resumenFiltroFecha(); as resumenFecha) {
     <div class="filtro-fecha card">
@@ -680,6 +699,55 @@
         </div>
       }
 
+      <!-- Fotos de evidencia -->
+      <div class="detalle-seccion fotos-pedido">
+        <div class="detalle-seccion__head">
+          <h4><app-icon name="camera" [size]="14"></app-icon> Fotos de evidencia</h4>
+          @if (!p.anulado) {
+            <div class="fotos-pedido__subir">
+              <select [ngModel]="momentoFotoNueva()" (ngModelChange)="momentoFotoNueva.set($event)" aria-label="Momento de la foto">
+                <option value="RECEPCION">Recepción</option>
+                <option value="ENTREGA">Entrega</option>
+                <option value="OTRO">Otro</option>
+              </select>
+              <label class="btn btn--outline-primary btn--sm fotos-pedido__boton" [class.is-cargando]="subiendoFoto()">
+                <app-icon name="camera" [size]="14"></app-icon>
+                {{ subiendoFoto() ? 'Subiendo…' : 'Tomar / subir' }}
+                <input type="file" accept="image/*" capture="environment" hidden
+                  [disabled]="subiendoFoto()" (change)="onFotoSeleccionada($event)" />
+              </label>
+            </div>
+          }
+        </div>
+
+        @if (cargandoFotos()) {
+          <p class="estado-simple">Cargando fotos…</p>
+        } @else if (fotosPedido().length === 0) {
+          <p class="fotos-pedido__vacio">Aún no hay fotos. Toma una al revisar o al entregar las prendas.</p>
+        } @else {
+          <div class="fotos-pedido__grid">
+            @for (f of fotosPedido(); track f.id) {
+              <figure class="foto-miniatura">
+                @if (f.url) {
+                  <button type="button" class="foto-miniatura__ver" (click)="fotoAmpliada.set(f.url)"
+                    [attr.aria-label]="'Ampliar foto de ' + etiquetaMomento(f.momento)">
+                    <img [src]="f.url" [alt]="'Foto de ' + etiquetaMomento(f.momento)" loading="lazy" />
+                  </button>
+                } @else {
+                  <span class="foto-miniatura__cargando" aria-label="Cargando"></span>
+                }
+                <figcaption>{{ etiquetaMomento(f.momento) }}</figcaption>
+                @if (!p.anulado) {
+                  <button type="button" class="foto-miniatura__borrar" (click)="eliminarFoto(f.id)"
+                    title="Eliminar foto" aria-label="Eliminar foto"><app-icon name="close" [size]="12"></app-icon></button>
+                }
+              </figure>
+            }
+          </div>
+          <p class="fotos-pedido__nota"><app-icon name="info" [size]="12"></app-icon> El cliente también ve estas fotos en su enlace de seguimiento.</p>
+        }
+      </div>
+
       <!-- Reimprimir ticket -->
       <div class="detalle-seccion detalle-seccion--slim">
         <button class="btn btn--outline-primary btn--block" (click)="imprimirTicket(p)">
@@ -726,6 +794,16 @@
         }
       </div>
     </div>
+  </div>
+}
+
+<!-- Visor de foto ampliada -->
+@if (fotoAmpliada(); as urlFoto) {
+  <div class="foto-lightbox" (click)="fotoAmpliada.set(null)">
+    <button type="button" class="foto-lightbox__cerrar" (click)="fotoAmpliada.set(null)" aria-label="Cerrar foto">
+      <app-icon name="close" [size]="20"></app-icon>
+    </button>
+    <img [src]="urlFoto" alt="Foto de evidencia ampliada" (click)="$event.stopPropagation()" />
   </div>
 }
 
@@ -825,12 +903,14 @@
       <label for="direccion-conversion">Dirección exacta *</label>
       <input id="direccion-conversion" type="text" maxlength="250"
              placeholder="Av., calle, número, Mz., lote, urbanización"
-             [(ngModel)]="direccionEntregaConversion" />
+             [ngModel]="direccionEntregaConversion"
+             (ngModelChange)="actualizarDireccionConversion($event)" />
 
       <label for="distrito-conversion">Distrito *</label>
       <input id="distrito-conversion" type="text" maxlength="100" list="distritos-conversion-sugeridos"
              placeholder="Escribe o selecciona un distrito"
-             [(ngModel)]="distritoEntregaConversion" />
+             [ngModel]="distritoEntregaConversion"
+             (ngModelChange)="actualizarDistritoConversion($event)" />
       <datalist id="distritos-conversion-sugeridos">
         @for (distrito of distritos; track distrito) {
           <option [value]="distrito"></option>
@@ -845,13 +925,16 @@
       <app-mapa-ubicacion
         [latitud]="latitudEntregaConversion"
         [longitud]="longitudEntregaConversion"
+        [direccion]="direccionEntregaConversion"
+        [distrito]="distritoEntregaConversion"
+        [confirmada]="ubicacionConversionConfirmada"
         (ubicacionChange)="actualizarUbicacionConversion($event)">
       </app-mapa-ubicacion>
 
       <div class="modal-simple__actions">
         <button type="button" class="btn btn--ghost" (click)="cerrarDestinoDelivery()">Cancelar</button>
         <button type="button" class="btn btn--primario"
-                [disabled]="convirtiendoDelivery() || !direccionEntregaConversion.trim() || !distritoEntregaConversion"
+                [disabled]="convirtiendoDelivery() || !direccionEntregaConversion.trim() || !distritoEntregaConversion || !ubicacionConversionConfirmada"
                 (click)="confirmarConversionDelivery()">
           {{ convirtiendoDelivery() ? 'Guardando...' : (pedidoAConvertir()?.modalidad === 'Delivery' ? 'Guardar destino' : 'Guardar y convertir') }}
         </button>

@@ -33,7 +33,7 @@ export class TicketComponent implements OnInit {
   readonly negocio = computed(() => this.config.configuracion());
 
   readonly marcaCorta = computed(() =>
-    (this.negocio().nombreNegocio || 'Lavixa').replace(/^lavander[ií]a\s+/i, '').trim().toUpperCase()
+    (this.negocio().nombreNegocio || 'Lavandería').replace(/^lavander[ií]a\s+/i, '').trim().toUpperCase()
   );
 
   readonly condicionesLista = computed(() =>

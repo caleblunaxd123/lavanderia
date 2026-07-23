@@ -62,6 +62,7 @@ export class RegistrarComponent implements OnInit {
   referenciaEntrega = '';
   latitudEntrega: number | null = null;
   longitudEntrega: number | null = null;
+  ubicacionEntregaConfirmada = false;
   costoDeliveryPedido = 0;
   observacionesPedido = '';
   buscandoCliente = signal(false);
@@ -250,10 +251,21 @@ export class RegistrarComponent implements OnInit {
   actualizarUbicacion(ubicacion: UbicacionMapa | null) {
     this.latitudEntrega = ubicacion?.latitud ?? null;
     this.longitudEntrega = ubicacion?.longitud ?? null;
+    this.ubicacionEntregaConfirmada = !!ubicacion?.etiqueta;
     // El mapa manda: al elegir/mover el pin se actualizan dirección y distrito para que
     // no queden inconsistentes con el punto. Solo sobrescribe cuando el mapa resolvió un valor.
     if (ubicacion?.direccion) this.direccionEntrega = ubicacion.direccion;
     if (ubicacion?.distrito) this.distritoEntrega = ubicacion.distrito;
+  }
+
+  actualizarDireccionEntrega(valor: string) {
+    if (valor !== this.direccionEntrega) this.ubicacionEntregaConfirmada = false;
+    this.direccionEntrega = valor;
+  }
+
+  actualizarDistritoEntrega(valor: string) {
+    if (valor !== this.distritoEntrega) this.ubicacionEntregaConfirmada = false;
+    this.distritoEntrega = valor;
   }
 
   descripcionPaso3() {
@@ -279,6 +291,7 @@ export class RegistrarComponent implements OnInit {
       this.referenciaEntrega = '';
       this.latitudEntrega = null;
       this.longitudEntrega = null;
+      this.ubicacionEntregaConfirmada = false;
     }
     this.documentoIdentidad = c.dni ?? '';
     this.documentoFiscal = c.documentoFiscal ?? '';
@@ -299,6 +312,7 @@ export class RegistrarComponent implements OnInit {
     this.referenciaEntrega = '';
     this.latitudEntrega = null;
     this.longitudEntrega = null;
+    this.ubicacionEntregaConfirmada = false;
     this.puntosACanjear.set(0); // los puntos pertenecen al cliente seleccionado
   }
 
@@ -395,6 +409,8 @@ export class RegistrarComponent implements OnInit {
       && (this.modalidad !== 'Recojo' || this.direccion.trim().length > 0)
       && (this.modalidad !== 'Delivery' || (
         this.direccionEntrega.trim().length > 0 && this.distritoEntrega.trim().length > 0
+        && this.latitudEntrega !== null && this.longitudEntrega !== null
+        && this.ubicacionEntregaConfirmada
       ))
       && this.tieneServicioLavanderia()
       && this.totalFinal() > 0
@@ -408,6 +424,8 @@ export class RegistrarComponent implements OnInit {
     if (this.modalidad === 'Recojo' && !this.direccion.trim()) return 'Indica la dirección donde se recogerá el pedido.';
     if (this.modalidad === 'Delivery' && !this.direccionEntrega.trim()) return 'Indica la dirección exacta de entrega.';
     if (this.modalidad === 'Delivery' && !this.distritoEntrega.trim()) return 'Selecciona el distrito de entrega.';
+    if (this.modalidad === 'Delivery' && (this.latitudEntrega === null || this.longitudEntrega === null)) return 'Busca la dirección o marca el punto exacto en el mapa.';
+    if (this.modalidad === 'Delivery' && !this.ubicacionEntregaConfirmada) return 'Confirma que la dirección coincida con el punto del mapa.';
     if (!this.tieneServicioLavanderia()) return 'Agrega al menos un servicio de lavandería; la tarifa de delivery no cuenta como servicio.';
     if (this.totalFinal() <= 0) return 'El total del pedido debe ser mayor a cero.';
     return null;
@@ -520,6 +538,7 @@ export class RegistrarComponent implements OnInit {
     this.referenciaEntrega = '';
     this.latitudEntrega = null;
     this.longitudEntrega = null;
+    this.ubicacionEntregaConfirmada = false;
     this.costoDeliveryPedido = 0;
   }
 

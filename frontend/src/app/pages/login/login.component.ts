@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
+import { DESARROLLADOR_CREDITO, PRODUCTO_NOMBRE, PRODUCTO_TAGLINE } from '../../core/util/marca';
 import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
@@ -20,12 +21,15 @@ export class LoginComponent implements OnInit {
   private readonly config = inject(ConfiguracionService);
   private readonly tenant = inject(TenantContextService);
 
-  // Con slug (/lavixa/login) mostramos la marca de esa lavandería; sin slug (/login,
-  // acceso del propietario/plataforma) la pantalla es NEUTRAL: marca del producto "Lavixa",
-  // sin nombre ni logo de ningún negocio en particular.
+  // Con slug (/lavixa/login) mostramos la marca de ESA lavandería; sin slug (/login,
+  // acceso del propietario/plataforma) la pantalla es NEUTRAL: marca del PRODUCTO
+  // (LaviSystem), sin nombre ni logo de ningún negocio en particular.
+  readonly productoNombre = PRODUCTO_NOMBRE;
+  readonly productoTagline = PRODUCTO_TAGLINE;
+  readonly desarrolladorCredito = DESARROLLADOR_CREDITO;
   readonly tieneSlug = signal(false);
   readonly nombreNegocio = computed(() =>
-    this.tieneSlug() ? (this.config.configuracion().nombreNegocio || 'Lavixa') : 'Lavixa');
+    this.tieneSlug() ? (this.config.configuracion().nombreNegocio || PRODUCTO_NOMBRE) : PRODUCTO_NOMBRE);
   readonly logoUrl = computed(() =>
     this.tieneSlug() ? this.config.configuracion().logoUrl : null);
   readonly subtitulo = computed(() =>
@@ -42,7 +46,12 @@ export class LoginComponent implements OnInit {
     // Sin slug no cargamos ninguna config de negocio → la pantalla queda neutral.
     const slug = this.tenant.slug();
     this.tieneSlug.set(!!slug);
-    if (slug) this.config.cargarPorSlug(slug).subscribe({ error: () => {} });
+    if (slug) {
+      this.config.cargarPorSlug(slug).subscribe({ error: () => {} });
+    } else {
+      // Login neutral: el título de la pestaña es el del PRODUCTO, no de un negocio.
+      document.title = `${PRODUCTO_NOMBRE} — Gestión de lavanderías`;
+    }
   }
 
   submit() {

@@ -338,6 +338,18 @@ $mtop-h: 56px;
     transition: background .16s var(--sb-ease), transform .16s var(--sb-ease);
     &:hover { background: rgba(255, 90, 90, .9); transform: rotate(-8deg) scale(1.05); }
   }
+
+  // Crédito del desarrollador (pie del sidebar)
+  &__dev {
+    margin: 0;
+    padding: 8px 14px 12px;
+    text-align: center;
+    font-size: 9.5px;
+    letter-spacing: .03em;
+    line-height: 1.3;
+    color: var(--sb-muted);
+    border-top: 1px solid var(--sb-border);
+  }
 }
 
 .attention-backdrop {
