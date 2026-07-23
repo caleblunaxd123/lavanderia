@@ -137,7 +137,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<ComprobanteDto>> EmitirComprobante(int pedidoId, [FromBody] EmitirComprobanteRequest req, CancellationToken ct)
     {
-        var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, SedeId!.Value, ct);
+        var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, SedeRequeridaId, ct);
         if (pedido is null) return NotFound();
         if (pedido.EstadoPago != "PAGADO")
             return BadRequest(new { mensaje = "El pedido debe estar pagado por completo para emitir el comprobante." });
@@ -190,7 +190,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         var comprobante = new ComprobanteElectronico
         {
             NegocioId = NegocioId,
-            SedeId = SedeId!.Value,
+            SedeId = SedeRequeridaId,
             PedidoId = pedido.Id,
             Tipo = tipo,
             Serie = serie,
@@ -227,7 +227,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
             id, resultado.Estado, resultado.Codigo, resultado.Descripcion,
             resultado.XmlFirmado, resultado.CdrZip, null, DateTime.Now, ct);
 
-        var final = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var final = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         return Ok(Map(final!));
     }
 
@@ -238,7 +238,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     {
         pagina = Math.Max(1, pagina);
         tamanoPagina = Math.Clamp(tamanoPagina, 1, 200);
-        var (items, total) = await _facturacion.ListarPaginadoAsync(SedeId!.Value, pagina, tamanoPagina, ct);
+        var (items, total) = await _facturacion.ListarPaginadoAsync(SedeRequeridaId, pagina, tamanoPagina, ct);
         return Ok(new PagedResultDto<ComprobanteDto>
         {
             Items = items.Select(Map).ToList(),
@@ -252,7 +252,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:AJUSTES")]
     public async Task<ActionResult<ComprobanteDto>> Obtener(int id, CancellationToken ct)
     {
-        var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var c = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         return Ok(Map(c));
     }
@@ -261,9 +261,9 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:AJUSTES")]
     public async Task<IActionResult> Pdf(int id, CancellationToken ct)
     {
-        var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var c = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
-        var pedido = await _pedidos.ObtenerPorIdAsync(c.PedidoId, SedeId!.Value, ct);
+        var pedido = await _pedidos.ObtenerPorIdAsync(c.PedidoId, SedeRequeridaId, ct);
         var negocio = await _configNegocio.ObtenerAsync(NegocioId, ct);
         if (negocio is null) return NotFound(new { mensaje = "Configura primero los datos del negocio en Ajustes." });
 
@@ -275,12 +275,12 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ComprobanteDto>> Reenviar(int id, CancellationToken ct)
     {
-        var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var c = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         if (c.Estado is not ("RECHAZADO" or "ERROR"))
             return BadRequest(new { mensaje = "Solo se puede reenviar un comprobante rechazado o con error." });
 
-        var pedido = await _pedidos.ObtenerPorIdAsync(c.PedidoId, SedeId!.Value, ct);
+        var pedido = await _pedidos.ObtenerPorIdAsync(c.PedidoId, SedeRequeridaId, ct);
         if (pedido is null) return NotFound(new { mensaje = "El pedido asociado ya no existe." });
 
         var config = await _facturacion.ObtenerConfigAsync(NegocioId, ct);
@@ -308,7 +308,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
             id, resultado.Estado, resultado.Codigo, resultado.Descripcion,
             resultado.XmlFirmado, resultado.CdrZip, null, DateTime.Now, ct);
 
-        var final = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var final = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         return Ok(Map(final!));
     }
 
@@ -316,7 +316,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Anular(int id, CancellationToken ct)
     {
-        var c = await _facturacion.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var c = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         await _facturacion.ActualizarResultadoAsync(
             id, "ANULADO", c.CodigoRespuestaSunat, "Anulado localmente.",

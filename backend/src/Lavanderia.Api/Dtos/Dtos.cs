@@ -14,7 +14,7 @@ public record UsuarioDto(
     int Id, string Usuario, string NombreCompleto, string Rol, List<string> ModulosPermitidos,
     int NegocioId, int? SedeId, string? SedeNombre);
 
-public record SeleccionarSedeRequest([Required] int SedeId);
+public record SeleccionarSedeRequest([Required] int SedeId, string? RefreshToken = null);
 
 public record RefreshTokenRequest([Required] string RefreshToken);
 

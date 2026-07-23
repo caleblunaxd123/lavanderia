@@ -21,19 +21,19 @@ public class CajaController : TenantAwareControllerBase
     public async Task<ActionResult<List<MovimientoCajaDto>>> Movimientos(
         [FromQuery] DateTime? fecha, [FromQuery] int? usuarioId, CancellationToken ct)
     {
-        var lista = await _repo.ListarMovimientosAsync(fecha ?? DateTime.Today, usuarioId, SedeId!.Value, ct);
+        var lista = await _repo.ListarMovimientosAsync(fecha ?? DateTime.Today, usuarioId, SedeRequeridaId, ct);
         return Ok(lista.Select(Map).ToList());
     }
 
     [HttpGet("usuarios-dia")]
     public async Task<ActionResult<List<UsuarioDelDiaDto>>> UsuariosDelDia([FromQuery] DateTime? fecha, CancellationToken ct)
-        => Ok(await _repo.UsuariosDelDiaAsync(fecha ?? DateTime.Today, SedeId!.Value, ct));
+        => Ok(await _repo.UsuariosDelDiaAsync(fecha ?? DateTime.Today, SedeRequeridaId, ct));
 
     [HttpGet("cuadres/del-usuario")]
     public async Task<ActionResult<CuadreCajaDto>> CuadreDelUsuario(
         [FromQuery] DateTime fecha, [FromQuery] int usuarioId, CancellationToken ct)
     {
-        var c = await _repo.ObtenerCuadreDelUsuarioAsync(fecha, usuarioId, SedeId!.Value, ct);
+        var c = await _repo.ObtenerCuadreDelUsuarioAsync(fecha, usuarioId, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         return Ok(MapCuadre(c));
     }
@@ -55,7 +55,7 @@ public class CajaController : TenantAwareControllerBase
 
         var mov = new MovimientoCaja
         {
-            SedeId = SedeId!.Value,
+            SedeId = SedeRequeridaId,
             Fecha = DateTime.Now,
             Tipo = "GASTO",
             MetodoPago = req.MetodoPago.ToUpperInvariant(),
@@ -71,7 +71,7 @@ public class CajaController : TenantAwareControllerBase
     [HttpPost("cuadres")]
     public async Task<ActionResult<CuadreCajaDto>> GuardarCuadre([FromBody] GuardarCuadreRequest req, CancellationToken ct)
     {
-        var sedeId = SedeId!.Value;
+        var sedeId = SedeRequeridaId;
         var usuarioCierreId = req.UsuarioId ?? UsuarioId;
         if (req.Fecha.Date > DateTime.Today)
             return BadRequest(new { mensaje = "No se puede guardar un cuadre para una fecha futura." });
@@ -132,7 +132,7 @@ public class CajaController : TenantAwareControllerBase
     [HttpGet("cuadres/{id:int}")]
     public async Task<ActionResult<CuadreCajaDto>> ObtenerCuadre(int id, CancellationToken ct)
     {
-        var c = await _repo.ObtenerCuadreAsync(id, SedeId!.Value, ct);
+        var c = await _repo.ObtenerCuadreAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         return Ok(MapCuadre(c));
     }
@@ -140,7 +140,7 @@ public class CajaController : TenantAwareControllerBase
     [HttpGet("cuadres/ultimo-anterior")]
     public async Task<ActionResult<CuadreCajaDto>> ObtenerUltimoAnterior([FromQuery] DateTime fecha, CancellationToken ct)
     {
-        var c = await _repo.ObtenerUltimoAnteriorAsync(fecha, SedeId!.Value, ct);
+        var c = await _repo.ObtenerUltimoAnteriorAsync(fecha, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         return Ok(MapCuadre(c));
     }

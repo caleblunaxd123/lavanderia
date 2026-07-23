@@ -79,11 +79,15 @@ public class PedidoService : IPedidoService
         var direccionEntrega = LimpiarTexto(req.DireccionEntrega);
         var distritoEntrega = LimpiarTexto(req.DistritoEntrega);
         var referenciaEntrega = LimpiarTexto(req.ReferenciaEntrega);
-        ValidarDestinoDelivery(modalidad, direccionEntrega, distritoEntrega, req.LatitudEntrega, req.LongitudEntrega);
+        PedidoCalculos.ValidarDestinoDelivery(modalidad, direccionEntrega, distritoEntrega, req.LatitudEntrega, req.LongitudEntrega);
 
         var fechaIngreso = req.FechaIngreso ?? DateTime.Now;
         if (fechaIngreso > DateTime.Now.AddMinutes(5))
             throw new InvalidOperationException("La fecha de ingreso no puede estar en el futuro.");
+        // Límite inferior amplio: permite migrar pedidos antiguos, pero corta errores de tipeo
+        // gruesos (p. ej. año 2000 en vez de 2026) que ensuciarían los reportes por fecha.
+        if (fechaIngreso < DateTime.Now.AddYears(-2))
+            throw new InvalidOperationException("La fecha de ingreso es demasiado antigua. Verifica el año ingresado.");
         if (req.FechaEntregaEst is DateTime fechaEntrega && fechaEntrega < fechaIngreso)
             throw new InvalidOperationException("La fecha de entrega debe ser posterior a la fecha de ingreso.");
 
@@ -103,15 +107,20 @@ public class PedidoService : IPedidoService
                 cliente.Dni = LimpiarTexto(snapshot.Dni) ?? cliente.Dni;
                 cliente.DocumentoFiscal = LimpiarTexto(snapshot.DocumentoFiscal) ?? cliente.DocumentoFiscal;
                 cliente.Direccion = LimpiarTexto(snapshot.Direccion) ?? cliente.Direccion;
-                await _clientes.ActualizarAsync(cliente, negocioId, ct);
             }
 
-            ValidarDatosContacto(cliente.Celular, cliente.Direccion, modalidad);
+            // Validar ANTES de persistir: si el contacto no cumple, el request falla completo
+            // sin dejar al cliente modificado como efecto colateral de un pedido que no se creó.
+            PedidoCalculos.ValidarContacto(cliente.Celular, cliente.Direccion, modalidad);
+
+            if (snapshot is not null)
+                await _clientes.ActualizarAsync(cliente, negocioId, ct);
+
             clienteId = cliente.Id;
         }
         else if (req.ClienteNuevo is { } nuevo && !string.IsNullOrWhiteSpace(nuevo.Nombre))
         {
-            ValidarDatosContacto(nuevo.Celular, nuevo.Direccion, modalidad);
+            PedidoCalculos.ValidarContacto(nuevo.Celular, nuevo.Direccion, modalidad);
             clienteId = await _clientes.CrearAsync(new Cliente
             {
                 NegocioId = negocioId,
@@ -218,13 +227,13 @@ public class PedidoService : IPedidoService
         var descuento = descuentoPct + descuentoPuntos;
         var recargoUrgente = req.EsUrgente ? Math.Round(subtotal * (req.RecargoUrgentePct / 100m), 2) : 0m;
         var totalSinRedondear = Math.Max(0m, subtotal - descuento + recargoUrgente);
-        var total = Math.Round(totalSinRedondear * 10m, MidpointRounding.AwayFromZero) / 10m;
+        var total = PedidoCalculos.RedondearA10Centimos(totalSinRedondear);
         var redondeo = total - totalSinRedondear;
         if (req.MontoPagado < 0)
             throw new InvalidOperationException("El monto pagado no puede ser negativo.");
         if (req.MontoPagado > total + 0.01m)
             throw new InvalidOperationException($"El monto pagado excede el total del pedido (S/ {total:F2}).");
-        var estadoPago = req.MontoPagado <= 0 ? "PENDIENTE" : req.MontoPagado >= total ? "PAGADO" : "PARCIAL";
+        var estadoPago = PedidoCalculos.DeterminarEstadoPago(req.MontoPagado, total);
 
         int? areaId = req.AreaInicialId;
         if (areaId is int areaInicialId)
@@ -240,12 +249,12 @@ public class PedidoService : IPedidoService
             areaId = areas.OrderBy(a => a.Orden).FirstOrDefault()?.Id;
         }
 
-        var numero = await _pedidos.SiguienteNumeroAsync(sedeId, ct);
-
         var pedido = new Pedido
         {
             SedeId = sedeId,
-            Numero = numero,
+            // Numero lo asigna el repositorio dentro de la transacción del INSERT (a prueba
+            // de registros simultáneos); aquí solo se manda 0 como placeholder.
+            Numero = 0,
             ClienteId = clienteId,
             UsuarioId = usuarioId,
             FechaIngreso = fechaIngreso,
@@ -277,7 +286,7 @@ public class PedidoService : IPedidoService
         // Fidelización: canjear los puntos usados y otorgar los ganados por esta compra. Es
         // secundario al pedido — si algo falla aquí, el pedido igual queda creado; se loguea para
         // reconciliar, pero nunca se le devuelve un error al usuario por esto.
-        await AplicarPuntosAsync(pedidoId, numero, clienteId, total, puntosACanjear,
+        await AplicarPuntosAsync(pedidoId, pedido.Numero, clienteId, total, puntosACanjear,
             config?.SolesPorPunto ?? 0m, config?.ValorPuntoCanje ?? 0m, usuarioId, negocioId, ct);
 
         if (EsPedidoDomicilio(pedido.Modalidad))
@@ -304,7 +313,7 @@ public class PedidoService : IPedidoService
                 }, negocioId, ct);
             }
 
-            var puntosGanados = solesPorPunto > 0 ? (int)Math.Floor(total / solesPorPunto) : 0;
+            var puntosGanados = PedidoCalculos.PuntosGanados(total, solesPorPunto);
             if (puntosGanados > 0)
             {
                 await _clientes.AgregarMovimientoPuntosAsync(new MovimientoPuntos
@@ -335,12 +344,12 @@ public class PedidoService : IPedidoService
 
         var clienteDestino = await _clientes.ObtenerPorIdAsync(pedido.ClienteId, negocioId, ct)
             ?? throw new InvalidOperationException("El cliente del pedido no existe.");
-        ValidarDatosContacto(clienteDestino.Celular, clienteDestino.Direccion, "Delivery");
+        PedidoCalculos.ValidarContacto(clienteDestino.Celular, clienteDestino.Direccion, "Delivery");
 
         var direccion = LimpiarTexto(req.DireccionEntrega);
         var distrito = LimpiarTexto(req.DistritoEntrega);
         var referencia = LimpiarTexto(req.ReferenciaEntrega);
-        ValidarDestinoDelivery("Delivery", direccion, distrito, req.LatitudEntrega, req.LongitudEntrega);
+        PedidoCalculos.ValidarDestinoDelivery("Delivery", direccion, distrito, req.LatitudEntrega, req.LongitudEntrega);
 
         var destinoActualizado = await _pedidos.ActualizarDestinoDeliveryAsync(
             pedidoId, direccion!, distrito!, referencia, req.LatitudEntrega, req.LongitudEntrega, sedeId, ct);
@@ -465,7 +474,7 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException("El pedido está en un estado final y no puede reiniciar el flujo.");
 
         var areas = (await _areas.ListarActivasAsync(sedeId, ct)).OrderBy(a => a.Orden).ToList();
-        var siguiente = CalcularSiguientePaso(pedido, areas);
+        var siguiente = PedidoCalculos.CalcularSiguientePaso(pedido, areas);
         var estadoSolicitado = (req.NuevoEstado ?? "").Trim().ToUpperInvariant();
 
         if (estadoSolicitado != siguiente.Estado || req.NuevaAreaId != siguiente.AreaId)
@@ -510,7 +519,7 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException("El pedido está en un estado final y no puede reiniciar el flujo.");
 
         var areas = (await _areas.ListarActivasAsync(sedeId, ct)).OrderBy(a => a.Orden).ToList();
-        var siguiente = CalcularSiguientePaso(pedido, areas);
+        var siguiente = PedidoCalculos.CalcularSiguientePaso(pedido, areas);
 
         if (siguiente.Estado == "ENTREGADO")
         {
@@ -772,70 +781,6 @@ public class PedidoService : IPedidoService
 
     private static bool EsPedidoDomicilio(string? modalidad)
         => modalidad is "Recojo" or "Delivery";
-
-    private static bool RequiereEntregaDomicilio(string? modalidad)
-        => string.Equals(modalidad, "Delivery", StringComparison.OrdinalIgnoreCase);
-
-    private static SiguientePaso CalcularSiguientePaso(Pedido pedido, List<AreaLavado> areas)
-    {
-        if (pedido.EstadoProceso == "LISTO")
-            return new SiguientePaso(pedido.AreaActualId, "ENTREGADO", "Entregado al cliente");
-
-        if (pedido.EstadoProceso is not ("PENDIENTE" or "EN_PROCESO"))
-            throw new InvalidOperationException($"El estado '{pedido.EstadoProceso}' no permite avanzar el pedido.");
-
-        if (areas.Count == 0)
-            throw new InvalidOperationException("No hay áreas de lavado configuradas para esta sede.");
-
-        if (pedido.EstadoProceso == "EN_PROCESO" && pedido.AreaActualId is null)
-            throw new InvalidOperationException(
-                "El pedido está EN PROCESO pero no tiene un área actual. Corrige la incidencia antes de continuar; no se reinició el flujo.");
-
-        if (pedido.AreaActualId is null)
-            return new SiguientePaso(areas[0].Id, "EN_PROCESO", $"Ingresa a: {areas[0].Nombre}");
-
-        var indiceActual = areas.FindIndex(a => a.Id == pedido.AreaActualId.Value);
-        if (indiceActual < 0)
-            throw new InvalidOperationException(
-                "El área actual del pedido no está activa o no pertenece a esta sede. Corrige la configuración antes de avanzar.");
-
-        if (indiceActual == areas.Count - 1)
-        {
-            var nota = RequiereEntregaDomicilio(pedido.Modalidad) ? "Listo para salir a ruta" : "Listo para recojo";
-            return new SiguientePaso(pedido.AreaActualId, "LISTO", nota);
-        }
-
-        var proximaArea = areas[indiceActual + 1];
-        return new SiguientePaso(proximaArea.Id, "EN_PROCESO", $"Avanza a: {proximaArea.Nombre}");
-    }
-
-    private sealed record SiguientePaso(int? AreaId, string Estado, string Nota);
-
-    private static void ValidarDatosContacto(string? celular, string? direccion, string modalidad)
-    {
-        // El celular es obligatorio en TODO pedido: es el canal para avisar al cliente
-        // (WhatsApp de "listo para recoger", link de pago, etc.).
-        if (string.IsNullOrWhiteSpace(celular))
-            throw new InvalidOperationException("El cliente debe tener un celular registrado para crear el pedido.");
-        if (!System.Text.RegularExpressions.Regex.IsMatch(celular.Trim(), @"^9\d{8}$"))
-            throw new InvalidOperationException("El celular debe tener 9 dígitos y empezar con 9.");
-        if (modalidad == "Recojo" && string.IsNullOrWhiteSpace(direccion))
-            throw new InvalidOperationException("Para pedidos a domicilio debes registrar la dirección del cliente.");
-    }
-
-    private static void ValidarDestinoDelivery(
-        string modalidad, string? direccion, string? distrito, decimal? latitud, decimal? longitud)
-    {
-        if (modalidad != "Delivery") return;
-        if (string.IsNullOrWhiteSpace(direccion))
-            throw new InvalidOperationException("Indica la dirección exacta de entrega para el Delivery.");
-        if (string.IsNullOrWhiteSpace(distrito))
-            throw new InvalidOperationException("Selecciona el distrito de entrega para el Delivery.");
-        if (!latitud.HasValue || !longitud.HasValue)
-            throw new InvalidOperationException("Confirma el punto exacto de entrega en el mapa.");
-        if (latitud is < -90 or > 90 || longitud is < -180 or > 180)
-            throw new InvalidOperationException("Las coordenadas del punto de entrega no son válidas.");
-    }
 
     private static string? LimpiarTexto(string? valor)
         => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

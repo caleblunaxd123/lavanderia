@@ -17,28 +17,28 @@ public class MotorizadosController : TenantAwareControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<MotorizadoDto>>> ListarActivos(CancellationToken ct)
-        => Ok((await _repo.ListarActivosAsync(SedeId!.Value, ct)).Select(Map).ToList());
+        => Ok((await _repo.ListarActivosAsync(SedeRequeridaId, ct)).Select(Map).ToList());
 
     [HttpGet("todos")]
     [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<List<MotorizadoDto>>> ListarTodos(CancellationToken ct)
-        => Ok((await _repo.ListarTodosAsync(SedeId!.Value, ct)).Select(Map).ToList());
+        => Ok((await _repo.ListarTodosAsync(SedeRequeridaId, ct)).Select(Map).ToList());
 
     [HttpPost]
     [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<MotorizadoDto>> Crear([FromBody] MotorizadoDto dto, CancellationToken ct)
     {
         var celular = Limpiar(dto.Celular);
-        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeId!.Value, ct: ct))
+        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeRequeridaId, ct: ct))
             return Conflict(new { mensaje = "Ya existe un repartidor con ese celular en esta sede." });
         var id = await _repo.CrearAsync(new Motorizado
         {
-            SedeId = SedeId!.Value,
+            SedeId = SedeRequeridaId,
             Nombre = dto.Nombre.Trim(),
             Celular = celular,
             Activo = dto.Activo
         }, ct);
-        var creado = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var creado = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         return CreatedAtAction(nameof(ListarTodos), Map(creado!));
     }
 
@@ -46,16 +46,16 @@ public class MotorizadosController : TenantAwareControllerBase
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Actualizar(int id, [FromBody] MotorizadoDto dto, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
 
         var celular = Limpiar(dto.Celular);
-        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeId!.Value, id, ct))
+        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeRequeridaId, id, ct))
             return Conflict(new { mensaje = "Ya existe otro repartidor con ese celular en esta sede." });
         existente.Nombre = dto.Nombre.Trim();
         existente.Celular = celular;
         existente.Activo = dto.Activo;
-        await _repo.ActualizarAsync(existente, SedeId!.Value, ct);
+        await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
         return NoContent();
     }
 
@@ -63,9 +63,9 @@ public class MotorizadosController : TenantAwareControllerBase
     [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoUsuarioRequest req, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
-        await _repo.CambiarEstadoAsync(id, req.Activo, SedeId!.Value, ct);
+        await _repo.CambiarEstadoAsync(id, req.Activo, SedeRequeridaId, ct);
         return NoContent();
     }
 

@@ -38,8 +38,8 @@ public class PedidoFotosController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<List<FotoPedidoDto>>> Listar(int pedidoId, CancellationToken ct)
     {
-        if (await _pedidos.ObtenerAsync(pedidoId, SedeId!.Value, ct) is null) return NotFound();
-        var fotos = await _fotos.ListarPorPedidoAsync(pedidoId, SedeId!.Value, ct);
+        if (await _pedidos.ObtenerAsync(pedidoId, SedeRequeridaId, ct) is null) return NotFound();
+        var fotos = await _fotos.ListarPorPedidoAsync(pedidoId, SedeRequeridaId, ct);
         return Ok(fotos.Select(f => new FotoPedidoDto(f.Id, f.Momento, f.FechaSubida, f.TamanoBytes)).ToList());
     }
 
@@ -48,7 +48,7 @@ public class PedidoFotosController : TenantAwareControllerBase
     [RequestSizeLimit(MaxBytes + 1024 * 1024)]
     public async Task<ActionResult<FotoPedidoDto>> Subir(int pedidoId, [FromForm] IFormFile? archivo, [FromForm] string? momento, CancellationToken ct)
     {
-        if (await _pedidos.ObtenerAsync(pedidoId, SedeId!.Value, ct) is null)
+        if (await _pedidos.ObtenerAsync(pedidoId, SedeRequeridaId, ct) is null)
             return NotFound(new { mensaje = "El pedido no existe o no pertenece a tu sede." });
 
         if (archivo is null || archivo.Length == 0)
@@ -58,7 +58,7 @@ public class PedidoFotosController : TenantAwareControllerBase
         if (!TiposPermitidos.TryGetValue(archivo.ContentType, out var extension))
             return BadRequest(new { mensaje = "Formato no permitido. Sube una imagen JPG, PNG o WEBP." });
 
-        if (await _fotos.ContarPorPedidoAsync(pedidoId, SedeId!.Value, ct) >= MaxPorPedido)
+        if (await _fotos.ContarPorPedidoAsync(pedidoId, SedeRequeridaId, ct) >= MaxPorPedido)
             return BadRequest(new { mensaje = $"Este pedido ya tiene el máximo de {MaxPorPedido} fotos." });
 
         var momentoNorm = Momentos.Contains(momento, StringComparer.OrdinalIgnoreCase)
@@ -72,7 +72,7 @@ public class PedidoFotosController : TenantAwareControllerBase
         var foto = new PedidoFoto
         {
             PedidoId = pedidoId,
-            SedeId = SedeId!.Value,
+            SedeId = SedeRequeridaId,
             NegocioId = NegocioId,
             Momento = momentoNorm,
             NombreArchivo = nombreArchivo,
@@ -89,7 +89,7 @@ public class PedidoFotosController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> Archivo(int pedidoId, int fotoId, CancellationToken ct)
     {
-        var foto = await _fotos.ObtenerAsync(fotoId, SedeId!.Value, ct);
+        var foto = await _fotos.ObtenerAsync(fotoId, SedeRequeridaId, ct);
         if (foto is null || foto.PedidoId != pedidoId) return NotFound();
 
         var stream = _almacen.Abrir(foto.NegocioId, foto.PedidoId, foto.NombreArchivo);
@@ -101,7 +101,7 @@ public class PedidoFotosController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> Eliminar(int pedidoId, int fotoId, CancellationToken ct)
     {
-        var foto = await _fotos.EliminarAsync(fotoId, SedeId!.Value, ct);
+        var foto = await _fotos.EliminarAsync(fotoId, SedeRequeridaId, ct);
         if (foto is null || foto.PedidoId != pedidoId) return NotFound();
         _almacen.Eliminar(foto.NegocioId, foto.PedidoId, foto.NombreArchivo);
         return NoContent();

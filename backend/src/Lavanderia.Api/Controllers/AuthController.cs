@@ -37,12 +37,12 @@ public class AuthController : ControllerBase
         _celularPlataforma = config["Plataforma:CelularContacto"] ?? "";
     }
 
-    private async Task<string> EmitirRefreshTokenAsync(int usuarioId, CancellationToken ct)
+    private async Task<string> EmitirRefreshTokenAsync(int usuarioId, int? sedeId, CancellationToken ct)
     {
         var token = RefreshTokenGenerator.GenerarToken();
         var hash = RefreshTokenGenerator.Hash(token);
         var expira = DateTime.UtcNow.AddDays(_refreshTokenDias);
-        await _refreshTokens.CrearAsync(usuarioId, hash, expira, ct);
+        await _refreshTokens.CrearAsync(usuarioId, sedeId, hash, expira, ct);
         return token;
     }
 
@@ -92,7 +92,7 @@ public class AuthController : ControllerBase
 
         var modulos = await ObtenerModulosAsync(usuario, ct);
         var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
-        var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, ct);
+        var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, usuario.SedeId, ct);
         // Marca de actividad para el panel del propietario (saber qué empresas usan el sistema).
         await _usuarios.RegistrarUltimoAccesoAsync(usuario.Id, ct);
 
@@ -112,6 +112,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("login")] // anonimo y consulta BD: mismo freno anti-fuerza-bruta que el login
     public async Task<ActionResult<LoginResponse>> Refresh([FromBody] RefreshTokenRequest req, CancellationToken ct)
     {
         var hash = RefreshTokenGenerator.Hash(req.RefreshToken);
@@ -133,7 +134,8 @@ public class AuthController : ControllerBase
             });
         }
 
-        if (usuario.SedeId is int sedeId)
+        var sedeSesionId = guardado.SedeId ?? usuario.SedeId;
+        if (sedeSesionId is int sedeId)
         {
             var sede = await _sedes.ObtenerPorIdAsync(sedeId, ct);
             if (sede is null || !sede.Activo || sede.NegocioId != usuario.NegocioId)
@@ -145,9 +147,13 @@ public class AuthController : ControllerBase
 
         await _refreshTokens.RevocarAsync(hash, ct);
 
+        usuario.SedeId = sedeSesionId;
+        if (sedeSesionId is int sedeActivaId)
+            usuario.SedeNombre = (await _sedes.ObtenerPorIdAsync(sedeActivaId, ct))?.Nombre;
+
         var modulos = await ObtenerModulosAsync(usuario, ct);
         var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
-        var nuevoRefreshToken = await EmitirRefreshTokenAsync(usuario.Id, ct);
+        var nuevoRefreshToken = await EmitirRefreshTokenAsync(usuario.Id, sedeSesionId, ct);
 
         return Ok(new LoginResponse(
             token,
@@ -206,7 +212,10 @@ public class AuthController : ControllerBase
         usuario.SedeNombre = sede.Nombre;
         var modulos = await ObtenerModulosAsync(usuario, ct);
         var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
-        var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, ct);
+        if (!string.IsNullOrWhiteSpace(req.RefreshToken))
+            await _refreshTokens.RevocarAsync(RefreshTokenGenerator.Hash(req.RefreshToken), ct);
+
+        var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, sede.Id, ct);
 
         return Ok(new LoginResponse(
             token,

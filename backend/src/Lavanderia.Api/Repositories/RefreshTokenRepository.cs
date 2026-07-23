@@ -3,11 +3,11 @@ using Microsoft.Data.SqlClient;
 
 namespace Lavanderia.Api.Repositories;
 
-public record RefreshTokenInfo(int Id, int UsuarioId, bool Revocado, DateTime FechaExpiracion);
+public record RefreshTokenInfo(int Id, int UsuarioId, int? SedeId, bool Revocado, DateTime FechaExpiracion);
 
 public interface IRefreshTokenRepository
 {
-    Task CrearAsync(int usuarioId, string tokenHash, DateTime fechaExpiracion, CancellationToken ct = default);
+    Task CrearAsync(int usuarioId, int? sedeId, string tokenHash, DateTime fechaExpiracion, CancellationToken ct = default);
     Task<RefreshTokenInfo?> ObtenerPorHashAsync(string tokenHash, CancellationToken ct = default);
     /// <summary>Revoca de forma atomica solo si seguia vigente (idempotente ante reintentos).</summary>
     Task<bool> RevocarAsync(string tokenHash, CancellationToken ct = default);
@@ -18,15 +18,16 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     private readonly ISqlConnectionFactory _factory;
     public RefreshTokenRepository(ISqlConnectionFactory factory) => _factory = factory;
 
-    public async Task CrearAsync(int usuarioId, string tokenHash, DateTime fechaExpiracion, CancellationToken ct = default)
+    public async Task CrearAsync(int usuarioId, int? sedeId, string tokenHash, DateTime fechaExpiracion, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.RefreshToken (UsuarioId, TokenHash, FechaExpiracion)
-            VALUES (@UsuarioId, @TokenHash, @FechaExpiracion);";
+            INSERT INTO dbo.RefreshToken (UsuarioId, SedeId, TokenHash, FechaExpiracion)
+            VALUES (@UsuarioId, @SedeId, @TokenHash, @FechaExpiracion);";
         cmd.AddParam("@UsuarioId", usuarioId);
+        cmd.AddParam("@SedeId", sedeId);
         cmd.AddParam("@TokenHash", tokenHash);
         cmd.AddParam("@FechaExpiracion", fechaExpiracion);
         await cmd.ExecuteNonQueryAsync(ct);
@@ -38,16 +39,21 @@ public class RefreshTokenRepository : IRefreshTokenRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT Id, UsuarioId, Revocado, FechaExpiracion
+            SELECT Id, UsuarioId, SedeId, Revocado, FechaExpiracion
             FROM dbo.RefreshToken
             WHERE TokenHash = @TokenHash";
         cmd.AddParam("@TokenHash", tokenHash);
-        return await cmd.ReadFirstOrDefaultAsync(r => new RefreshTokenInfo(
-            r.GetInt32(r.GetOrdinal("Id")),
-            r.GetInt32(r.GetOrdinal("UsuarioId")),
-            r.GetBoolean(r.GetOrdinal("Revocado")),
-            r.GetDateTime(r.GetOrdinal("FechaExpiracion"))
-        ), ct);
+        return await cmd.ReadFirstOrDefaultAsync(r =>
+        {
+            var sedeOrdinal = r.GetOrdinal("SedeId");
+            return new RefreshTokenInfo(
+                r.GetInt32(r.GetOrdinal("Id")),
+                r.GetInt32(r.GetOrdinal("UsuarioId")),
+                r.IsDBNull(sedeOrdinal) ? null : r.GetInt32(sedeOrdinal),
+                r.GetBoolean(r.GetOrdinal("Revocado")),
+                r.GetDateTime(r.GetOrdinal("FechaExpiracion"))
+            );
+        }, ct);
     }
 
     public async Task<bool> RevocarAsync(string tokenHash, CancellationToken ct = default)

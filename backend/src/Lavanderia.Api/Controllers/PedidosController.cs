@@ -32,7 +32,7 @@ public class PedidosController : TenantAwareControllerBase
         CancellationToken ct = default)
         => Ok(await _service.ListarPaginadoAsync(
             filtro, busqueda, desde, hasta, campoFecha,
-            Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
+            Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeRequeridaId, ct));
 
     [HttpGet("por-cliente/{clienteId:int}")]
     [Authorize(Policy = "Modulo:CLIENTES")]
@@ -42,13 +42,13 @@ public class PedidosController : TenantAwareControllerBase
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanoPagina = 10,
         CancellationToken ct = default)
-        => Ok(await _service.ListarPorClienteAsync(clienteId, filtro, Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeId!.Value, ct));
+        => Ok(await _service.ListarPorClienteAsync(clienteId, filtro, Math.Max(1, pagina), Math.Clamp(tamanoPagina, 1, 200), SedeRequeridaId, ct));
 
     [HttpGet("{id:int}")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<PedidoDto>> Obtener(int id, CancellationToken ct)
     {
-        var p = await _service.ObtenerAsync(id, SedeId!.Value, ct);
+        var p = await _service.ObtenerAsync(id, SedeRequeridaId, ct);
         if (p is null) return NotFound();
         return Ok(p);
     }
@@ -59,7 +59,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            var pedido = await _service.CrearAsync(req, UsuarioId, NegocioId, SedeId!.Value, ct);
+            var pedido = await _service.CrearAsync(req, UsuarioId, NegocioId, SedeRequeridaId, ct);
             return CreatedAtAction(nameof(Obtener), new { id = pedido.Id }, pedido);
         }
         catch (InvalidOperationException ex)
@@ -74,7 +74,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.AvanzarAreaAsync(id, req, UsuarioId, SedeId!.Value, ct);
+            await _service.AvanzarAreaAsync(id, req, UsuarioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -93,7 +93,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.AvanzarSiguienteAreaAsync(id, UsuarioId, SedeId!.Value, req?.RecibidoPor, "USUARIO", ct);
+            await _service.AvanzarSiguienteAreaAsync(id, UsuarioId, SedeRequeridaId, req?.RecibidoPor, "USUARIO", ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -105,13 +105,13 @@ public class PedidosController : TenantAwareControllerBase
     [HttpGet("{id:int}/historial")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<List<PedidoHistorialDto>>> Historial(int id, CancellationToken ct)
-        => Ok(await _service.ObtenerHistorialAsync(id, SedeId!.Value, ct));
+        => Ok(await _service.ObtenerHistorialAsync(id, SedeRequeridaId, ct));
 
     [HttpGet("dashboard")]
     [Authorize(Policy = "Modulo:INICIO")]
     public async Task<ActionResult<DashboardDto>> Dashboard(CancellationToken ct)
     {
-        var dto = await _service.DashboardAsync(NegocioId, SedeId!.Value, ct);
+        var dto = await _service.DashboardAsync(NegocioId, SedeRequeridaId, ct);
         var modulos = User.FindAll("mod").Select(c => c.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool TieneModulo(string modulo) => User.IsInRole("ADMIN") || modulos.Contains(modulo);
 
@@ -141,12 +141,12 @@ public class PedidosController : TenantAwareControllerBase
     [HttpGet("contadores")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<PedidoContadoresDto>> Contadores(CancellationToken ct)
-        => Ok(await _service.ContadoresAsync(SedeId!.Value, ct));
+        => Ok(await _service.ContadoresAsync(SedeRequeridaId, ct));
 
     [HttpGet("siguiente-numero")]
     [Authorize(Policy = "Modulo:REGISTRAR")]
     public async Task<ActionResult<int>> SiguienteNumero(CancellationToken ct)
-        => Ok(await _service.SiguienteNumeroAsync(SedeId!.Value, ct));
+        => Ok(await _service.SiguienteNumeroAsync(SedeRequeridaId, ct));
 
     /// <summary>
     /// Valida un código de promoción para usarlo en Registrar. Cualquier usuario autenticado puede
@@ -182,7 +182,7 @@ public class PedidosController : TenantAwareControllerBase
     [HttpGet("abandonados")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<List<PedidoAbandonadoDto>>> Abandonados([FromQuery] int dias = 3, CancellationToken ct = default)
-        => Ok(await _service.ListarAbandonadosAsync(Math.Max(1, dias), SedeId!.Value, ct));
+        => Ok(await _service.ListarAbandonadosAsync(Math.Max(1, dias), SedeRequeridaId, ct));
 
     [HttpPost("{id:int}/pagos")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
@@ -190,7 +190,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.RegistrarPagoAsync(id, req, UsuarioId, SedeId!.Value, ct);
+            await _service.RegistrarPagoAsync(id, req, UsuarioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -205,7 +205,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.AgregarItemAsync(id, req, NegocioId, SedeId!.Value, ct);
+            await _service.AgregarItemAsync(id, req, NegocioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -220,7 +220,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.CambiarFechaEntregaAsync(id, req, UsuarioId, SedeId!.Value, "USUARIO", ct);
+            await _service.CambiarFechaEntregaAsync(id, req, UsuarioId, SedeRequeridaId, "USUARIO", ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -237,7 +237,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.ConvertirADeliveryAsync(id, req, NegocioId, SedeId!.Value, ct);
+            await _service.ConvertirADeliveryAsync(id, req, NegocioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -253,7 +253,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.AsignarMotorizadoAsync(id, req.MotorizadoId, SedeId!.Value, ct);
+            await _service.AsignarMotorizadoAsync(id, req.MotorizadoId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -270,7 +270,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            var token = await _service.ObtenerOCrearLinkPagoAsync(id, NegocioId, SedeId!.Value, ct);
+            var token = await _service.ObtenerOCrearLinkPagoAsync(id, NegocioId, SedeRequeridaId, ct);
             if (token is null) return NotFound(new { mensaje = "No se pudo habilitar el seguimiento para este pedido." });
             return Ok(new LinkSeguimientoDto(token.Value));
         }
@@ -286,24 +286,25 @@ public class PedidosController : TenantAwareControllerBase
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<LinkRepartidorDto>> LinkRepartidor(int id, CancellationToken ct)
     {
-        var ruta = await _rutas.ObtenerPorPedidoAsync(id, SedeId!.Value, ct);
+        var ruta = await _rutas.ObtenerPorPedidoAsync(id, SedeRequeridaId, ct);
         if (ruta is null) return NotFound(new { mensaje = "Pedido no encontrado." });
         if (!string.Equals(ruta.Modalidad, "Delivery", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { mensaje = "El seguimiento del repartidor solo aplica a pedidos Delivery." });
         if (ruta.Anulado || ruta.EstadoProceso is "ENTREGADO" or "ANULADO" or "DONADO")
             return BadRequest(new { mensaje = "El pedido ya finalizó y no puede generar un enlace de repartidor." });
 
-        var token = await _rutas.AsegurarTokenAsync(id, SedeId!.Value, ct);
+        var token = await _rutas.AsegurarTokenAsync(id, SedeRequeridaId, ct);
         return Ok(new LinkRepartidorDto(token));
     }
 
     [HttpPost("{id:int}/anular")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
+    [Authorize(Roles = "ADMIN,COORDINADOR")] // anular es acción sensible: no basta con tener el módulo
     public async Task<IActionResult> Anular(int id, [FromBody] AnularPedidoRequest req, CancellationToken ct)
     {
         try
         {
-            await _service.AnularAsync(id, req.Motivo, UsuarioId, NegocioId, SedeId!.Value, ct);
+            await _service.AnularAsync(id, req.Motivo, UsuarioId, NegocioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -315,11 +316,12 @@ public class PedidosController : TenantAwareControllerBase
     /// <summary>Envía a donación un pedido con mucho tiempo en custodia (desde el reporte de Almacén).</summary>
     [HttpPost("{id:int}/donar")]
     [Authorize(Policy = "Modulo:REPORTES")]
+    [Authorize(Roles = "ADMIN,COORDINADOR")] // donar dispone de prendas del cliente: requiere rol de confianza
     public async Task<IActionResult> Donar(int id, CancellationToken ct)
     {
         try
         {
-            await _service.DonarAsync(id, UsuarioId, SedeId!.Value, ct);
+            await _service.DonarAsync(id, UsuarioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -335,7 +337,7 @@ public class PedidosController : TenantAwareControllerBase
     {
         try
         {
-            await _service.ReenviarAlmacenAsync(id, UsuarioId, SedeId!.Value, ct);
+            await _service.ReenviarAlmacenAsync(id, UsuarioId, SedeRequeridaId, ct);
             return NoContent();
         }
         catch (InvalidOperationException ex)

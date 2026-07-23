@@ -59,6 +59,18 @@ public class PedidoRepository : IPedidoRepository
 
         try
         {
+            // El número correlativo se calcula DENTRO de la transacción con bloqueo de rango:
+            // dos registros simultáneos en la misma sede ya no pueden obtener el mismo número
+            // (antes se calculaba en una conexión aparte y chocaba contra el UNIQUE con un 500).
+            await using var cmdNum = conn.CreateCommand();
+            cmdNum.Transaction = tx;
+            cmdNum.CommandText = @"
+                SELECT ISNULL(MAX(Numero), 0) + 1
+                  FROM dbo.Pedido WITH (UPDLOCK, HOLDLOCK)
+                 WHERE SedeId = @SedeId";
+            cmdNum.AddParam("@SedeId", p.SedeId);
+            p.Numero = await cmdNum.ReadScalarAsync<int>(ct);
+
             // Insert Pedido
             await using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
@@ -864,6 +876,9 @@ public class PedidoRepository : IPedidoRepository
         {
             await using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
+            // Las reglas de negocio (sin pagos, no entregado) también van en el WHERE:
+            // el service las valida antes, pero un pago o una entrega concurrentes entre esa
+            // validación y este UPDATE dejarían un pedido anulado con dinero cobrado (TOCTOU).
             cmd.CommandText = @"
                 UPDATE dbo.Pedido
                    SET Anulado = 1,
@@ -871,12 +886,15 @@ public class PedidoRepository : IPedidoRepository
                        MotivoAnulacion = @Motivo,
                        TokenRuta = NULL,
                        TokenRutaExpiraEn = NULL
-                 WHERE Id = @Id AND Anulado = 0 AND SedeId = @SedeId";
+                 WHERE Id = @Id AND Anulado = 0 AND SedeId = @SedeId
+                   AND EstadoProceso <> 'ENTREGADO'
+                   AND MontoPagado <= 0.01";
             cmd.AddParam("@Motivo", motivo);
             cmd.AddParam("@Id", pedidoId);
             cmd.AddParam("@SedeId", sedeId);
             var filas = await cmd.ExecuteNonQueryAsync(ct);
-            if (filas == 0) throw new InvalidOperationException("Pedido no encontrado.");
+            if (filas == 0) throw new InvalidOperationException(
+                "No se pudo anular: el pedido no existe, ya está anulado, fue entregado o registró un pago mientras se procesaba.");
 
             await RegistrarHistorialAsync(new PedidoHistorial
             {
@@ -903,9 +921,21 @@ public class PedidoRepository : IPedidoRepository
         await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
         try
         {
+            // Lee el monto pagado con bloqueo (para dejar rastro en el historial). El OUTPUT del
+            // UPDATE no se puede usar aquí porque la tabla Pedido tiene triggers habilitados.
+            await using var cmdLeer = conn.CreateCommand();
+            cmdLeer.Transaction = tx;
+            cmdLeer.CommandText = @"
+                SELECT MontoPagado FROM dbo.Pedido WITH (UPDLOCK, ROWLOCK)
+                 WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso = 'LISTO'";
+            cmdLeer.AddParam("@Id", pedidoId);
+            cmdLeer.AddParam("@SedeId", sedeId);
+            var montoObj = await cmdLeer.ExecuteScalarAsync(ct);
+            if (montoObj is null) throw new InvalidOperationException("El pedido no está en almacén (LISTO) o no existe.");
+            var montoPagado = (decimal)montoObj;
+
             await using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
-            // Solo se dona lo que está en custodia (LISTO) y no anulado.
             cmd.CommandText = @"
             UPDATE dbo.Pedido SET EstadoProceso = 'DONADO', TokenRuta = NULL, TokenRutaExpiraEn = NULL
                  WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0 AND EstadoProceso = 'LISTO'";
@@ -914,13 +944,17 @@ public class PedidoRepository : IPedidoRepository
             var filas = await cmd.ExecuteNonQueryAsync(ct);
             if (filas == 0) throw new InvalidOperationException("El pedido no está en almacén (LISTO) o no existe.");
 
+            var nota = montoPagado > 0.01m
+                ? $"Enviado a donación por tiempo en custodia. El cliente había abonado S/ {montoPagado:F2} antes de abandonar el pedido."
+                : "Enviado a donación por tiempo en custodia";
+
             await RegistrarHistorialAsync(new PedidoHistorial
             {
                 PedidoId = pedidoId,
                 EstadoProceso = "DONADO",
                 UsuarioId = usuarioId,
                 Fecha = DateTime.Now,
-                Nota = "Enviado a donación por tiempo en custodia"
+                Nota = nota
             }, conn, tx, ct);
             await tx.CommitAsync(ct);
         }

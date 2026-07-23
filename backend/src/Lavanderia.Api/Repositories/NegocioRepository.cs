@@ -338,17 +338,46 @@ public class SedeRepository : ISedeRepository
     {
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"
-            INSERT INTO dbo.Sede (NegocioId, Nombre, Direccion, Telefono, Activo)
-            OUTPUT INSERTED.Id
-            VALUES (@NegocioId, @Nombre, @Direccion, @Telefono, @Activo);";
-        cmd.AddParam("@NegocioId", s.NegocioId);
-        cmd.AddParam("@Nombre", s.Nombre);
-        cmd.AddParam("@Direccion", s.Direccion);
-        cmd.AddParam("@Telefono", s.Telefono);
-        cmd.AddParam("@Activo", s.Activo);
-        return await cmd.ReadScalarAsync<int>(ct);
+        await using var tx = (Microsoft.Data.SqlClient.SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = @"
+                INSERT INTO dbo.Sede (NegocioId, Nombre, Direccion, Telefono, Activo)
+                OUTPUT INSERTED.Id
+                VALUES (@NegocioId, @Nombre, @Direccion, @Telefono, @Activo);";
+            cmd.AddParam("@NegocioId", s.NegocioId);
+            cmd.AddParam("@Nombre", s.Nombre);
+            cmd.AddParam("@Direccion", s.Direccion);
+            cmd.AddParam("@Telefono", s.Telefono);
+            cmd.AddParam("@Activo", s.Activo);
+            var sedeId = await cmd.ReadScalarAsync<int>(ct);
+
+            // Toda sede nace con el flujo estándar de áreas: sin esto los pedidos se crean
+            // pero no pueden avanzar ("No hay áreas de lavado configuradas"). El dueño puede
+            // renombrarlas o desactivarlas después desde Ajustes → Áreas de lavado.
+            await using var cmdAreas = conn.CreateCommand();
+            cmdAreas.Transaction = tx;
+            cmdAreas.CommandText = @"
+                INSERT INTO dbo.AreaLavado (SedeId, Nombre, Orden, TiempoEstMinutos, Activa) VALUES
+                    (@SedeId, N'Recepcion', 1, 15, 1),
+                    (@SedeId, N'Lavado', 2, 60, 1),
+                    (@SedeId, N'Secado', 3, 45, 1),
+                    (@SedeId, N'Doblado', 4, 20, 1),
+                    (@SedeId, N'Control de calidad', 5, 10, 1),
+                    (@SedeId, N'Empacado', 6, 5, 1);";
+            cmdAreas.AddParam("@SedeId", sedeId);
+            await cmdAreas.ExecuteNonQueryAsync(ct);
+
+            await tx.CommitAsync(ct);
+            return sedeId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
     }
 
     public async Task ActualizarAsync(Sede s, int negocioId, CancellationToken ct = default)

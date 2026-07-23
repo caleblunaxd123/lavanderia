@@ -26,7 +26,7 @@ public class CatalogosController : TenantAwareControllerBase
 
     [HttpGet("areas-lavado")]
     public async Task<ActionResult<List<AreaLavadoDto>>> Areas(CancellationToken ct)
-        => Ok((await _areas.ListarActivasAsync(SedeId!.Value, ct))
+        => Ok((await _areas.ListarActivasAsync(SedeRequeridaId, ct))
                 .Select(a => new AreaLavadoDto(a.Id, a.Nombre, a.Orden, a.TiempoEstMinutos))
                 .ToList());
 

@@ -19,7 +19,8 @@ $buildRoot = Join-Path $root ".qa-build"
 $publishDir = Join-Path $buildRoot "publish"
 $migraciones = @(
     (Join-Path $root "backend\db\scripts\036_endurecimiento_saas_izipay.sql"),
-    (Join-Path $root "backend\db\scripts\037_pedido_fotos.sql")
+    (Join-Path $root "backend\db\scripts\037_pedido_fotos.sql"),
+    (Join-Path $root "backend\db\scripts\038_refresh_token_sede.sql")
 )
 $urlFile = Join-Path $buildRoot "ultima-url.txt"
 $apiOut = Join-Path $buildRoot "api.out.log"
@@ -97,7 +98,7 @@ if ($Port -ne $requestedPort) {
 New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
 Remove-Item -LiteralPath $apiOut, $apiErr, $tunnelOut, $tunnelErr, $urlFile -Force -ErrorAction SilentlyContinue
 
-Write-Host "[1/6] Aplicando migraciones SQL (endurecimiento + fotos)..." -ForegroundColor Cyan
+Write-Host "[1/6] Aplicando migraciones SQL pendientes..." -ForegroundColor Cyan
 foreach ($sql in $migraciones) {
     & sqlcmd -S $SqlServer -E -b -C -I -d Lavanderia -i $sql
     if ($LASTEXITCODE -ne 0) { throw "La migracion SQL fallo ($sql) con codigo $LASTEXITCODE." }

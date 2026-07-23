@@ -91,6 +91,28 @@ try {
     $me = Test-Call "Sesion autenticada" GET "/api/auth/me" -Expected 200
     $adminId = [int]$me.Body.id
 
+    if ($null -eq $login.Body.usuario.sedeId) {
+        $sedesDisponibles = Test-Call "Sesion: listar sedes disponibles" GET "/api/sedes" -Expected 200
+        $sedeActiva = @($sedesDisponibles.Body | Where-Object { $_.activo })[0]
+        if ($null -eq $sedeActiva) { throw "No existe una sede activa para ejecutar la bateria QA." }
+
+        $seleccion = Test-Call "Sesion: seleccionar sede" POST "/api/auth/seleccionar-sede" @{
+            sedeId = $sedeActiva.id
+            refreshToken = $script:refreshToken
+        } -Expected 200
+        $script:token = $seleccion.Body.accessToken
+        $script:refreshToken = $seleccion.Body.refreshToken
+
+        $renovacion = Test-Call "Sesion: conserva sede al renovar" POST "/api/auth/refresh" @{
+            refreshToken = $script:refreshToken
+        } -Expected 200 -Token ""
+        if ([int]$renovacion.Body.usuario.sedeId -ne [int]$sedeActiva.id) {
+            throw "La renovacion de sesion no conservo la sede seleccionada."
+        }
+        $script:token = $renovacion.Body.accessToken
+        $script:refreshToken = $renovacion.Body.refreshToken
+    }
+
     # Catalogos de operacion
     $categoryName = "QA Categoria $suffix"
     $category = Test-Call "Categoria: crear" POST "/api/categorias" @{ nombre = $categoryName; activa = $true } -Expected 201
@@ -294,6 +316,15 @@ try {
     Test-Call "Categoria: desactivar" DELETE "/api/categorias/$categoryId" -Expected 200 | Out-Null
 }
 finally {
+    if ($script:token) {
+        if ($deliveryId) { Test-Call "Limpieza: anular delivery QA" POST "/api/pedidos/$deliveryId/anular" @{ motivo = "Limpieza automatica de prueba QA" } -Expected 204 | Out-Null }
+        if ($clientId) { Test-Call "Limpieza: desactivar cliente QA" DELETE "/api/clientes/$clientId" -Expected 200 | Out-Null }
+        if ($driverId) { Test-Call "Limpieza: desactivar motorizado QA" PATCH "/api/motorizados/$driverId/estado" @{ activo = $false } -Expected 204 | Out-Null }
+        if ($serviceId) { Test-Call "Limpieza: desactivar servicio QA" DELETE "/api/servicios-admin/$serviceId" -Expected 200 | Out-Null }
+        if ($areaId) { Test-Call "Limpieza: desactivar area QA" DELETE "/api/areas-lavado-admin/$areaId" -Expected 200 | Out-Null }
+        if ($branchId) { Test-Call "Limpieza: desactivar sede QA" PATCH "/api/sedes/$branchId/estado" @{ activo = $false } -Expected 204 | Out-Null }
+    }
+
     if ($script:refreshToken) {
         $logout = Invoke-QaRequest -Method POST -Path "/api/auth/logout" -Body @{ refreshToken = $script:refreshToken } -Token ""
         Assert-Status -Name "Logout y revocacion de refresh token" -Response $logout -Expected @(204) | Out-Null

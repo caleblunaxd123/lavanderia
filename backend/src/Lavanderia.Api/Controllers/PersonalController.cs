@@ -16,7 +16,7 @@ public class PersonalController : TenantAwareControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<EmpleadoDto>>> Listar(CancellationToken ct)
-        => Ok((await _repo.ListarTodosAsync(SedeId!.Value, ct)).Select(Map).ToList());
+        => Ok((await _repo.ListarTodosAsync(SedeRequeridaId, ct)).Select(Map).ToList());
 
     [HttpPost]
     public async Task<ActionResult<EmpleadoDto>> Crear([FromBody] EmpleadoDto dto, CancellationToken ct)
@@ -27,7 +27,7 @@ public class PersonalController : TenantAwareControllerBase
         if (error is not null) return error;
         var id = await _repo.CrearAsync(new Empleado
         {
-            SedeId = SedeId!.Value,
+            SedeId = SedeRequeridaId,
             Nombre = dto.Nombre.Trim(),
             Dni = dni,
             Celular = celular,
@@ -35,14 +35,14 @@ public class PersonalController : TenantAwareControllerBase
             FechaIngreso = dto.FechaIngreso,
             Activo = dto.Activo
         }, ct);
-        var creado = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var creado = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         return CreatedAtAction(nameof(Listar), Map(creado!));
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, [FromBody] EmpleadoDto dto, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
 
         var dni = Limpiar(dto.Dni);
@@ -55,26 +55,26 @@ public class PersonalController : TenantAwareControllerBase
         existente.Cargo = Limpiar(dto.Cargo);
         existente.FechaIngreso = dto.FechaIngreso;
         existente.Activo = dto.Activo;
-        await _repo.ActualizarAsync(existente, SedeId!.Value, ct);
+        await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
         return NoContent();
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
 
-        await _repo.CambiarEstadoAsync(id, false, SedeId!.Value, ct);
+        await _repo.CambiarEstadoAsync(id, false, SedeRequeridaId, ct);
         return Ok(new { mensaje = "Empleado desactivado." });
     }
 
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoUsuarioRequest req, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
-        await _repo.CambiarEstadoAsync(id, req.Activo, SedeId!.Value, ct);
+        await _repo.CambiarEstadoAsync(id, req.Activo, SedeRequeridaId, ct);
         return NoContent();
     }
 
@@ -91,9 +91,9 @@ public class PersonalController : TenantAwareControllerBase
 
     private async Task<ConflictObjectResult?> ValidarDuplicadosAsync(string? dni, string? celular, int? excluirId, CancellationToken ct)
     {
-        if (dni is not null && await _repo.ExisteDniAsync(dni, SedeId!.Value, excluirId, ct))
+        if (dni is not null && await _repo.ExisteDniAsync(dni, SedeRequeridaId, excluirId, ct))
             return Conflict(new { mensaje = "Ya existe un empleado con ese DNI en esta sede." });
-        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeId!.Value, excluirId, ct))
+        if (celular is not null && await _repo.ExisteCelularAsync(celular, SedeRequeridaId, excluirId, ct))
             return Conflict(new { mensaje = "Ya existe un empleado con ese celular en esta sede." });
         return null;
     }

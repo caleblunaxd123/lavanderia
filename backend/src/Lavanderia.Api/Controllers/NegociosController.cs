@@ -131,7 +131,11 @@ public class NegociosController : ControllerBase
             SolesPorPunto = 1m,
             AnchoTicketMm = 80,
             MensajePieTicket = "Gracias por su preferencia.",
-            CostoDelivery = 0m
+            CostoDelivery = 0m,
+            // Tope de descuento por defecto: sin esto un negocio nuevo nace con "0 = sin tope"
+            // y cualquier empleado con módulo REGISTRAR podría dejar pedidos en S/ 0.
+            // El dueño puede subirlo/bajarlo (o ponerlo en 0 a propósito) en Ajustes → Puntos y descuentos.
+            MaxDescuentoPct = 30m
         }, negocioId, ct);
 
         // Servicio de sistema que ancla el cargo de delivery configurable (ver 022_costo_delivery.sql).

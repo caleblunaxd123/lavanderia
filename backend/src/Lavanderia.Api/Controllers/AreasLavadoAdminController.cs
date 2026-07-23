@@ -20,55 +20,62 @@ public class AreasLavadoAdminController : TenantAwareControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<AreaLavadoEditableDto>>> Listar(CancellationToken ct)
-        => Ok((await _repo.ListarTodasAsync(SedeId!.Value, ct)).Select(Map).ToList());
+        => Ok((await _repo.ListarTodasAsync(SedeRequeridaId, ct)).Select(Map).ToList());
 
     [HttpPost]
     public async Task<ActionResult<AreaLavadoEditableDto>> Crear([FromBody] AreaLavadoEditableDto dto, CancellationToken ct)
     {
         var nombre = dto.Nombre.Trim();
-        if (await _repo.ExisteNombreAsync(nombre, SedeId!.Value, ct: ct))
+        if (await _repo.ExisteNombreAsync(nombre, SedeRequeridaId, ct: ct))
             return Conflict(new { mensaje = "Ya existe un area con ese nombre en esta sede." });
-        if (await _repo.ExisteOrdenAsync(dto.Orden, SedeId.Value, ct: ct))
+        if (await _repo.ExisteOrdenAsync(dto.Orden, SedeRequeridaId, ct: ct))
             return Conflict(new { mensaje = "Ya existe un area con ese orden en esta sede." });
         var id = await _repo.CrearAsync(new AreaLavado
         {
-            SedeId = SedeId!.Value,
+            SedeId = SedeRequeridaId,
             Nombre = nombre,
             Orden = dto.Orden,
             TiempoEstMinutos = dto.TiempoEstMinutos,
             Activa = dto.Activa
         }, ct);
-        var creada = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var creada = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         return CreatedAtAction(nameof(Listar), Map(creada!));
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, [FromBody] AreaLavadoEditableDto dto, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
 
         var nombre = dto.Nombre.Trim();
-        if (await _repo.ExisteNombreAsync(nombre, SedeId!.Value, id, ct))
+        if (await _repo.ExisteNombreAsync(nombre, SedeRequeridaId, id, ct))
             return Conflict(new { mensaje = "Ya existe otra area con ese nombre en esta sede." });
-        if (await _repo.ExisteOrdenAsync(dto.Orden, SedeId.Value, id, ct))
+        if (await _repo.ExisteOrdenAsync(dto.Orden, SedeRequeridaId, id, ct))
             return Conflict(new { mensaje = "Ya existe otra area con ese orden en esta sede." });
+        if (existente.Activa && !dto.Activa && await EsUltimaAreaActivaAsync(id, ct))
+            return BadRequest(new { mensaje = "No puedes desactivar la última área activa: los pedidos de esta sede no podrían avanzar. Crea o reactiva otra área primero." });
         existente.Nombre = nombre;
         existente.Orden = dto.Orden;
         existente.TiempoEstMinutos = dto.TiempoEstMinutos;
         existente.Activa = dto.Activa;
-        await _repo.ActualizarAsync(existente, SedeId!.Value, ct);
+        await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
         return NoContent();
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
 
-        var usos = await _repo.ContarUsoAsync(id, SedeId!.Value, ct);
-        await _repo.CambiarEstadoAsync(id, false, SedeId!.Value, ct);
+        // Una sede sin áreas activas queda operativamente rota: se pueden crear pedidos pero
+        // no avanzar por el flujo. Detectado en auditoría QA (sedes reales en ese estado).
+        if (existente.Activa && await EsUltimaAreaActivaAsync(id, ct))
+            return BadRequest(new { mensaje = "No puedes desactivar la última área activa: los pedidos de esta sede no podrían avanzar. Crea o reactiva otra área primero." });
+
+        var usos = await _repo.ContarUsoAsync(id, SedeRequeridaId, ct);
+        await _repo.CambiarEstadoAsync(id, false, SedeRequeridaId, ct);
         return Ok(new
         {
             mensaje = usos > 0
@@ -80,10 +87,19 @@ public class AreasLavadoAdminController : TenantAwareControllerBase
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> Reactivar(int id, [FromBody] CambiarEstadoUsuarioRequest req, CancellationToken ct)
     {
-        var existente = await _repo.ObtenerPorIdAsync(id, SedeId!.Value, ct);
+        var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
-        await _repo.CambiarEstadoAsync(id, req.Activo, SedeId!.Value, ct);
+        if (existente.Activa && !req.Activo && await EsUltimaAreaActivaAsync(id, ct))
+            return BadRequest(new { mensaje = "No puedes desactivar la última área activa: los pedidos de esta sede no podrían avanzar. Crea o reactiva otra área primero." });
+        await _repo.CambiarEstadoAsync(id, req.Activo, SedeRequeridaId, ct);
         return NoContent();
+    }
+
+    /// <summary>True si el área indicada es la única activa que queda en la sede actual.</summary>
+    private async Task<bool> EsUltimaAreaActivaAsync(int areaId, CancellationToken ct)
+    {
+        var activas = await _repo.ListarActivasAsync(SedeRequeridaId, ct);
+        return activas.Count == 1 && activas[0].Id == areaId;
     }
 
     private static AreaLavadoEditableDto Map(AreaLavado a) => new()

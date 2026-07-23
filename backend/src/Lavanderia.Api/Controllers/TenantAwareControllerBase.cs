@@ -25,4 +25,7 @@ public abstract class TenantAwareControllerBase : ControllerBase
             return string.IsNullOrEmpty(v) ? null : int.Parse(v);
         }
     }
+
+    protected int SedeRequeridaId => SedeId
+        ?? throw new InvalidOperationException("Selecciona una sede antes de continuar.");
 }
