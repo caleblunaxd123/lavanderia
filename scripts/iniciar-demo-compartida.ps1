@@ -20,7 +20,8 @@ $publishDir = Join-Path $buildRoot "publish"
 $migraciones = @(
     (Join-Path $root "backend\db\scripts\036_endurecimiento_saas_izipay.sql"),
     (Join-Path $root "backend\db\scripts\037_pedido_fotos.sql"),
-    (Join-Path $root "backend\db\scripts\038_refresh_token_sede.sql")
+    (Join-Path $root "backend\db\scripts\038_refresh_token_sede.sql"),
+    (Join-Path $root "backend\db\scripts\039_sedes_sin_areas_y_tope_descuento.sql")
 )
 $urlFile = Join-Path $buildRoot "ultima-url.txt"
 $apiOut = Join-Path $buildRoot "api.out.log"
@@ -43,7 +44,20 @@ function Remove-WorkspaceDirectory([string]$Path) {
         throw "Se rechazo eliminar una ruta fuera del proyecto: $full"
     }
     if (Test-Path -LiteralPath $full) {
-        Remove-Item -LiteralPath $full -Recurse -Force
+        # Reintenta un par de veces: tras cerrar un demo anterior, Windows puede tardar
+        # unos segundos en soltar los DLL bloqueados.
+        $intentos = 0
+        while ($true) {
+            try {
+                Remove-Item -LiteralPath $full -Recurse -Force -ErrorAction Stop
+                break
+            } catch {
+                $intentos++
+                if ($intentos -ge 3) { throw }
+                Write-Host "Carpeta en uso, reintentando en 3 s... ($intentos/3)" -ForegroundColor Yellow
+                Start-Sleep -Seconds 3
+            }
+        }
     }
 }
 
@@ -81,6 +95,24 @@ function Get-AvailablePort([int]$PreferredPort, [int]$Attempts = 20) {
     throw "No se encontro un puerto libre entre $PreferredPort y $($PreferredPort + $Attempts - 1)."
 }
 
+function Stop-DemoAnterior {
+    # Si el bat se corre de nuevo con un demo anterior aun vivo, la API previa mantiene
+    # bloqueados los DLL de .qa-build\publish y el publish falla con "Acceso denegado".
+    # Cerramos SOLO los procesos de este demo: la API que corre desde la carpeta publish
+    # y los tuneles temporales de cloudflared (tunnel --url ...).
+    $detenidos = 0
+    Get-CimInstance Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like "*$publishDir*" } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $detenidos++ }
+    Get-CimInstance Win32_Process -Filter "Name = 'cloudflared.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like "*tunnel*--url*" } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; $detenidos++ }
+    if ($detenidos -gt 0) {
+        Write-Host "Se detuvo un demo anterior que seguia corriendo ($detenidos procesos)." -ForegroundColor Yellow
+        Start-Sleep -Seconds 2   # da tiempo a que Windows libere los archivos bloqueados
+    }
+}
+
 Assert-Command "dotnet"
 Assert-Command "node"
 Assert-Command "npm.cmd"
@@ -88,6 +120,8 @@ Assert-Command "sqlcmd"
 if (-not (Test-Path -LiteralPath $cloudflared)) {
     throw "No se encontro cloudflared en $cloudflared"
 }
+
+Stop-DemoAnterior
 
 $requestedPort = $Port
 $Port = Get-AvailablePort $requestedPort
@@ -183,17 +217,24 @@ try {
 
     Write-Host "[6/6] LISTO PARA PRUEBAS" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Lavixa:     $lavixaUrl" -ForegroundColor Green
-    Write-Host "Propietario: $ownerUrl" -ForegroundColor Yellow
-    Write-Host "Health:      $publicUrl/health/ready"
+    Write-Host "==================================================================" -ForegroundColor Green
+    Write-Host "  ENLACE PARA EL CLIENTE (compartelo por WhatsApp):" -ForegroundColor Green
+    Write-Host "  $lavixaUrl" -ForegroundColor Green
+    Write-Host "==================================================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Panel propietario (solo para ti): $ownerUrl" -ForegroundColor Yellow
+    Write-Host "Verificacion de salud:            $publicUrl/health/ready"
     Write-Host ""
     if ($publicReady) {
         Write-Host "El tunel respondio correctamente desde Internet." -ForegroundColor Green
     } else {
         Write-Warning "Cloudflare entrego la URL, pero su DNS aun no responde. Espera 30-60 segundos y vuelve a abrirla."
     }
-    Write-Host "La URL de Lavixa fue copiada al portapapeles. Esta URL cambia al reiniciar."
-    Write-Host "No cierres esta ventana. Presiona Ctrl+C para detener API y tunel."
+    Write-Host "El enlace ya esta COPIADO al portapapeles (Ctrl+V para pegarlo)."
+    Write-Host "Recuerda pasarle al cliente su usuario y contrasena aparte."
+    Write-Host ""
+    Write-Host "IMPORTANTE: no cierres esta ventana mientras el cliente prueba." -ForegroundColor Yellow
+    Write-Host "El enlace cambia cada vez que reinicias. Ctrl+C para detener todo."
 
     if (-not $NoBrowser) { Start-Process $lavixaUrl }
 
