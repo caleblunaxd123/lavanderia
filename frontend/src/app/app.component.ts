@@ -9,10 +9,11 @@ import { ConfiguracionService } from './core/services/configuracion.service';
 import { TenantContextService } from './core/services/tenant-context.service';
 import { ToasterComponent } from './shared/toaster/toaster.component';
 import { AlertasGlobalesComponent } from './shared/alertas-globales/alertas-globales.component';
+import { TourOverlayComponent } from './shared/tour/tour-overlay.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaHeaderComponent, AlertasGlobalesComponent, ToasterComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaHeaderComponent, AlertasGlobalesComponent, ToasterComponent, TourOverlayComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

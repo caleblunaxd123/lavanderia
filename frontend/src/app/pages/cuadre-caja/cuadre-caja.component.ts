@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -68,6 +68,11 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   cajaInicial = signal(0);  // signal para que enCajaDeberiaHaber/diferencia recalculen al tipear
   corte = 0;        // efectivo que se entrega/retira al cierre
   nota = '';        // observación libre del cuadre
+
+  // Cómo se cuenta el efectivo de la caja: 'rapido' = escribes el total directo (por defecto,
+  // lo más ágil); 'detallado' = cuentas billete por billete y el total se calcula solo.
+  readonly modoConteo = signal<'rapido' | 'detallado'>('rapido');
+  readonly totalContadoManual = signal(0);
   // false = solo los movimientos del colaborador seleccionado; true = toda la caja del día (todos).
   readonly verTodos = signal(false);
   readonly sugerenciaCajaInicial = signal<{ monto: number; usuarioNombre?: string; fecha: string } | null>(null);
@@ -89,6 +94,21 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
       debounceTime(180),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => this.refrescarDinamicamente());
+  }
+
+  /** True si el usuario ya empezó a contar/ajustar la caja y no ha guardado el cierre. */
+  private hayCierreEnProgreso(): boolean {
+    if (this.guardado || this.guardando()) return false;
+    return this.totalContado() > 0 || this.cajaInicial() > 0 || this.corte > 0;
+  }
+
+  // Avisa antes de perder un conteo de caja a medio hacer (F5, cerrar pestaña, navegar fuera).
+  @HostListener('window:beforeunload', ['$event'])
+  avisarSalidaConConteo(evento: BeforeUnloadEvent): void {
+    if (this.hayCierreEnProgreso()) {
+      evento.preventDefault();
+      evento.returnValue = '';
+    }
   }
 
   ngOnInit() {
@@ -332,9 +352,22 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     );
   }
 
-  totalContado = computed(() =>
+  readonly totalDenominaciones = computed(() =>
     this.denominaciones().reduce((acc, d) => acc + d.valor * d.cantidad, 0)
   );
+
+  // El total contado sale del modo activo: en 'detallado' del contador de billetes,
+  // en 'rapido' del número que el usuario escribe directo.
+  totalContado = computed(() =>
+    this.modoConteo() === 'detallado' ? this.totalDenominaciones() : (this.totalContadoManual() || 0)
+  );
+
+  usarContadorDetallado() { this.modoConteo.set('detallado'); }
+  usarTotalRapido() {
+    // Al colapsar el contador, conserva lo ya contado como total rápido para no perderlo.
+    if (this.totalDenominaciones() > 0) this.totalContadoManual.set(this.totalDenominaciones());
+    this.modoConteo.set('rapido');
+  }
 
   enCajaDeberiaHaber = computed(() =>
     this.cajaInicial() + this.pedidosPagadosEfectivo() - this.gastosEfectivo()
@@ -420,6 +453,8 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
 
   private reiniciarConteo() {
     this.denominaciones.update(list => list.map(d => ({ ...d, cantidad: 0 })));
+    this.totalContadoManual.set(0);
+    this.modoConteo.set('rapido');
     this.corte = 0;
     this.nota = '';
     this.guardado = false;

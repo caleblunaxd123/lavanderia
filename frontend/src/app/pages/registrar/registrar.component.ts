@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
@@ -141,6 +141,25 @@ export class RegistrarComponent implements OnInit {
   registrado = signal(false);
   pedidoCreado = signal<Pedido | null>(null);
   registrando = signal(false);
+
+  /** True si el usuario ya escribió algo del pedido y todavía no lo registró:
+   *  usado para avisar antes de perder el trabajo por un F5 / cierre accidental. */
+  private hayPedidoEnProgreso(): boolean {
+    if (this.registrado() || this.registrando()) return false;
+    return this.nombre.trim().length > 0
+      || this.celular.trim().length > 0
+      || this.items().length > 0;
+  }
+
+  // El navegador muestra su diálogo nativo "¿Salir del sitio? Los cambios no se guardarán"
+  // solo si hay un pedido a medio llenar. Cubre F5, cerrar pestaña y navegar fuera por URL.
+  @HostListener('window:beforeunload', ['$event'])
+  avisarSalidaConTrabajo(evento: BeforeUnloadEvent): void {
+    if (this.hayPedidoEnProgreso()) {
+      evento.preventDefault();
+      evento.returnValue = '';
+    }
+  }
 
   ngOnInit() {
     this.whatsapp.cargar();

@@ -1,6 +1,8 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent, IconName } from '../icon/icon.component';
+import { TourService } from '../../core/services/tour.service';
+import { TOURS } from '../../core/constants/tours';
 
 export type HeaderColor = 'azul' | 'verde' | 'naranja' | 'cian' | 'morado' | 'gris' | 'rojo';
 
@@ -26,4 +28,11 @@ export class PageHeaderComponent {
   /** Texto del enlace "volver" (ej. "Ajustes", "Reportes"). Si se define, muestra la flecha de regreso. */
   @Input() volverTexto?: string;
   @Output() volver = new EventEmitter<void>();
+
+  /** Clave del tour guiado del módulo (ver TOURS). Si se define, muestra el botón "?". */
+  @Input() tourId?: string;
+
+  private readonly tour = inject(TourService);
+  get tieneTour(): boolean { return !!this.tourId && !!TOURS[this.tourId]; }
+  iniciarTour() { if (this.tourId) this.tour.iniciar(TOURS[this.tourId]); }
 }

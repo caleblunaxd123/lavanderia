@@ -1,8 +1,8 @@
 <div class="page">
-  <app-page-header icono="users" color="cian" titulo="Clientes"
+  <app-page-header icono="users" color="cian" titulo="Clientes" tourId="clientes"
     [subtitulo]="clientes().length + (clientes().length === 1 ? ' resultado' : ' resultados')">
     <a class="btn btn--ghost" routerLink="/clientes/crm">CRM</a>
-    <button class="btn btn--primario" (click)="abrirModal()">+ Nuevo cliente</button>
+    <button class="btn btn--primario" data-tour="clientes-nuevo" (click)="abrirModal()">+ Nuevo cliente</button>
   </app-page-header>
 
   <div class="tabs">
@@ -13,7 +13,7 @@
 
   @if (tab() === 'buscar') {
 
-  <div class="buscador card">
+  <div class="buscador card" data-tour="clientes-buscar">
     <label>Buscar por</label>
     <div class="buscador__row">
       <select [(ngModel)]="campoBusqueda" (ngModelChange)="onBuscarChange()">

@@ -1,313 +1,292 @@
 <div class="page">
-  <app-page-header icono="cash" color="verde" titulo="Cuadre Diario"
-    [subtitulo]="usuarioSeleccionadoNombre() || 'Cierre de caja del día'">
+  <app-page-header icono="cash" color="verde" titulo="Cierre de caja" tourId="cuadre-caja"
+    [subtitulo]="usuarioSeleccionadoNombre() || 'Revisa el efectivo y cierra el día'">
     <input type="date" class="ph-fecha" [max]="fechaMaxima" aria-label="Fecha del cuadre"
       [ngModel]="fecha" (ngModelChange)="cambiarFecha($event)" />
     <span class="estado-pill" [class]="'estado-pill--' + guardado">
-      {{ guardado ? 'Cuadre guardado' : 'Cuadre no guardado' }}
+      {{ guardado ? 'Cerrado' : 'Sin cerrar' }}
     </span>
   </app-page-header>
 
-  <div class="usuarios-dia" [class.usuarios-dia--vacio]="usuariosDelDia().length === 0">
-    @if (cargandoUsuarios()) {
-      <p class="hint">Cargando colaboradores…</p>
-    } @else if (usuariosDelDia().length === 0) {
-      <p class="hint">Aún no hay movimientos ni cuadres registrados este día.</p>
-    } @else {
-      <span class="usuarios-dia__label">Colaborador:</span>
-      @for (u of usuariosDelDia(); track u.id) {
-        <button
-          type="button"
-          class="usuario-chip"
-          [class.is-active]="usuarioSeleccionadoId() === u.id"
-          [class.usuario-chip--cuadrado]="u.tieneCuadre"
-          (click)="seleccionarUsuario(u.id)">
-          <strong>{{ u.nombreCompleto }}</strong>
-          <span>{{ u.rolNombre }}{{ u.tieneCuadre ? ' · ✓ cuadrado' : (' · ' + u.movimientos + ' mov.') }}</span>
-        </button>
-      }
-    }
-  </div>
-
-  <div class="grid">
-    <div class="card bloque">
-      <h4>Contador de dinero</h4>
-      <table class="tabla-denominaciones">
-        <thead><tr><th>Monto</th><th>Cantidad</th><th>Total</th></tr></thead>
-        <tbody>
-          @for (d of denominaciones(); track d.valor) {
-            <tr>
-              <td>S/ {{ d.valor }}</td>
-              <td>
-                <input type="number" min="0" step="1" inputmode="numeric"
-                  [attr.aria-label]="'Cantidad de ' + (d.valor < 1 ? 'monedas' : 'billetes') + ' de S/ ' + d.valor"
-                  [ngModel]="d.cantidad"
-                  (ngModelChange)="actualizarCantidad(d.valor, $event)" />
-              </td>
-              <td>S/ {{ (d.valor * d.cantidad).toFixed(2) }}</td>
-            </tr>
-          }
-        </tbody>
-        <tfoot>
-          <tr><td colspan="2">TOTAL S/</td><td class="total">{{ totalContado().toFixed(2) }}</td></tr>
-        </tfoot>
-      </table>
-    </div>
-
-    <div class="card bloque">
-      <h4>Ingresos y gastos reales del día</h4>
-      <p class="hint hint--intro">Calculado automáticamente de los pedidos y gastos registrados en la fecha seleccionada (no editable).</p>
-
-      <div class="scope-toggle">
-        <button type="button" class="scope-btn" [class.is-active]="!verTodos()" (click)="verTodos() && alternarVerTodos()">
-          Solo {{ usuarioSeleccionadoNombre() || 'mis movimientos' }}
-        </button>
-        <button type="button" class="scope-btn" [class.is-active]="verTodos()" (click)="!verTodos() && alternarVerTodos()">
-          Toda la caja del día
-        </button>
-      </div>
-
-      <div class="resumen-fila">
-        <span>Cobros registrados del día<br><small class="hint">Efectivo + digital. No es el efectivo en caja.</small></span>
-        <strong class="txt-verde">S/ {{ ingresosTotal().toFixed(2) }}</strong>
-      </div>
-      @if (cargandoMovimientos()) {
-        <p class="hint">Cargando…</p>
-      } @else if (ingresosPorMetodo().length === 0) {
-        <p class="hint hint--aviso">
-          Sin ingresos registrados el <strong>{{ fecha }}</strong>.<br>
-          <small>Si esperabas ver pagos aquí, verifica que la fecha del cuadre coincida con la fecha en que se registraron los pagos (mira la fecha del pedido).</small>
-        </p>
+  <!-- Colaborador + alcance del día -->
+  <div class="barra-cuadre">
+    <div class="usuarios-dia" [class.usuarios-dia--vacio]="usuariosDelDia().length === 0">
+      @if (cargandoUsuarios()) {
+        <p class="hint">Cargando colaboradores…</p>
+      } @else if (usuariosDelDia().length === 0) {
+        <p class="hint">Aún no hay movimientos ni cierres registrados este día.</p>
       } @else {
-        <ul class="gastos-lista">
-          @for (i of ingresosPorMetodo(); track i.metodo) {
-            <li>
-              <span>{{ etiquetasMetodo[i.metodo] || i.metodo }} <small>({{ i.cantidad }} {{ i.cantidad === 1 ? 'pago' : 'pagos' }})</small></span>
-              <strong>S/ {{ i.monto.toFixed(2) }}</strong>
-            </li>
-          }
-        </ul>
-        @if (pagosDigitalesTotal() > 0) {
-          <p class="hint hint--digital">
-            <app-icon name="smartphone" [size]="13"></app-icon>
-            {{ pagosDigitalesTotal() }} {{ pagosDigitalesTotal() === 1 ? 'pago digital' : 'pagos digitales' }} hoy (Yape/Plin/Transferencia/POS)
-          </p>
+        <span class="usuarios-dia__label">Turno de:</span>
+        @for (u of usuariosDelDia(); track u.id) {
+          <button type="button" class="usuario-chip"
+            [class.is-active]="usuarioSeleccionadoId() === u.id"
+            [class.usuario-chip--cuadrado]="u.tieneCuadre"
+            (click)="seleccionarUsuario(u.id)">
+            <strong>{{ u.nombreCompleto }}</strong>
+            <span>{{ u.rolNombre }}{{ u.tieneCuadre ? ' · ✓ cerrado' : (' · ' + u.movimientos + ' mov.') }}</span>
+          </button>
         }
       }
+    </div>
+    <div class="scope-toggle">
+      <button type="button" class="scope-btn" [class.is-active]="!verTodos()" (click)="verTodos() && alternarVerTodos()">
+        Solo {{ usuarioSeleccionadoNombre() || 'mi turno' }}
+      </button>
+      <button type="button" class="scope-btn" [class.is-active]="verTodos()" (click)="!verTodos() && alternarVerTodos()">
+        Toda la caja del día
+      </button>
+    </div>
+  </div>
 
-      <div class="metodos-resumen" aria-label="Cobros por método de pago">
-        <div class="metodo-resumen metodo-resumen--efectivo">
-          <span><app-icon name="cash" [size]="15"></app-icon>Efectivo</span>
-          <strong>S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</strong>
+  <div class="pasos">
+    <!-- ─────────── PASO 1 · EL EFECTIVO EN CAJA ─────────── -->
+    <section class="paso paso--efectivo card" data-tour="cuadre-paso1">
+      <header class="paso__head">
+        <span class="paso__num">1</span>
+        <div class="paso__titulo">
+          <h3>El efectivo en caja</h3>
+          <p>Revisa que el dinero en <strong>efectivo</strong> cuadre. Yape, Plin, transferencia y tarjeta
+             <strong>no entran aquí</strong>: no pasan por la caja (los ves en el paso 2).</p>
         </div>
-        <div class="metodo-resumen metodo-resumen--billetera">
-          <span><app-icon name="smartphone" [size]="15"></app-icon>Billeteras</span>
-          <strong>S/ {{ ingresosBilleteras().toFixed(2) }}</strong>
-          <small>Yape + Plin</small>
+      </header>
+
+      @if (sugerenciaCajaInicial(); as s) {
+        <div class="sugerencia-caja">
+          El {{ s.fecha | date:'dd/MM' }} la caja cerró con <strong>S/ {{ s.monto.toFixed(2) }}</strong>
+          ({{ s.usuarioNombre || 'otro colaborador' }}).
+          <button type="button" class="link-btn" (click)="usarSugerenciaCajaInicial()">Usar como caja inicial</button>
         </div>
-        <div class="metodo-resumen metodo-resumen--transferencia">
-          <span><app-icon name="bank" [size]="15"></app-icon>Transferencia</span>
-          <strong>S/ {{ ingresosTransferencia().toFixed(2) }}</strong>
+      }
+
+      <!-- Cascada: cuánto debería haber -->
+      <div class="cascada">
+        <div class="cascada__fila cascada__fila--input">
+          <label for="caja-inicial">Abriste la caja con</label>
+          <div class="monto-input">
+            <span>S/</span>
+            <input id="caja-inicial" type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
+              aria-label="Efectivo con el que abriste la caja"
+              [ngModel]="cajaInicial()" (ngModelChange)="cajaInicial.set(+$event || 0)" />
+          </div>
         </div>
-        <div class="metodo-resumen metodo-resumen--tarjeta">
-          <span><app-icon name="credit-card" [size]="15"></app-icon>Tarjeta / POS</span>
-          <strong>S/ {{ ingresosTarjeta().toFixed(2) }}</strong>
+        <div class="cascada__fila">
+          <span>+ Cobros en efectivo hoy</span>
+          <span class="txt-verde">S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</span>
+        </div>
+        <div class="cascada__fila">
+          <span>− Gastos en efectivo hoy</span>
+          <span class="txt-rojo">S/ {{ gastosEfectivo().toFixed(2) }}</span>
+        </div>
+        <div class="cascada__fila cascada__fila--resultado">
+          <span>= Debería haber en caja</span>
+          <span>S/ {{ enCajaDeberiaHaber().toFixed(2) }}</span>
         </div>
       </div>
-      @if (ingresosDigitalesDetalle().length > 0) {
-        <div class="digital-bloque">
-          <label>
-            <app-icon name="smartphone" [size]="13"></app-icon>
-            Pagos digitales del día <small class="hint">(Yape / Plin / Transferencia / Tarjeta — no entran al cajón físico)</small>
-          </label>
-          <table class="digital-tabla digital-tabla--detalle">
-            <thead>
-              <tr><th>Hora</th><th>Método</th><th>Pedido</th><th class="num">Monto</th></tr>
-            </thead>
+
+      <!-- Conteo del efectivo real -->
+      <div class="conteo">
+        <label class="conteo__label">¿Cuánto contaste en la caja?</label>
+
+        @if (modoConteo() === 'rapido') {
+          <div class="monto-input monto-input--grande">
+            <span>S/</span>
+            <input type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"
+              aria-label="Efectivo contado en la caja"
+              [ngModel]="totalContadoManual()" (ngModelChange)="totalContadoManual.set(+$event || 0)" />
+          </div>
+          <button type="button" class="link-btn" (click)="usarContadorDetallado()">
+            o contar billete por billete
+          </button>
+        } @else {
+          <table class="tabla-denominaciones">
+            <thead><tr><th>Billete / moneda</th><th>Cantidad</th><th class="num">Subtotal</th></tr></thead>
             <tbody>
-              @for (m of ingresosDigitalesDetalle(); track m.id) {
+              @for (d of denominaciones(); track d.valor) {
                 <tr>
-                  <td class="mono">{{ m.fecha | date:'HH:mm' }}</td>
-                  <td><span [class]="'metodo-tag metodo-tag--' + m.metodoPago.toLowerCase()">{{ etiquetasMetodo[m.metodoPago] || m.metodoPago }}</span></td>
-                  <td>{{ m.pedidoNumero ? ('#' + m.pedidoNumero) : (m.descripcion || '—') }}</td>
-                  <td class="num">S/ {{ m.monto.toFixed(2) }}</td>
+                  <td>S/ {{ d.valor }}</td>
+                  <td>
+                    <input type="number" min="0" step="1" inputmode="numeric"
+                      [attr.aria-label]="'Cantidad de ' + (d.valor < 1 ? 'monedas' : 'billetes') + ' de S/ ' + d.valor"
+                      [ngModel]="d.cantidad" (ngModelChange)="actualizarCantidad(d.valor, $event)" />
+                  </td>
+                  <td class="num">S/ {{ (d.valor * d.cantidad).toFixed(2) }}</td>
                 </tr>
               }
             </tbody>
             <tfoot>
-              <tr>
-                <td colspan="3">Total digital</td>
-                <td class="num total">S/ {{ ingresosDigitalesTotal().toFixed(2) }}</td>
-              </tr>
+              <tr><td colspan="2">Total contado</td><td class="num total">S/ {{ totalContado().toFixed(2) }}</td></tr>
             </tfoot>
           </table>
-        </div>
-      }
-
-      <div class="gastos-bloque">
-        <div class="gastos-bloque__head">
-          <label>Gastos del día</label>
-          <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalGasto()">+ Registrar gasto</button>
-        </div>
-        <div class="gastos-total">S/ {{ gastosTotal().toFixed(2) }}</div>
-        @if (cargandoMovimientos()) {
-          <p class="hint">Cargando…</p>
-        } @else if (gastosDelDia().length === 0) {
-          <p class="hint">Sin gastos registrados este día.</p>
-        } @else {
-          <ul class="gastos-lista">
-            @for (g of gastosDelDia(); track g.id) {
-              <li>
-                <span>{{ g.tipoGastoNombre || 'Otros' }} <small>({{ etiquetasMetodo[g.metodoPago] || g.metodoPago }})</small></span>
-                <strong>S/ {{ g.monto.toFixed(2) }}</strong>
-              </li>
-            }
-          </ul>
+          <button type="button" class="link-btn" (click)="usarTotalRapido()">
+            ← volver a escribir el total directo
+          </button>
         }
       </div>
 
-      <div class="ganancia" [class.ganancia--negativa]="gananciaNeta() < 0">
-        <span>Flujo neto del día (cobros − gastos)</span>
-        <strong>S/ {{ gananciaNeta().toFixed(2) }}</strong>
+      <!-- Resultado -->
+      <div class="resultado" [class]="'resultado--' + estadoCaja()">
+        @switch (estadoCaja()) {
+          @case ('CUADRA') {
+            <app-icon name="check" [size]="22"></app-icon>
+            <div><strong>¡La caja cuadra!</strong><span>El efectivo contado coincide con lo esperado.</span></div>
+          }
+          @case ('SOBRA') {
+            <app-icon name="warning" [size]="22"></app-icon>
+            <div><strong>Sobra S/ {{ diferencia().toFixed(2) }}</strong><span>Hay más efectivo del esperado. Revisa si faltó registrar un cobro.</span></div>
+          }
+          @case ('FALTA') {
+            <app-icon name="warning" [size]="22"></app-icon>
+            <div><strong>Falta S/ {{ (-diferencia()).toFixed(2) }}</strong><span>Hay menos efectivo del esperado. Revisa vueltos o gastos sin registrar.</span></div>
+          }
+        }
       </div>
-    </div>
+    </section>
 
-    <div class="card bloque">
-      <h4>Cuadre de efectivo físico</h4>
-      <p class="hint hint--intro">Esta sección solo verifica que el efectivo físico en caja coincida con lo esperado (no es tu ganancia: los pagos por Yape/Plin/Transferencia/POS no pasan por la caja física).</p>
-
-      @if (sugerenciaCajaInicial(); as s) {
-        <div class="sugerencia-caja">
-          El cuadre del {{ s.fecha | date:'dd/MM/yyyy' }} lo hizo <strong>{{ s.usuarioNombre || 'otro usuario' }}</strong>,
-          caja final: <strong>S/ {{ s.monto.toFixed(2) }}</strong>.
-          <button type="button" class="btn btn--outline-primary btn--sm" (click)="usarSugerenciaCajaInicial()">Usar este monto</button>
+    <!-- ─────────── PASO 2 · VENTAS DEL DÍA ─────────── -->
+    <section class="paso paso--ventas card" data-tour="cuadre-paso2">
+      <header class="paso__head">
+        <span class="paso__num">2</span>
+        <div class="paso__titulo">
+          <h3>Ventas del día</h3>
+          <p>Todo lo cobrado hoy, por cualquier método. Esto <strong>no es</strong> el efectivo en caja:
+             lo digital está en tus cuentas y tu celular.</p>
         </div>
+      </header>
+
+      @if (cargandoMovimientos()) {
+        <p class="hint">Cargando…</p>
+      } @else {
+        <div class="ventas-metodos">
+          <div class="metodo-chip metodo-chip--efectivo">
+            <span><app-icon name="cash" [size]="15"></app-icon> Efectivo</span>
+            <strong>S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</strong>
+          </div>
+          <div class="metodo-chip metodo-chip--billetera">
+            <span><app-icon name="smartphone" [size]="15"></app-icon> Yape / Plin</span>
+            <strong>S/ {{ ingresosBilleteras().toFixed(2) }}</strong>
+          </div>
+          <div class="metodo-chip metodo-chip--transferencia">
+            <span><app-icon name="bank" [size]="15"></app-icon> Transferencia</span>
+            <strong>S/ {{ ingresosTransferencia().toFixed(2) }}</strong>
+          </div>
+          <div class="metodo-chip metodo-chip--tarjeta">
+            <span><app-icon name="credit-card" [size]="15"></app-icon> Tarjeta / POS</span>
+            <strong>S/ {{ ingresosTarjeta().toFixed(2) }}</strong>
+          </div>
+        </div>
+
+        <div class="ventas-cierre">
+          <div class="ventas-cierre__fila ventas-cierre__fila--total">
+            <span>Total vendido hoy</span>
+            <strong>S/ {{ ingresosTotal().toFixed(2) }}</strong>
+          </div>
+          <div class="ventas-cierre__fila">
+            <span>− Gastos del día</span>
+            <strong class="txt-rojo">S/ {{ gastosTotal().toFixed(2) }}</strong>
+          </div>
+          <div class="ventas-cierre__fila ventas-cierre__fila--ganancia" [class.es-negativa]="gananciaNeta() < 0">
+            <span>= Ganancia del día</span>
+            <strong>S/ {{ gananciaNeta().toFixed(2) }}</strong>
+          </div>
+        </div>
+
+        <!-- Gastos -->
+        <div class="gastos-bloque">
+          <div class="gastos-bloque__head">
+            <label>Gastos registrados</label>
+            <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalGasto()">+ Registrar gasto</button>
+          </div>
+          @if (gastosDelDia().length === 0) {
+            <p class="hint">Sin gastos registrados este día.</p>
+          } @else {
+            <ul class="lista-simple">
+              @for (g of gastosDelDia(); track g.id) {
+                <li>
+                  <span>{{ g.tipoGastoNombre || 'Otros' }} <small>({{ etiquetasMetodo[g.metodoPago] || g.metodoPago }})</small></span>
+                  <strong>S/ {{ g.monto.toFixed(2) }}</strong>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <!-- Detalle itemizado (opcional, colapsado) -->
+        @if (detalleIngresos().length > 0) {
+          <details class="detalle-toggle">
+            <summary>Ver cada cobro del día ({{ ingresosDelDia().length }})</summary>
+            <div class="detalle-grid">
+              @for (grupo of detalleIngresos(); track grupo.metodo) {
+                <div class="detalle-tabla" [class.detalle-tabla--efectivo]="grupo.metodo === 'EFECTIVO'">
+                  <div class="detalle-tabla__head">
+                    <strong>{{ etiquetasMetodo[grupo.metodo] || grupo.metodo }}</strong>
+                    <span>S/ {{ grupo.total.toFixed(2) }}</span>
+                  </div>
+                  <table>
+                    <thead><tr><th>N°</th><th>Cliente</th><th>Hora</th><th class="num">Monto</th></tr></thead>
+                    <tbody>
+                      @for (m of grupo.items; track m.id) {
+                        <tr>
+                          <td>{{ m.pedidoNumero ? ('#' + m.pedidoNumero) : '—' }}</td>
+                          <td class="cli">{{ m.clienteNombre || m.descripcion || '—' }}</td>
+                          <td>{{ m.fecha | date:'hh:mm a' }}</td>
+                          <td class="num">S/ {{ m.monto.toFixed(2) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          </details>
+        }
       }
+    </section>
 
-      <label>Caja Inicial (con la que abriste)</label>
-      <input type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
-        aria-label="Monto de caja inicial" [ngModel]="cajaInicial()"
-        (ngModelChange)="cajaInicial.set(+$event || 0)" />
+    <!-- ─────────── PASO 3 · CERRAR EL DÍA ─────────── -->
+    <section class="paso paso--cierre card" data-tour="cuadre-paso3">
+      <header class="paso__head">
+        <span class="paso__num">3</span>
+        <div class="paso__titulo">
+          <h3>Cerrar el día</h3>
+          <p>Si retiras efectivo de la caja (para el banco o la caja fuerte), anótalo. Lo demás queda para mañana.</p>
+        </div>
+      </header>
 
-      <label>Pedidos pagados en Efectivo <small class="hint">(automático)</small></label>
-      <input type="text" [value]="pedidosPagadosEfectivo().toFixed(2)" disabled />
+      <div class="cierre-campos">
+        <div class="cierre-campo">
+          <label for="retiro">Retiro de efectivo <small class="hint">(opcional)</small></label>
+          <div class="monto-input">
+            <span>S/</span>
+            <input id="retiro" type="number" step="0.01" min="0" [max]="totalContado()" inputmode="decimal"
+              placeholder="0.00" aria-label="Efectivo que retiras de la caja" [(ngModel)]="corte" />
+          </div>
+          <small class="hint">Efectivo que sacas de la caja al cerrar.</small>
+        </div>
 
-      <div class="formula">
-        <div class="formula__fila">
-          <span>Caja inicial</span><span>S/ {{ cajaInicial().toFixed(2) }}</span>
-        </div>
-        <div class="formula__fila">
-          <span>+ Pagos en efectivo del día</span><span>S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</span>
-        </div>
-        <div class="formula__fila">
-          <span>− Gastos en efectivo</span><span>S/ {{ gastosEfectivo().toFixed(2) }}</span>
-        </div>
-        <div class="formula__fila formula__fila--total">
-          <span>= En caja debería haber</span><span>S/ {{ enCajaDeberiaHaber().toFixed(2) }}</span>
-        </div>
-        <div class="formula__fila formula__fila--contado">
-          <span>Efectivo contado (físico)</span><span>S/ {{ totalContado().toFixed(2) }}</span>
-        </div>
-      </div>
-
-      <div class="estados">
-        <div class="estado-fila" [class.activo]="estadoCaja()==='SOBRA'">
-          <span>SOBRA</span><span>{{ estadoCaja()==='SOBRA' ? ('S/ ' + diferencia().toFixed(2)) : 'NO' }}</span>
-        </div>
-        <div class="estado-fila" [class.activo]="estadoCaja()==='CUADRA'">
-          <span>CUADRA</span><span>{{ estadoCaja()==='CUADRA' ? 'SI' : 'NO' }}</span>
-        </div>
-        <div class="estado-fila estado-fila--falta" [class.activo]="estadoCaja()==='FALTA'">
-          <span>FALTA</span><span>{{ estadoCaja()==='FALTA' ? ('S/ ' + diferencia().toFixed(2)) : 'NO' }}</span>
+        <div class="cierre-campo cierre-campo--auto">
+          <label>Queda en caja para mañana</label>
+          <div class="monto-lectura">S/ {{ cajaFinalRemanente.toFixed(2) }}</div>
+          <small class="hint">Contado − retiro.</small>
         </div>
       </div>
-    </div>
-
-    <div class="card bloque">
-      <h4>Finaliza el cuadre con</h4>
-
-      <label>Monto en Caja (contado)</label>
-      <input type="text" [value]="totalContado().toFixed(2)" disabled />
-
-      <label>Corte (efectivo que se entrega) <small class="hint">(opcional)</small></label>
-      <input type="number" step="0.01" min="0" [max]="totalContado()" inputmode="decimal"
-        aria-label="Monto de corte de efectivo" [(ngModel)]="corte" placeholder="0.00" />
-
-      <label>Caja Final (queda para mañana)</label>
-      <input type="text" [value]="cajaFinalRemanente.toFixed(2)" disabled />
 
       @if (corte > 0) {
-        <div class="entrega-msg">Se hace entrega de <strong>S/ {{ corte.toFixed(2) }}</strong></div>
+        <div class="entrega-msg">Se retiran <strong>S/ {{ corte.toFixed(2) }}</strong> de la caja.</div>
       }
 
-      <label>Nota <small class="hint">(opcional, se ve en el reporte)</small></label>
-      <textarea rows="2" [(ngModel)]="nota" placeholder="Ej: se entregó a caja fuerte, faltó un vuelto…"></textarea>
+      <label for="nota-cierre">Nota <small class="hint">(opcional, se ve en el reporte)</small></label>
+      <textarea id="nota-cierre" rows="2" [(ngModel)]="nota"
+        placeholder="Ej: se entregó a caja fuerte, faltó un vuelto…"></textarea>
 
-      <button type="button" class="btn btn--primario" (click)="guardarCuadre()" [disabled]="guardando()">
-        {{ guardando() ? 'Guardando…' : 'Guardar y Generar PDF' }}
+      <button type="button" class="btn btn--primario btn--cerrar" (click)="guardarCuadre()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : (guardado ? 'Volver a cerrar y generar PDF' : 'Cerrar caja y generar PDF') }}
       </button>
 
       @if (guardado) {
-        <p class="ok-msg"><app-icon name="check" [size]="13"></app-icon> Cuadre del {{ fecha }} guardado. Si el PDF no abrió, permite las pestañas emergentes.</p>
+        <p class="ok-msg"><app-icon name="check" [size]="13"></app-icon> Caja del {{ fecha }} cerrada. Si el PDF no abrió, permite las ventanas emergentes.</p>
       }
-    </div>
+    </section>
   </div>
-
-  <!-- Detalle itemizado de pagos y gastos del día (como el sistema de referencia) -->
-  @if (detalleIngresos().length > 0 || gastosDelDia().length > 0) {
-    <div class="detalle-pagos">
-      <h3 class="detalle-pagos__titulo">Detalle de movimientos del día</h3>
-      <div class="detalle-grid">
-        @for (grupo of detalleIngresos(); track grupo.metodo) {
-          <div class="card detalle-tabla" [class.detalle-tabla--efectivo]="grupo.metodo === 'EFECTIVO'">
-            <div class="detalle-tabla__head">
-              <strong>{{ etiquetasMetodo[grupo.metodo] || grupo.metodo }}</strong>
-              <span>S/ {{ grupo.total.toFixed(2) }}</span>
-            </div>
-            <table>
-              <thead>
-                <tr><th>N°</th><th>Cliente</th><th>Hora</th><th class="num">Monto</th></tr>
-              </thead>
-              <tbody>
-                @for (m of grupo.items; track m.id) {
-                  <tr>
-                    <td>{{ m.pedidoNumero ? ('#' + m.pedidoNumero) : '—' }}</td>
-                    <td class="cli">{{ m.clienteNombre || m.descripcion || '—' }}</td>
-                    <td>{{ m.fecha | date:'hh:mm a' }}</td>
-                    <td class="num">S/ {{ m.monto.toFixed(2) }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-
-        @if (gastosDelDia().length > 0) {
-          <div class="card detalle-tabla detalle-tabla--gasto">
-            <div class="detalle-tabla__head">
-              <strong>Gastos</strong>
-              <span>S/ {{ gastosTotal().toFixed(2) }}</span>
-            </div>
-            <table>
-              <thead>
-                <tr><th>Tipo</th><th>Método</th><th>Hora</th><th class="num">Monto</th></tr>
-              </thead>
-              <tbody>
-                @for (g of gastosDelDia(); track g.id) {
-                  <tr>
-                    <td>{{ g.tipoGastoNombre || 'Otros' }}</td>
-                    <td>{{ etiquetasMetodo[g.metodoPago] || g.metodoPago }}</td>
-                    <td>{{ g.fecha | date:'hh:mm a' }}</td>
-                    <td class="num">S/ {{ g.monto.toFixed(2) }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-      </div>
-    </div>
-  }
 
   @if (modalGasto()) {
     <div class="modal-backdrop" (click)="modalGasto.set(false)"></div>
@@ -357,14 +336,14 @@
     <div class="modal-backdrop" (click)="confirmarRegrabar.set(false)"></div>
     <div class="modal-simple" role="alertdialog" aria-modal="true" aria-labelledby="titulo-regrabar">
       <div class="modal-simple__head">
-        <h3 id="titulo-regrabar">Ya existe un cuadre guardado</h3>
+        <h3 id="titulo-regrabar">La caja ya se cerró</h3>
         <button type="button" aria-label="Cerrar confirmación" (click)="confirmarRegrabar.set(false)">×</button>
       </div>
       <div class="modal-simple__body">
-        <p>Ya se guardó un cuadre para el {{ fecha }}. Si continúas, se reemplazará con el conteo actual.</p>
+        <p>Ya se cerró la caja del {{ fecha }}. Si continúas, se reemplazará con el conteo actual.</p>
         <div class="modal-simple__actions">
           <button type="button" class="btn btn--ghost" (click)="confirmarRegrabar.set(false)">Cancelar</button>
-          <button type="button" class="btn btn--primario" (click)="confirmarRegrabarCuadre()">Reemplazar cuadre</button>
+          <button type="button" class="btn btn--primario" (click)="confirmarRegrabarCuadre()">Reemplazar cierre</button>
         </div>
       </div>
     </div>

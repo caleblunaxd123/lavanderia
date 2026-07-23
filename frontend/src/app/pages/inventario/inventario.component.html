@@ -1,8 +1,8 @@
 <div class="page">
-  <app-page-header icono="package" color="morado" titulo="Inventario"
+  <app-page-header icono="package" color="morado" titulo="Inventario" tourId="inventario"
     subtitulo="Stock de consumibles: detergente, bolsas, suavizante, etc.">
     @if (tab() === 'insumos') {
-      <button type="button" class="btn btn--primario" (click)="abrirCrearInsumo()">
+      <button type="button" class="btn btn--primario" data-tour="inventario-nuevo" (click)="abrirCrearInsumo()">
         <app-icon name="plus" [size]="16"></app-icon> Nuevo insumo
       </button>
     }

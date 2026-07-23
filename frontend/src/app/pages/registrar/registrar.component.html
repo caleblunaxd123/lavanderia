@@ -1,9 +1,9 @@
 <div class="page">
-  <app-page-header icono="plus" color="azul"
+  <app-page-header icono="plus" color="azul" tourId="registrar"
     [titulo]="siguienteNumero() ? 'Nuevo pedido N° ' + siguienteNumero() : 'Nuevo pedido'"
     subtitulo="Registra al cliente, las prendas, la entrega y el pago en un solo flujo.">
     <div class="order-header-actions">
-      <div class="modalidad" role="group" aria-label="Modalidad del pedido">
+      <div class="modalidad" data-tour="registrar-modalidad" role="group" aria-label="Modalidad del pedido">
         <button type="button" class="modalidad__btn" [class.is-active]="modalidad==='Tienda'" (click)="cambiarModalidad('Tienda')">Tienda</button>
         <button type="button" class="modalidad__btn" [class.is-active]="modalidad==='Recojo'" (click)="cambiarModalidad('Recojo')">Recojo</button>
         <button type="button" class="modalidad__btn" [class.is-active]="modalidad==='Delivery'" (click)="cambiarModalidad('Delivery')">Delivery</button>
@@ -65,8 +65,7 @@
     </div>
   } @else {
     <div class="pasos">
-      <div class="card paso">
-        <h4>PASO 1 <span>Información del cliente</span></h4>
+      <div class="card paso" data-tour="registrar-cliente"><h4>PASO 1 <span>Información del cliente</span></h4>
 
         @if (clienteExistente) {
           <div class="cliente-seleccionado">
@@ -130,8 +129,7 @@
         <input type="text" placeholder="RUC" [(ngModel)]="documentoFiscal" />
       </div>
 
-      <div class="card paso paso--items">
-        <h4>PASO 2 <span>¿Qué trajo el cliente?</span></h4>
+      <div class="card paso paso--items" data-tour="registrar-servicios"><h4>PASO 2 <span>¿Qué trajo el cliente?</span></h4>
 
         <label>Productos y servicios</label>
         <div class="row-agregar">
@@ -334,8 +332,7 @@
           }
         </div>
 
-        <div class="card paso">
-          <h4>PASO 5 <span>Pago</span></h4>
+        <div class="card paso" data-tour="registrar-pago"><h4>PASO 5 <span>Pago</span></h4>
           <label>Monto pagado ahora</label>
           <input type="number" step="0.01" min="0" [(ngModel)]="montoPagado" />
           <p class="hint">
@@ -364,7 +361,7 @@
     </div>
 
     <!-- Barra de acción fija: siempre visible (web) y al final del formulario (móvil) -->
-    <div class="barra-registrar">
+    <div class="barra-registrar" data-tour="registrar-confirmar">
       <div class="barra-registrar__total">
         <span>Total del pedido</span>
         <strong>S/ {{ totalFinal().toFixed(2) }}</strong>

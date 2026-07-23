@@ -39,7 +39,10 @@ export class AuthService {
 
   /** Cambia la sede activa de la sesión (re-emite el JWT con el nuevo SedeId). */
   cambiarSede(sedeId: number) {
-    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/seleccionar-sede`, { sedeId }).pipe(
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/seleccionar-sede`, {
+      sedeId,
+      refreshToken: this.obtenerRefreshToken()
+    }).pipe(
       tap(res => this.guardar(res))
     );
   }

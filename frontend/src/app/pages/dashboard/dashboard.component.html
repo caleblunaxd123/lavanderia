@@ -32,6 +32,10 @@
         </div>
       }
       <div class="command-bar__actions">
+        <button type="button" class="icon-btn" (click)="iniciarTour()"
+                title="¿Cómo funciona esta pantalla?" aria-label="Ver tutorial">
+          <app-icon name="info" [size]="18"></app-icon>
+        </button>
         <button type="button" class="icon-btn" (click)="cargar(true)" [disabled]="actualizando()"
                 title="Actualizar resumen" aria-label="Actualizar resumen">
           <app-icon name="refresh" [size]="18"></app-icon>
@@ -74,7 +78,7 @@
       }
     </section>
   } @else if (data(); as d) {
-    <section class="kpis" aria-label="Indicadores del día">
+    <section class="kpis" data-tour="inicio-kpis" aria-label="Indicadores del día">
       <a [routerLink]="tieneModulo('PEDIDOS') ? '/pedidos' : null" class="kpi kpi--blue">
         <span class="kpi__icon"><app-icon name="refresh" [size]="20"></app-icon></span>
         <span class="kpi__content">
@@ -157,7 +161,7 @@
           }
         </section>
 
-        <section class="panel flow" aria-labelledby="flow-title">
+        <section class="panel flow" data-tour="inicio-areas" aria-labelledby="flow-title">
           <div class="panel__header">
             <div>
               <span class="section-kicker">Produccion</span>
@@ -203,7 +207,7 @@
           </a>
         }
 
-        <section class="panel shortcuts" aria-labelledby="shortcuts-title">
+        <section class="panel shortcuts" data-tour="inicio-atajos" aria-labelledby="shortcuts-title">
           <div class="panel__header"><div><span class="section-kicker">Acciones</span><h2 id="shortcuts-title">Accesos rápidos</h2></div></div>
           <div class="shortcut-grid">
             @if (tieneModulo('REGISTRAR')) {

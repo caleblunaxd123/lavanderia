@@ -65,6 +65,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/pedidos-list/pedidos-list.component').then(m => m.PedidosListComponent)
       },
       {
+        // Página dedicada del pedido: progreso, cobro, delivery, fotos e historial.
+        path: 'pedidos/:id',
+        canActivate: [moduloGuard('PEDIDOS')],
+        loadComponent: () => import('./pages/pedido-detalle/pedido-detalle.component').then(m => m.PedidoDetalleComponent)
+      },
+      {
         path: 'registrar',
         canActivate: [moduloGuard('REGISTRAR')],
         loadComponent: () => import('./pages/registrar/registrar.component').then(m => m.RegistrarComponent)

@@ -12,6 +12,8 @@ import { PersonalService } from '../../core/services/personal.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent, IconName } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { TourService } from '../../core/services/tour.service';
+import { TOURS } from '../../core/constants/tours';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 import { formatearDuracion as fmtDuracion } from '../../core/util/duracion';
 
@@ -163,6 +165,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     return alertas.slice(0, 6);
   });
+
+  private readonly tour = inject(TourService);
+  iniciarTour() { this.tour.iniciar(TOURS['inicio']); }
 
   readonly saludo = computed(() => {
     const hora = new Date().getHours();
