@@ -22,7 +22,8 @@ $migraciones = @(
     (Join-Path $root "backend\db\scripts\037_pedido_fotos.sql"),
     (Join-Path $root "backend\db\scripts\038_refresh_token_sede.sql"),
     (Join-Path $root "backend\db\scripts\039_sedes_sin_areas_y_tope_descuento.sql"),
-    (Join-Path $root "backend\db\scripts\040_dedup_constraints.sql")
+    (Join-Path $root "backend\db\scripts\040_dedup_constraints.sql"),
+    (Join-Path $root "backend\db\scripts\041_dedup_catalogos.sql")
 )
 $urlFile = Join-Path $buildRoot "ultima-url.txt"
 $apiOut = Join-Path $buildRoot "api.out.log"
