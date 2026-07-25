@@ -13,6 +13,16 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 
 type FiltroEstadoServicio = 'todos' | 'activos' | 'inactivos';
 
+interface FilaImportada {
+  fila: number;
+  nombre: string;
+  precio: number;
+  unidad: string;
+  categoria: string | null;
+  estado: 'ok' | 'error';
+  motivo: string;
+}
+
 @Component({
   selector: 'app-ajustes-servicios',
   imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
@@ -217,6 +227,164 @@ export class AjustesServiciosComponent implements OnInit {
         this.toast.desdeHttp(err, 'No se pudo cambiar el estado.');
       }
     });
+  }
+
+  // ---------- Importación masiva ----------
+  readonly importarAbierto = signal(false);
+  readonly importTexto = signal('');
+  readonly importCrearCategorias = signal(true);
+  readonly importando = signal(false);
+  readonly importNombreArchivo = signal<string | null>(null);
+
+  readonly importFilas = computed<FilaImportada[]>(() => {
+    const texto = this.importTexto();
+    if (!texto.trim()) return [];
+    const filas = this.parsearTabla(texto);
+    const vistos = new Set<string>();
+    const existentes = new Set(this.servicios().map(s => this.normalizar(s.nombre)));
+    return filas.map((cols, i) => this.evaluarFila(cols, i, vistos, existentes));
+  });
+  readonly importValidas = computed(() => this.importFilas().filter(f => f.estado === 'ok'));
+  readonly importConError = computed(() => this.importFilas().filter(f => f.estado === 'error'));
+  readonly importCategoriasNuevas = computed(() => {
+    const existentes = new Set(this.categorias().map(c => this.normalizar(c.nombre)));
+    const nuevas = new Set<string>();
+    for (const f of this.importValidas()) {
+      const c = (f.categoria ?? '').trim();
+      if (c && !existentes.has(this.normalizar(c))) nuevas.add(c);
+    }
+    return [...nuevas];
+  });
+
+  abrirImportar() {
+    this.importTexto.set('');
+    this.importNombreArchivo.set(null);
+    this.importCrearCategorias.set(true);
+    this.importarAbierto.set(true);
+  }
+  cerrarImportar() {
+    if (this.importando()) return;
+    this.importarAbierto.set(false);
+  }
+
+  async onArchivoImport(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.importNombreArchivo.set(file.name);
+
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      // Excel nativo: se convierte a CSV en el navegador y sigue el mismo flujo que un CSV.
+      // La librería se carga bajo demanda (solo al importar) para no pesar en el arranque.
+      try {
+        const XLSX = await import('xlsx');
+        const buffer = await file.arrayBuffer();
+        const libro = XLSX.read(buffer, { type: 'array' });
+        const hoja = libro.Sheets[libro.SheetNames[0]];
+        this.importTexto.set(hoja ? XLSX.utils.sheet_to_csv(hoja, { FS: ';' }) : '');
+      } catch {
+        this.importTexto.set('');
+        this.toast.error('No se pudo leer el archivo de Excel. Verifica que sea un .xlsx válido o usa un CSV.');
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => this.importTexto.set(String(reader.result ?? ''));
+      reader.readAsText(file, 'utf-8');
+    }
+    input.value = '';
+  }
+
+  descargarPlantilla() {
+    const contenido =
+      'Nombre;Precio;Unidad;Categoria\n' +
+      'Lavado por kilo;6.50;kg;Ropa por kilo\n' +
+      'Planchado camisa;3.00;prenda;Adicionales\n' +
+      'Lavado de edredon;12.00;pieza;Ropa especial\n';
+    const blob = new Blob(['﻿' + contenido], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla-servicios.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  confirmarImportar() {
+    if (this.importando()) return;
+    const validas = this.importValidas();
+    if (validas.length === 0) {
+      this.toast.info('No hay filas válidas para importar.');
+      return;
+    }
+    this.importando.set(true);
+    const payload = validas.map(f => ({
+      nombre: f.nombre,
+      precio: f.precio,
+      unidad: f.unidad,
+      categoria: (f.categoria ?? '').trim() || null
+    }));
+    this.svc.importar(payload, this.importCrearCategorias()).subscribe({
+      next: res => {
+        this.importando.set(false);
+        this.importarAbierto.set(false);
+        const partes = [`${res.creados} servicio(s) creado(s)`];
+        if (res.categoriasCreadas.length) partes.push(`${res.categoriasCreadas.length} categoría(s) nueva(s)`);
+        if (res.omitidos) partes.push(`${res.omitidos} omitido(s)`);
+        this.toast.exito(partes.join(' · '));
+        this.categoriasSvc.listar().subscribe(list => this.categorias.set(list));
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.importando.set(false);
+        this.toast.desdeHttp(err, 'No se pudo importar el archivo.');
+      }
+    });
+  }
+
+  /** Divide el texto en filas de columnas. Detecta separador (tab, ; o ,) y omite la cabecera. */
+  private parsearTabla(texto: string): string[][] {
+    const lineas = texto.replace(/\r/g, '').split('\n').filter(l => l.trim().length > 0);
+    if (lineas.length === 0) return [];
+    const primera = lineas[0];
+    const sep = primera.includes('\t') ? '\t' : primera.includes(';') ? ';' : ',';
+    let filas = lineas.map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g, '')));
+    // Omite la cabecera si la primera fila no tiene un precio numérico en la 2ª columna.
+    if (filas.length && !Number.isFinite(this.parsearNumero(filas[0][1] ?? ''))) {
+      filas = filas.slice(1);
+    }
+    return filas;
+  }
+
+  /** Convierte "S/ 6,50" / "6.50" / "1.234,56" a número. Devuelve NaN si no es válido. */
+  private parsearNumero(valor: string): number {
+    let s = (valor ?? '').replace(/[^0-9.,-]/g, '').trim();
+    if (!s) return NaN;
+    const tieneComa = s.includes(',');
+    const tienePunto = s.includes('.');
+    if (tieneComa && tienePunto) {
+      // Formato europeo "1.234,56": el punto es de miles, la coma decimal.
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (tieneComa) {
+      s = s.replace(',', '.');
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  private evaluarFila(cols: string[], indice: number, vistos: Set<string>, existentes: Set<string>): FilaImportada {
+    const nombre = (cols[0] ?? '').trim();
+    const precio = this.parsearNumero(cols[1] ?? '');
+    const unidad = (cols[2] ?? '').trim() || 'und';
+    const categoria = (cols[3] ?? '').trim() || null;
+    const base: FilaImportada = { fila: indice + 1, nombre, precio: Number.isFinite(precio) ? precio : 0, unidad, categoria, estado: 'ok', motivo: '' };
+
+    if (nombre.length < 2 || nombre.length > 120) return { ...base, estado: 'error', motivo: 'Nombre inválido' };
+    if (!Number.isFinite(precio) || precio < 0.01 || precio > 10000) return { ...base, estado: 'error', motivo: 'Precio inválido' };
+    const clave = this.normalizar(nombre);
+    if (vistos.has(clave)) return { ...base, estado: 'error', motivo: 'Repetido en el archivo' };
+    vistos.add(clave);
+    if (existentes.has(clave)) return { ...base, estado: 'error', motivo: 'Ya existe' };
+    return base;
   }
 
   volver() { this.router.navigate(['/ajustes']); }
