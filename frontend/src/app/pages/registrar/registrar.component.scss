@@ -365,9 +365,13 @@
 
 .pasos {
   display: grid;
-  grid-template-columns: 1fr 1.3fr 1fr;
+  // minmax(0, …) permite que las columnas se encojan por debajo de su contenido:
+  // sin esto, un select o los botones de fecha anchos empujan el grid mas alla del
+  // area disponible y el contenido se desborda bajo el menu lateral fijo.
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+  min-width: 0;
 }
 
 .columna-derecha {
@@ -641,9 +645,12 @@
 }
 
 // ---------- Responsive ----------
-@media (max-width: 1100px) {
+// El menu lateral ocupa 250px fijos, asi que el ancho util del contenido es
+// (viewport - 250). Por eso bajamos a 2 columnas ya en 1280px de viewport (no 1100):
+// con 3 columnas apretadas la primera terminaba tapada por el menu en laptops.
+@media (max-width: 1280px) {
   .pasos {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .columna-derecha { grid-column: 1 / -1; }
