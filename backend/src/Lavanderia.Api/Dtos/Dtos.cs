@@ -309,6 +309,37 @@ public class ServicioEditableDto
     public bool Activo { get; set; } = true;
 }
 
+// Importación masiva de servicios (desde CSV / pegado de Excel en el frontend)
+public class ImportarServiciosRequest
+{
+    public List<ImportarServicioFila> Filas { get; set; } = new();
+    /// <summary>Si una categoría del archivo no existe, se crea automáticamente.</summary>
+    public bool CrearCategorias { get; set; } = true;
+}
+
+public class ImportarServicioFila
+{
+    public string? Nombre { get; set; }
+    public decimal Precio { get; set; }
+    public string? Unidad { get; set; }
+    public string? Categoria { get; set; }
+}
+
+public class ImportarServiciosResultado
+{
+    public int Creados { get; set; }
+    public int Omitidos { get; set; }
+    public List<string> CategoriasCreadas { get; set; } = new();
+    public List<ImportarFilaError> Errores { get; set; } = new();
+}
+
+public class ImportarFilaError
+{
+    public int Fila { get; set; }
+    public string Nombre { get; set; } = "";
+    public string Motivo { get; set; } = "";
+}
+
 // ---------- Categorías ----------
 public class CategoriaDto
 {

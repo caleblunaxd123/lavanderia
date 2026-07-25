@@ -67,6 +67,90 @@ public class ServiciosAdminController : TenantAwareControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Carga masiva de servicios. Recibe filas ya parseadas (el frontend lee el CSV / pegado de Excel).
+    /// Valida fila por fila: omite duplicados y filas inválidas sin abortar el resto, y opcionalmente
+    /// crea las categorías que no existan. Devuelve un resumen con lo creado y lo omitido.
+    /// </summary>
+    [HttpPost("importar")]
+    public async Task<ActionResult<ImportarServiciosResultado>> Importar([FromBody] ImportarServiciosRequest req, CancellationToken ct)
+    {
+        if (req.Filas is null || req.Filas.Count == 0)
+            return BadRequest(new { mensaje = "No se recibió ninguna fila para importar." });
+        if (req.Filas.Count > 500)
+            return BadRequest(new { mensaje = "Máximo 500 servicios por importación. Divide el archivo en partes." });
+
+        var resultado = new ImportarServiciosResultado();
+
+        // Índice de categorías existentes por nombre normalizado (se va ampliando con las que creemos).
+        var mapaCategorias = (await _categorias.ListarTodasAsync(NegocioId, ct))
+            .GroupBy(c => Normalizar(c.Nombre))
+            .ToDictionary(g => g.Key, g => g.First().Id);
+
+        // Nombres ya procesados en este mismo lote, para no insertar duplicados internos.
+        var nombresLote = new HashSet<string>();
+
+        var fila = 0;
+        foreach (var f in req.Filas)
+        {
+            fila++;
+            var nombre = (f.Nombre ?? "").Trim();
+            var unidad = (f.Unidad ?? "").Trim();
+
+            // Fila totalmente vacía: se ignora en silencio (no cuenta como error).
+            if (nombre.Length == 0 && unidad.Length == 0 && f.Precio == 0m) continue;
+
+            if (nombre.Length < 2 || nombre.Length > 120)
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Nombre inválido (debe tener entre 2 y 120 caracteres)." }); continue; }
+            if (f.Precio < 0.01m || f.Precio > 10000m)
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Precio fuera de rango (mayor a 0 y hasta 10 000)." }); continue; }
+
+            if (unidad.Length == 0) unidad = "und";
+            if (unidad.Length > 30) unidad = unidad[..30];
+
+            var claveNombre = Normalizar(nombre);
+            if (!nombresLote.Add(claveNombre))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Repetido dentro del archivo." }); continue; }
+            if (await _repo.ExisteNombreAsync(nombre, NegocioId, null, ct))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe un servicio con ese nombre." }); continue; }
+
+            int? categoriaId = null;
+            var categoria = (f.Categoria ?? "").Trim();
+            if (categoria.Length > 0)
+            {
+                var claveCat = Normalizar(categoria);
+                if (mapaCategorias.TryGetValue(claveCat, out var cid))
+                {
+                    categoriaId = cid;
+                }
+                else if (req.CrearCategorias && categoria.Length is >= 2 and <= 80)
+                {
+                    var nuevoId = await _categorias.CrearAsync(
+                        new Categoria { NegocioId = NegocioId, Nombre = categoria, Activa = true }, ct);
+                    mapaCategorias[claveCat] = nuevoId;
+                    categoriaId = nuevoId;
+                    resultado.CategoriasCreadas.Add(categoria);
+                }
+                // Si la categoría no existe y no se pide crearla, el servicio queda sin categoría (no es error).
+            }
+
+            await _repo.CrearAsync(new Servicio
+            {
+                NegocioId = NegocioId,
+                Nombre = nombre,
+                Precio = f.Precio,
+                Unidad = unidad,
+                CategoriaId = categoriaId,
+                Activo = true
+            }, ct);
+            resultado.Creados++;
+        }
+
+        return Ok(resultado);
+    }
+
+    private static string Normalizar(string valor) => valor.Trim().ToUpperInvariant();
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
     {
