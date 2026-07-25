@@ -340,6 +340,27 @@ public class ImportarFilaError
     public string Motivo { get; set; } = "";
 }
 
+// Importación masiva de clientes (mismo patrón que servicios)
+public class ImportarClientesRequest
+{
+    public List<ImportarClienteFila> Filas { get; set; } = new();
+}
+
+public class ImportarClienteFila
+{
+    public string? Nombre { get; set; }
+    public string? Celular { get; set; }
+    public string? Dni { get; set; }
+    public string? Direccion { get; set; }
+}
+
+public class ImportarClientesResultado
+{
+    public int Creados { get; set; }
+    public int Omitidos { get; set; }
+    public List<ImportarFilaError> Errores { get; set; } = new();
+}
+
 // ---------- Categorías ----------
 public class CategoriaDto
 {

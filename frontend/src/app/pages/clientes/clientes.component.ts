@@ -16,10 +16,11 @@ import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
+import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importador-masivo/importador-masivo.component';
 
 @Component({
   selector: 'app-clientes',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective, ImportadorMasivoComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
@@ -221,6 +222,38 @@ export class ClientesComponent implements OnInit, OnDestroy {
   }
 
   cerrarModal() { this.modalAbierto.set(false); }
+
+  // ---------- Importación masiva ----------
+  readonly importarAbierto = signal(false);
+  readonly importando = signal(false);
+  readonly columnasImport: ColumnaImport[] = [
+    { clave: 'nombre', etiqueta: 'Nombre', requerido: true, tipo: 'texto' },
+    { clave: 'celular', etiqueta: 'Celular', tipo: 'telefono' },
+    { clave: 'dni', etiqueta: 'DNI', tipo: 'dni' },
+    { clave: 'direccion', etiqueta: 'Dirección', tipo: 'texto' },
+  ];
+
+  abrirImportar() { this.importarAbierto.set(true); }
+  cerrarImportar() { if (!this.importando()) this.importarAbierto.set(false); }
+
+  importarClientes(filas: Array<Record<string, string | number | null>>) {
+    if (this.importando()) return;
+    this.importando.set(true);
+    this.service.importar(filas).subscribe({
+      next: res => {
+        this.importando.set(false);
+        this.importarAbierto.set(false);
+        const partes = [`${res.creados} cliente(s) creado(s)`];
+        if (res.omitidos) partes.push(`${res.omitidos} omitido(s)`);
+        this.toast.exito(partes.join(' · '));
+        this.recargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.importando.set(false);
+        this.toast.desdeHttp(err, 'No se pudo importar el archivo.');
+      }
+    });
+  }
 
   guardar() {
     if (!this.nuevoCliente.nombre?.trim()) {

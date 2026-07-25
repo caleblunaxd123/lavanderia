@@ -2,6 +2,7 @@
   <app-page-header icono="users" color="cian" titulo="Clientes" tourId="clientes"
     [subtitulo]="clientes().length + (clientes().length === 1 ? ' resultado' : ' resultados')">
     <a class="btn btn--ghost" routerLink="/clientes/crm">CRM</a>
+    <button class="btn btn--ghost" (click)="abrirImportar()"><app-icon name="clipboard" [size]="15"></app-icon>Importar</button>
     <button class="btn btn--primario" data-tour="clientes-nuevo" (click)="abrirModal()">+ Nuevo cliente</button>
   </app-page-header>
 
@@ -353,4 +354,15 @@
       </div>
     </form>
   </div>
+}
+
+@if (importarAbierto()) {
+  <app-importador-masivo
+    titulo="Importar clientes"
+    [columnas]="columnasImport"
+    plantillaTipo="clientes"
+    [procesando]="importando()"
+    (cerrar)="cerrarImportar()"
+    (confirmar)="importarClientes($event)">
+  </app-importador-masivo>
 }

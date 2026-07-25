@@ -104,6 +104,63 @@ public class ClientesController : TenantAwareControllerBase
         return CreatedAtAction(nameof(Obtener), new { id }, Map(creado!));
     }
 
+    /// <summary>
+    /// Carga masiva de clientes. Valida fila por fila: omite duplicados (por celular/DNI, dentro del
+    /// archivo y contra la base) y filas inválidas sin abortar el resto. Devuelve un resumen.
+    /// </summary>
+    [HttpPost("importar")]
+    public async Task<ActionResult<ImportarClientesResultado>> Importar([FromBody] ImportarClientesRequest req, CancellationToken ct)
+    {
+        if (req.Filas is null || req.Filas.Count == 0)
+            return BadRequest(new { mensaje = "No se recibió ninguna fila para importar." });
+        if (req.Filas.Count > 1000)
+            return BadRequest(new { mensaje = "Máximo 1000 clientes por importación. Divide el archivo en partes." });
+
+        var resultado = new ImportarClientesResultado();
+        var celularesLote = new HashSet<string>();
+        var dnisLote = new HashSet<string>();
+
+        var fila = 0;
+        foreach (var f in req.Filas)
+        {
+            fila++;
+            var nombre = (f.Nombre ?? "").Trim();
+            var celular = LimpiarTexto(f.Celular);
+            var dni = LimpiarTexto(f.Dni);
+            var direccion = LimpiarTexto(f.Direccion);
+
+            if (nombre.Length == 0 && celular is null && dni is null) continue; // fila vacía
+
+            if (nombre.Length < 2 || nombre.Length > 120)
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Nombre inválido (2 a 120 caracteres)." }); continue; }
+            if (celular is not null && !System.Text.RegularExpressions.Regex.IsMatch(celular, @"^9\d{8}$"))
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular inválido (9 dígitos, empieza con 9)." }); continue; }
+            if (dni is not null && !System.Text.RegularExpressions.Regex.IsMatch(dni, @"^\d{8}$"))
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "DNI inválido (8 dígitos)." }); continue; }
+
+            if (celular is not null && !celularesLote.Add(celular))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular repetido dentro del archivo." }); continue; }
+            if (dni is not null && !dnisLote.Add(dni))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "DNI repetido dentro del archivo." }); continue; }
+
+            if ((celular is not null || dni is not null) &&
+                await _repo.BuscarDuplicadoAsync(celular, dni, null, NegocioId, null, ct) is not null)
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe un cliente con ese celular o DNI." }); continue; }
+
+            await _repo.CrearAsync(new Cliente
+            {
+                NegocioId = NegocioId,
+                Nombre = nombre,
+                Celular = celular,
+                Dni = dni,
+                Direccion = direccion
+            }, ct);
+            resultado.Creados++;
+        }
+
+        return Ok(resultado);
+    }
+
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, [FromBody] ClienteDto dto, CancellationToken ct)
     {

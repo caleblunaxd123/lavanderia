@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { environment } from '../../../environments/environment';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ServicioEditable, ServiciosAdminService } from '../../core/services/servicios-admin.service';
@@ -34,6 +35,7 @@ export class AjustesServiciosComponent implements OnInit {
   private readonly categoriasSvc = inject(CategoriasService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
 
   readonly servicios = signal<ServicioEditable[]>([]);
   readonly categorias = signal<Categoria[]>([]);
@@ -295,18 +297,18 @@ export class AjustesServiciosComponent implements OnInit {
   }
 
   descargarPlantilla() {
-    const contenido =
-      'Nombre;Precio;Unidad;Categoria\n' +
-      'Lavado por kilo;6.50;kg;Ropa por kilo\n' +
-      'Planchado camisa;3.00;prenda;Adicionales\n' +
-      'Lavado de edredon;12.00;pieza;Ropa especial\n';
-    const blob = new Blob(['﻿' + contenido], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'plantilla-servicios.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    // Plantilla Excel con estilo (encabezados, instrucciones y ejemplos) generada por el backend.
+    this.http.get(`${environment.apiUrl}/plantillas/servicios`, { responseType: 'blob' }).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'plantilla-servicios.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('No se pudo descargar la plantilla.')
+    });
   }
 
   confirmarImportar() {

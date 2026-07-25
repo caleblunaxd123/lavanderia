@@ -93,4 +93,14 @@ export class ClientesService {
   cumpleanosProximos(dias = 30) {
     return this.http.get<ClienteCumpleanos[]>(`${this.base}/cumpleanos-proximos`, { params: { dias } });
   }
+
+  importar(filas: Array<Record<string, string | number | null>>) {
+    return this.http.post<ImportarClientesResultado>(`${this.base}/importar`, { filas });
+  }
+}
+
+export interface ImportarClientesResultado {
+  creados: number;
+  omitidos: number;
+  errores: Array<{ fila: number; nombre: string; motivo: string }>;
 }
