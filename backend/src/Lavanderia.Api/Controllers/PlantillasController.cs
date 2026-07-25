@@ -95,11 +95,12 @@ public class PlantillasController : ControllerBase
             c.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             c.Style.Border.OutsideBorderColor = XLColor.White;
             ws.Column(i + 1).Width = def.Columnas[i].Ancho;
-
-            // Nota de la columna como comentario (visible al pasar el mouse en Excel; no va al CSV).
-            c.GetComment().AddText(def.Columnas[i].Nota);
         }
         ws.Row(filaHeader).Height = 20;
+        // NOTA: no se usan comentarios de celda (generan un dibujo VML/legacy que algunas versiones
+        // de Excel rechazan como "formato no válido"). Las pistas de cada columna ya están en la fila
+        // de instrucciones (fila 2). Debajo del encabezado solo van los datos del usuario, para que el
+        // importador (que ancla en el encabezado) no lea nada extra como fila.
 
         ws.SheetView.FreezeRows(filaHeader);
         ws.Range(filaHeader, 1, filaHeader, nCols).SetAutoFilter();
