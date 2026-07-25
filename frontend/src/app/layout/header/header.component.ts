@@ -170,6 +170,7 @@ export class HeaderComponent implements OnInit {
       ]
     },
     { label: 'Inventario', path: '/inventario', modulo: 'INVENTARIO', icono: 'package' },
+    { label: 'Facturación electrónica', path: '/ajustes/facturacion-electronica', modulo: 'AJUSTES', icono: 'note' },
     {
       label: 'Ajustes', path: '/ajustes', modulo: 'AJUSTES', icono: 'settings',
       children: [
@@ -178,7 +179,6 @@ export class HeaderComponent implements OnInit {
         { label: 'Servicios y precios', path: '/ajustes/servicios' },
         { label: 'Personal', path: '/ajustes/personal' },
         { label: 'Usuarios y permisos', path: '/ajustes/usuarios' },
-        { label: 'Facturación electrónica', path: '/ajustes/facturacion-electronica' },
         { label: 'Pagos en línea', path: '/ajustes/pagos' },
       ]
     },
