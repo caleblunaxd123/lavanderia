@@ -119,19 +119,25 @@ export class ImportadorMasivoComponent {
   private parsearTabla(texto: string): string[][] {
     const lineas = texto.replace(/\r/g, '').split('\n').filter(l => l.trim().length > 0);
     if (lineas.length === 0) return [];
+    // Separador: tab (pegado desde Excel), ; (CSV con configuración regional es-PE) o , (CSV estándar).
     const sep = lineas[0].includes('\t') ? '\t' : lineas[0].includes(';') ? ';' : ',';
-    let filas = lineas.map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g, '')));
-    // Omite filas de cabecera/instrucciones: si la 1ª celda coincide con la 1ª etiqueta,
-    // o si una columna numérica no trae número, esa fila no es de datos.
-    const idxNum = this.columnas.findIndex(c => c.tipo === 'numero');
-    filas = filas.filter(cols => {
-      const primera = (cols[0] ?? '').trim().toLowerCase();
-      if (primera === this.columnas[0]?.etiqueta.toLowerCase()) return false;
-      if (this.columnas[0]?.etiqueta && ['nombre', 'servicio', 'cliente'].includes(primera)) return false;
-      if (idxNum >= 0 && (cols[idxNum] ?? '').trim() && !Number.isFinite(this.parsearNumero(cols[idxNum]))) return false;
-      return true;
+    const filas = lineas.map(l => l.split(sep).map(c => c.trim().replace(/^"|"$/g, '')));
+
+    // Se ancla en la fila de ENCABEZADO (la que trae los títulos de columna) y se toma solo lo que
+    // va debajo. Así se descartan de raíz el título, las instrucciones y cualquier fila previa de la
+    // plantilla — sin heurísticas frágiles que podían dejar pasar filas basura (ej. importar un
+    // cliente llamado "Plantilla de clientes"). Si no hay encabezado (pegado directo sin títulos),
+    // se usan todas las filas y la validación por fila marca lo que esté mal.
+    const primeraEtiqueta = this.normalizar(this.columnas[0]?.etiqueta ?? '');
+    const alias = ['nombre', 'servicio', 'cliente'];
+    const idxHeader = filas.findIndex(cols => {
+      const c0 = this.normalizar(cols[0] ?? '');
+      return c0.length > 0 && (c0 === primeraEtiqueta || alias.includes(c0));
     });
-    return filas;
+    const datos = idxHeader >= 0 ? filas.slice(idxHeader + 1) : filas;
+
+    // Ignora filas totalmente vacías (celdas de relleno de la plantilla).
+    return datos.filter(cols => cols.some(v => (v ?? '').trim().length > 0));
   }
 
   private parsearNumero(valor: string): number {
@@ -178,8 +184,11 @@ export class ImportadorMasivoComponent {
       }
     }
 
-    // Duplicado dentro del archivo o contra los existentes (por la clave indicada / primera).
-    const claveDup = this.claveDuplicado ?? this.columnas[0]?.clave;
+    // Duplicado dentro del archivo o contra los existentes SOLO por la clave que el padre indique
+    // explícitamente (ej. servicios usa "nombre", que sí es único). Para clientes no se pasa clave:
+    // dos personas pueden llamarse igual, así que el aviso de duplicado lo resuelve el backend por
+    // celular/DNI y aquí no se marca un falso positivo por nombre.
+    const claveDup = this.claveDuplicado;
     const valorDup = claveDup ? valores[claveDup] : null;
     if (!motivo && valorDup != null && String(valorDup).length > 0) {
       const k = this.normalizar(String(valorDup));

@@ -47,12 +47,17 @@ public class PlantillasController : ControllerBase
             return NotFound(new { mensaje = "Plantilla no disponible." });
 
         var azul = XLColor.FromHtml("#0B57D0");
-        var azulClaro = XLColor.FromHtml("#EAF1FF");
         var grisNota = XLColor.FromHtml("#64748B");
 
         using var wb = new XLWorkbook();
         var ws = wb.AddWorksheet(def.Hoja);
         var nCols = def.Columnas.Length;
+
+        // IMPORTANTE: esta hoja se sube tal cual para la carga masiva, así que SOLO debe contener
+        // el encabezado y, debajo, los datos del usuario. El título y las instrucciones van ARRIBA
+        // del encabezado (el importador ancla en la fila de títulos y descarta todo lo anterior).
+        // Un ejemplo va dentro del texto de instrucciones y las notas por columna van como
+        // comentarios de celda: nada de eso se exporta a CSV, así no se cuela como fila de datos.
 
         // Fila 1: título de marca.
         var titulo = ws.Range(1, 1, 1, nCols).Merge();
@@ -65,17 +70,18 @@ public class PlantillasController : ControllerBase
         titulo.Style.Alignment.Indent = 1;
         ws.Row(1).Height = 26;
 
-        // Fila 2: instrucciones.
+        // Fila 2: instrucciones + un ejemplo en prosa (no como fila de datos, para no importarlo).
+        var ejemplo = string.Join("  |  ", def.Columnas.Select(c => c.Ejemplo1));
         var instr = ws.Range(2, 1, 2, nCols).Merge();
-        instr.Value = def.Instruccion;
+        instr.Value = $"{def.Instruccion}\nEjemplo: {ejemplo}";
         instr.Style.Font.FontSize = 10;
         instr.Style.Font.FontColor = grisNota;
         instr.Style.Alignment.WrapText = true;
         instr.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
         instr.Style.Alignment.Indent = 1;
-        ws.Row(2).Height = 44;
+        ws.Row(2).Height = 58;
 
-        // Fila 4: encabezados de columna.
+        // Fila 4: encabezados de columna (los datos del usuario van de la fila 5 hacia abajo).
         const int filaHeader = 4;
         for (var i = 0; i < nCols; i++)
         {
@@ -89,34 +95,11 @@ public class PlantillasController : ControllerBase
             c.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
             c.Style.Border.OutsideBorderColor = XLColor.White;
             ws.Column(i + 1).Width = def.Columnas[i].Ancho;
+
+            // Nota de la columna como comentario (visible al pasar el mouse en Excel; no va al CSV).
+            c.GetComment().AddText(def.Columnas[i].Nota);
         }
         ws.Row(filaHeader).Height = 20;
-
-        // Fila 5: notas de cada columna (qué va en cada una).
-        for (var i = 0; i < nCols; i++)
-        {
-            var c = ws.Cell(filaHeader + 1, i + 1);
-            c.Value = def.Columnas[i].Nota;
-            c.Style.Font.FontSize = 9;
-            c.Style.Font.Italic = true;
-            c.Style.Font.FontColor = grisNota;
-            c.Style.Fill.BackgroundColor = azulClaro;
-            c.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        }
-
-        // Filas 6-7: ejemplos (se pueden borrar).
-        for (var i = 0; i < nCols; i++)
-        {
-            ws.Cell(filaHeader + 2, i + 1).Value = def.Columnas[i].Ejemplo1;
-            ws.Cell(filaHeader + 3, i + 1).Value = def.Columnas[i].Ejemplo2;
-        }
-        ws.Range(filaHeader + 2, 1, filaHeader + 3, nCols).Style.Font.FontColor = grisNota;
-
-        var aviso = ws.Cell(filaHeader + 5, 1);
-        aviso.Value = "↑ Las dos filas de ejemplo son solo referencia: puedes borrarlas y escribir tus datos debajo del encabezado.";
-        aviso.Style.Font.FontSize = 9;
-        aviso.Style.Font.Italic = true;
-        aviso.Style.Font.FontColor = grisNota;
 
         ws.SheetView.FreezeRows(filaHeader);
         ws.Range(filaHeader, 1, filaHeader, nCols).SetAutoFilter();

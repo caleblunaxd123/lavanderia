@@ -201,84 +201,22 @@
   </div>
 }
 
-<!-- Modal importar masivo -->
+<!-- Modal importar masivo (componente reutilizable) -->
 @if (importarAbierto()) {
-  <div class="modal-backdrop" (click)="cerrarImportar()"></div>
-  <div class="modal modal--lg" role="dialog" aria-modal="true" aria-labelledby="importar-title">
-    <div class="modal__header">
-      <h3 id="importar-title">Importar servicios</h3>
-      <button type="button" class="modal__close" (click)="cerrarImportar()" title="Cerrar" aria-label="Cerrar importación"><app-icon name="close" [size]="16"></app-icon></button>
-    </div>
-    <div class="modal__body">
-      <p class="import-intro">
-        Sube tu lista de una vez en lugar de crear los servicios uno por uno.
-        <strong>Sube tu archivo de Excel</strong> (.xlsx) o CSV, o copia las celdas desde Excel y <strong>pégalas</strong> abajo.
-      </p>
-
-      <div class="import-ayuda">
-        <span>Columnas: <strong>Nombre</strong> · <strong>Precio</strong> · <strong>Unidad</strong> · <strong>Categoría</strong> (opcional)</span>
-        <div class="import-ayuda__acciones">
-          <button type="button" class="btn btn--ghost btn--sm" (click)="descargarPlantilla()"><app-icon name="download" [size]="14"></app-icon>Descargar plantilla</button>
-          <label class="btn btn--ghost btn--sm import-file">
-            <app-icon name="clipboard" [size]="14"></app-icon>Subir Excel o CSV
-            <input type="file" accept=".xlsx,.xls,.csv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onArchivoImport($event)" hidden />
-          </label>
-        </div>
-      </div>
-
-      <textarea class="import-textarea" rows="7" [ngModel]="importTexto()" (ngModelChange)="importTexto.set($event)"
-        placeholder="Pega aquí. Ejemplo:&#10;Lavado por kilo	6.50	kg	Ropa por kilo&#10;Planchado camisa	3.00	prenda	Adicionales"></textarea>
-      @if (importNombreArchivo()) {
-        <p class="import-archivo">Archivo cargado: <strong>{{ importNombreArchivo() }}</strong></p>
-      }
-
-      @if (importFilas().length > 0) {
-        <div class="import-resumen">
-          <span class="chip chip--ok">{{ importValidas().length }} para importar</span>
-          @if (importConError().length) { <span class="chip chip--err">{{ importConError().length }} con problema</span> }
-          @if (importCategoriasNuevas().length) { <span class="chip chip--info">{{ importCategoriasNuevas().length }} categoría(s) nueva(s)</span> }
-        </div>
-
-        <div class="import-preview">
-          <table class="tabla tabla--compacta">
-            <thead>
-              <tr><th>#</th><th>Nombre</th><th>Precio</th><th>Unidad</th><th>Categoría</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-              @for (f of importFilas(); track f.fila) {
-                <tr [class.fila-error]="f.estado === 'error'">
-                  <td class="mono">{{ f.fila }}</td>
-                  <td class="nombre">{{ f.nombre || '—' }}</td>
-                  <td class="mono">{{ f.precio ? ('S/ ' + (f.precio | number:'1.2-2')) : '—' }}</td>
-                  <td>{{ f.unidad }}</td>
-                  <td>{{ f.categoria || '—' }}</td>
-                  <td>
-                    @if (f.estado === 'ok') { <span class="badge badge--verde">OK</span> }
-                    @else { <span class="badge badge--rojo" [title]="f.motivo">{{ f.motivo }}</span> }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        @if (importCategoriasNuevas().length) {
-          <label class="checkbox-row">
-            <input type="checkbox" [ngModel]="importCrearCategorias()" (ngModelChange)="importCrearCategorias.set($event)" name="crearCat" />
-            Crear las categorías nuevas automáticamente
-            <small class="hint">({{ importCategoriasNuevas().join(', ') }})</small>
-          </label>
-        }
-      }
-    </div>
-
-    <div class="modal__actions">
-      <button type="button" class="btn btn--ghost" (click)="cerrarImportar()">Cancelar</button>
-      <button type="button" class="btn btn--primario" [disabled]="importando() || importValidas().length === 0" (click)="confirmarImportar()">
-        {{ importando() ? 'Importando…' : 'Importar ' + importValidas().length + ' servicio(s)' }}
-      </button>
-    </div>
-  </div>
+  <app-importador-masivo
+    titulo="Importar servicios"
+    [columnas]="columnasImport"
+    plantillaTipo="servicios"
+    [existentes]="nombresExistentes()"
+    claveDuplicado="nombre"
+    [procesando]="importando()"
+    (cerrar)="cerrarImportar()"
+    (confirmar)="importarServicios($event)">
+    <label class="checkbox-row">
+      <input type="checkbox" [ngModel]="crearCategorias()" (ngModelChange)="crearCategorias.set($event)" name="crearCat" />
+      Crear automáticamente las categorías que no existan
+    </label>
+  </app-importador-masivo>
 }
 
 <!-- Modal confirmar desactivar -->
