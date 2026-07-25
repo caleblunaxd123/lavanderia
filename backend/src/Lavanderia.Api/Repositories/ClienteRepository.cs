@@ -9,7 +9,7 @@ public interface IClienteRepository
     Task<List<Cliente>> BuscarAsync(string? texto, string? campo, int limite, int negocioId, CancellationToken ct = default);
     Task<Cliente?> ObtenerPorIdAsync(int id, int negocioId, CancellationToken ct = default);
     Task<Cliente?> BuscarPorCelularOrDniAsync(string valor, int negocioId, CancellationToken ct = default);
-    Task<Cliente?> BuscarDuplicadoAsync(string? celular, string? dni, string? documentoFiscal, int negocioId, int? excluirClienteId = null, CancellationToken ct = default);
+    Task<Cliente?> BuscarDuplicadoAsync(string? nombre, string? celular, string? dni, string? documentoFiscal, int negocioId, int? excluirClienteId = null, CancellationToken ct = default);
     Task<int> CrearAsync(Cliente c, CancellationToken ct = default);
     Task ActualizarAsync(Cliente c, int negocioId, CancellationToken ct = default);
     Task DesactivarAsync(int id, int negocioId, CancellationToken ct = default);
@@ -94,12 +94,17 @@ public class ClienteRepository : IClienteRepository
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
     }
 
-    public async Task<Cliente?> BuscarDuplicadoAsync(string? celular, string? dni, string? documentoFiscal, int negocioId, int? excluirClienteId = null, CancellationToken ct = default)
+    public async Task<Cliente?> BuscarDuplicadoAsync(string? nombre, string? celular, string? dni, string? documentoFiscal, int negocioId, int? excluirClienteId = null, CancellationToken ct = default)
     {
+        // Un cliente es "el mismo" cuando coincide su identificador de persona (DNI o documento
+        // fiscal) o cuando repite Nombre + Celular. OJO: un celular compartido por personas con
+        // nombres distintos (familias con un solo número) NO es duplicado, por eso el celular
+        // solo cuenta junto al nombre.
         var condiciones = new List<string>();
-        if (!string.IsNullOrWhiteSpace(celular)) condiciones.Add("Celular = @Celular");
         if (!string.IsNullOrWhiteSpace(dni)) condiciones.Add("Dni = @Dni");
         if (!string.IsNullOrWhiteSpace(documentoFiscal)) condiciones.Add("DocumentoFiscal = @DocumentoFiscal");
+        if (!string.IsNullOrWhiteSpace(celular) && !string.IsNullOrWhiteSpace(nombre))
+            condiciones.Add("(Celular = @Celular AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(LTRIM(RTRIM(@Nombre))))");
         if (condiciones.Count == 0) return null;
 
         await using var conn = _factory.Create();
@@ -107,9 +112,11 @@ public class ClienteRepository : IClienteRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = BaseSelect + $@"
             WHERE NegocioId = @NegocioId
+              AND Activo = 1
               AND ({string.Join(" OR ", condiciones)})
               AND (@ExcluirId IS NULL OR Id <> @ExcluirId)";
         cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@Nombre", string.IsNullOrWhiteSpace(nombre) ? null : nombre);
         cmd.AddParam("@Celular", string.IsNullOrWhiteSpace(celular) ? null : celular);
         cmd.AddParam("@Dni", string.IsNullOrWhiteSpace(dni) ? null : dni);
         cmd.AddParam("@DocumentoFiscal", string.IsNullOrWhiteSpace(documentoFiscal) ? null : documentoFiscal);

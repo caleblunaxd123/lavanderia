@@ -121,15 +121,31 @@ public class PedidoService : IPedidoService
         else if (req.ClienteNuevo is { } nuevo && !string.IsNullOrWhiteSpace(nuevo.Nombre))
         {
             PedidoCalculos.ValidarContacto(nuevo.Celular, nuevo.Direccion, modalidad);
-            clienteId = await _clientes.CrearAsync(new Cliente
+            var nombreNuevo = nuevo.Nombre.Trim();
+            var celularNuevo = LimpiarTexto(nuevo.Celular);
+            var dniNuevo = LimpiarTexto(nuevo.Dni);
+            var docFiscalNuevo = LimpiarTexto(nuevo.DocumentoFiscal);
+
+            // Evita duplicar el cliente: si el cajero escribe a mano uno que ya existe (mismo DNI,
+            // o mismo nombre y celular) en vez de elegirlo de la lista, se reutiliza el existente.
+            var yaExiste = await _clientes.BuscarDuplicadoAsync(nombreNuevo, celularNuevo, dniNuevo, docFiscalNuevo, negocioId, null, ct);
+            if (yaExiste is not null)
             {
-                NegocioId = negocioId,
-                Nombre = nuevo.Nombre.Trim(),
-                Celular = LimpiarTexto(nuevo.Celular),
-                Dni = LimpiarTexto(nuevo.Dni),
-                DocumentoFiscal = LimpiarTexto(nuevo.DocumentoFiscal),
-                Direccion = LimpiarTexto(nuevo.Direccion)
-            }, ct);
+                clienteId = yaExiste.Id;
+                puntosDisponibles = yaExiste.Puntos;
+            }
+            else
+            {
+                clienteId = await _clientes.CrearAsync(new Cliente
+                {
+                    NegocioId = negocioId,
+                    Nombre = nombreNuevo,
+                    Celular = celularNuevo,
+                    Dni = dniNuevo,
+                    DocumentoFiscal = docFiscalNuevo,
+                    Direccion = LimpiarTexto(nuevo.Direccion)
+                }, ct);
+            }
         }
         else
         {

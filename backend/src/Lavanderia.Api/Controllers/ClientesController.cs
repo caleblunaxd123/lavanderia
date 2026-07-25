@@ -84,7 +84,7 @@ public class ClientesController : TenantAwareControllerBase
         var documentoFiscal = LimpiarTexto(dto.DocumentoFiscal);
         var direccion = LimpiarTexto(dto.Direccion);
 
-        var duplicado = await _repo.BuscarDuplicadoAsync(celular, dni, documentoFiscal, NegocioId, null, ct);
+        var duplicado = await _repo.BuscarDuplicadoAsync(nombre, celular, dni, documentoFiscal, NegocioId, null, ct);
         if (duplicado is not null)
             return Conflict(new { mensaje = MensajeDuplicado(duplicado, celular, dni, documentoFiscal), clienteId = duplicado.Id });
 
@@ -117,8 +117,10 @@ public class ClientesController : TenantAwareControllerBase
             return BadRequest(new { mensaje = "Máximo 1000 clientes por importación. Divide el archivo en partes." });
 
         var resultado = new ImportarClientesResultado();
-        var celularesLote = new HashSet<string>();
         var dnisLote = new HashSet<string>();
+        // Clave "nombre|celular" normalizada: un mismo celular con nombres distintos (familias)
+        // NO es duplicado, así que se deduplica por la combinación, no por el celular solo.
+        var nombreCelularLote = new HashSet<string>();
 
         var fila = 0;
         foreach (var f in req.Filas)
@@ -138,14 +140,14 @@ public class ClientesController : TenantAwareControllerBase
             if (dni is not null && !System.Text.RegularExpressions.Regex.IsMatch(dni, @"^\d{8}$"))
             { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "DNI inválido (8 dígitos)." }); continue; }
 
-            if (celular is not null && !celularesLote.Add(celular))
-            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular repetido dentro del archivo." }); continue; }
             if (dni is not null && !dnisLote.Add(dni))
             { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "DNI repetido dentro del archivo." }); continue; }
+            if (celular is not null && !nombreCelularLote.Add($"{nombre.ToUpperInvariant()}|{celular}"))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Cliente repetido dentro del archivo (mismo nombre y celular)." }); continue; }
 
             if ((celular is not null || dni is not null) &&
-                await _repo.BuscarDuplicadoAsync(celular, dni, null, NegocioId, null, ct) is not null)
-            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe un cliente con ese celular o DNI." }); continue; }
+                await _repo.BuscarDuplicadoAsync(nombre, celular, dni, null, NegocioId, null, ct) is not null)
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe este cliente (mismo DNI, o mismo nombre y celular)." }); continue; }
 
             await _repo.CrearAsync(new Cliente
             {
@@ -174,7 +176,7 @@ public class ClientesController : TenantAwareControllerBase
         var celular = LimpiarTexto(dto.Celular);
         var dni = LimpiarTexto(dto.Dni);
         var documentoFiscal = LimpiarTexto(dto.DocumentoFiscal);
-        var duplicado = await _repo.BuscarDuplicadoAsync(celular, dni, documentoFiscal, NegocioId, id, ct);
+        var duplicado = await _repo.BuscarDuplicadoAsync(nombre, celular, dni, documentoFiscal, NegocioId, id, ct);
         if (duplicado is not null)
             return Conflict(new { mensaje = MensajeDuplicado(duplicado, celular, dni, documentoFiscal), clienteId = duplicado.Id });
 
@@ -264,12 +266,12 @@ public class ClientesController : TenantAwareControllerBase
 
     private static string MensajeDuplicado(Cliente duplicado, string? celular, string? dni, string? documentoFiscal)
     {
-        if (!string.IsNullOrWhiteSpace(celular) && string.Equals(duplicado.Celular, celular, StringComparison.Ordinal))
-            return "Ya existe un cliente con ese celular.";
         if (!string.IsNullOrWhiteSpace(dni) && string.Equals(duplicado.Dni, dni, StringComparison.Ordinal))
             return "Ya existe un cliente con ese DNI.";
         if (!string.IsNullOrWhiteSpace(documentoFiscal) && string.Equals(duplicado.DocumentoFiscal, documentoFiscal, StringComparison.Ordinal))
             return "Ya existe un cliente con ese documento fiscal.";
+        if (!string.IsNullOrWhiteSpace(celular) && string.Equals(duplicado.Celular, celular, StringComparison.Ordinal))
+            return "Ya existe un cliente con ese nombre y celular. Si es otra persona, usa un dato distinto.";
         return "Ya existe un cliente con esos datos.";
     }
 }
