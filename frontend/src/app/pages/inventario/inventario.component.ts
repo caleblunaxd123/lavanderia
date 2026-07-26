@@ -13,10 +13,11 @@ import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { debounceTime } from 'rxjs';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
+import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importador-masivo/importador-masivo.component';
 
 @Component({
   selector: 'app-inventario',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, ImportadorMasivoComponent],
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })
@@ -190,6 +191,38 @@ export class InventarioComponent implements OnInit, OnDestroy {
     this.formInsumo = this.formInsumoVacio();
     this.errorFormInsumo.set(null);
     this.modalInsumo.set(true);
+  }
+
+  // ---------- Importación masiva ----------
+  readonly importarAbierto = signal(false);
+  readonly importando = signal(false);
+  readonly columnasImport: ColumnaImport[] = [
+    { clave: 'nombre', etiqueta: 'Nombre', requerido: true, tipo: 'texto' },
+    { clave: 'unidadMedida', etiqueta: 'Unidad', requerido: true, tipo: 'texto' },
+    { clave: 'stockActual', etiqueta: 'StockActual', tipo: 'numero', min: 0, max: 1000000 },
+    { clave: 'stockMinimo', etiqueta: 'StockMinimo', tipo: 'numero', min: 0, max: 1000000 },
+  ];
+
+  abrirImportar() { this.importarAbierto.set(true); }
+  cerrarImportar() { if (!this.importando()) this.importarAbierto.set(false); }
+
+  importarInsumos(filas: Array<Record<string, string | number | null>>) {
+    if (this.importando()) return;
+    this.importando.set(true);
+    this.svc.importar(filas).subscribe({
+      next: res => {
+        this.importando.set(false);
+        this.importarAbierto.set(false);
+        const partes = [`${res.creados} insumo(s) creado(s)`];
+        if (res.omitidos) partes.push(`${res.omitidos} omitido(s)`);
+        this.toast.exito(partes.join(' · '));
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.importando.set(false);
+        this.toast.desdeHttp(err, 'No se pudo importar el archivo.');
+      }
+    });
   }
 
   abrirEditarInsumo(i: Insumo) {

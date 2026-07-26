@@ -45,6 +45,9 @@ export class InsumosService {
   actualizar(id: number, i: Partial<Insumo>) { return this.http.put<void>(`${this.base}/${id}`, i); }
   desactivar(id: number) { return this.http.delete<{ mensaje: string }>(`${this.base}/${id}`); }
   cambiarEstado(id: number, activo: boolean) { return this.http.patch<void>(`${this.base}/${id}/estado`, { activo }); }
+  importar(filas: Array<Record<string, string | number | null>>) {
+    return this.http.post<ImportarInsumosResultado>(`${this.base}/importar`, { filas });
+  }
 
   registrarMovimiento(insumoId: number, req: RegistrarMovimientoInsumoRequest) {
     return this.http.post<{ id: number; mensaje: string }>(`${this.base}/${insumoId}/movimientos`, req);
@@ -57,4 +60,10 @@ export class InsumosService {
     if (hasta) params = params.set('hasta', hasta);
     return this.http.get<MovimientoInsumo[]>(`${this.base}/movimientos`, { params });
   }
+}
+
+export interface ImportarInsumosResultado {
+  creados: number;
+  omitidos: number;
+  errores: Array<{ fila: number; nombre: string; motivo: string }>;
 }

@@ -359,28 +359,43 @@ a.card:hover,
  * tablas y a las tarjetas móviles de todos los módulos, sobrescribiendo el desvanecido
  * que cada componente define localmente (por eso el !important puntual en opacity). */
 tr.inactivo {
-  background: #fdf3f4;
+  background: #fef2f2;
 }
 tr.inactivo td {
   opacity: 1 !important;
-  color: #94a3b8;
+  color: #6b7280;              /* legible, no lavado: se ve el dato pero se nota apagado */
 }
 tr.inactivo td:first-child {
-  box-shadow: inset 3px 0 0 var(--rojo, #e74c3c);
+  box-shadow: inset 4px 0 0 #ef4444;   /* franja roja a la izquierda */
+  font-weight: 600;
 }
+tr.inactivo:hover td { background: #fde4e4; }   /* al pasar el mouse sigue leyéndose rojo */
 
 /* Tarjetas (vista móvil) inactivas */
 [class*="card"].inactivo {
   opacity: 1 !important;
-  background: #fdf3f4;
-  border-left: 3px solid var(--rojo, #e74c3c);
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
 }
 
-/* La etiqueta "Inactivo" pasa de gris a rojo tenue, pero SOLO dentro de una fila o
- * tarjeta inactiva (así no afecta otros badge--gris con distinto significado, p. ej.
+/* La etiqueta "Inactivo" pasa de gris a una pastilla roja con punto, pero SOLO dentro de una
+ * fila o tarjeta inactiva (así no afecta otros badge--gris con distinto significado, p. ej.
  * el de saldo pendiente en Pedidos). */
 tr.inactivo .badge--gris,
 [class*="card"].inactivo .badge--gris {
-  background: #fdeaea !important;
-  color: #c0392b !important;
+  background: #fee2e2 !important;
+  color: #b42318 !important;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+tr.inactivo .badge--gris::before,
+[class*="card"].inactivo .badge--gris::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
 }

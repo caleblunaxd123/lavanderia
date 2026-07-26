@@ -38,6 +38,16 @@ public class PlantillasController : ControllerBase
                 new Columna("DNI", "12345678", "", "Opcional · 8 dígitos", 16),
                 new Columna("Direccion", "Av. Larco 123, Miraflores", "Jr. Unión 456", "Opcional", 38),
             }),
+        ["insumos"] = new(
+            "Insumos", "Plantilla de insumos (inventario)",
+            "Completa una fila por insumo. No borres la fila de títulos. Stock actual y mínimo en números (ej. 10 o 2.5). La unidad puede ser: und, kg, litro, bolsa, etc.",
+            new[]
+            {
+                new Columna("Nombre", "Detergente industrial", "Bolsas 5 kg", "Obligatorio", 34),
+                new Columna("Unidad", "litro", "unidad", "und / kg / litro / bolsa…", 16),
+                new Columna("StockActual", "20", "150", "Cantidad que tienes hoy", 16),
+                new Columna("StockMinimo", "5", "30", "Nivel de alerta", 16),
+            }),
     };
 
     [HttpGet("{tipo}")]

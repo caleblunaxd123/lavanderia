@@ -2,6 +2,9 @@
   <app-page-header icono="package" color="morado" titulo="Inventario" tourId="inventario"
     subtitulo="Stock de consumibles: detergente, bolsas, suavizante, etc.">
     @if (tab() === 'insumos') {
+      <button type="button" class="btn btn--ghost" (click)="abrirImportar()">
+        <app-icon name="clipboard" [size]="15"></app-icon> Importar
+      </button>
       <button type="button" class="btn btn--primario" data-tour="inventario-nuevo" (click)="abrirCrearInsumo()">
         <app-icon name="plus" [size]="16"></app-icon> Nuevo insumo
       </button>
@@ -355,4 +358,15 @@
       </div>
     </form>
   </div>
+}
+
+@if (importarAbierto()) {
+  <app-importador-masivo
+    titulo="Importar insumos"
+    [columnas]="columnasImport"
+    plantillaTipo="insumos"
+    [procesando]="importando()"
+    (cerrar)="cerrarImportar()"
+    (confirmar)="importarInsumos($event)">
+  </app-importador-masivo>
 }

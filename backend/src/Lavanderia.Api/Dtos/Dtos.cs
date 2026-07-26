@@ -361,6 +361,27 @@ public class ImportarClientesResultado
     public List<ImportarFilaError> Errores { get; set; } = new();
 }
 
+// Importación masiva de insumos (inventario)
+public class ImportarInsumosRequest
+{
+    public List<ImportarInsumoFila> Filas { get; set; } = new();
+}
+
+public class ImportarInsumoFila
+{
+    public string? Nombre { get; set; }
+    public string? UnidadMedida { get; set; }
+    public decimal StockActual { get; set; }
+    public decimal StockMinimo { get; set; }
+}
+
+public class ImportarInsumosResultado
+{
+    public int Creados { get; set; }
+    public int Omitidos { get; set; }
+    public List<ImportarFilaError> Errores { get; set; } = new();
+}
+
 // ---------- Categorías ----------
 public class CategoriaDto
 {

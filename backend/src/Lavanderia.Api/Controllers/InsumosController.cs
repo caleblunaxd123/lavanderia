@@ -46,6 +46,56 @@ public class InsumosController : TenantAwareControllerBase
         return CreatedAtAction(nameof(Listar), Map(creado!));
     }
 
+    /// <summary>Carga masiva de insumos. Valida fila por fila, omite duplicados por nombre
+    /// (dentro del archivo y contra la sede) y filas inválidas, sin abortar el resto.</summary>
+    [HttpPost("importar")]
+    public async Task<ActionResult<ImportarInsumosResultado>> Importar([FromBody] ImportarInsumosRequest req, CancellationToken ct)
+    {
+        if (req.Filas is null || req.Filas.Count == 0)
+            return BadRequest(new { mensaje = "No se recibió ninguna fila para importar." });
+        if (req.Filas.Count > 1000)
+            return BadRequest(new { mensaje = "Máximo 1000 insumos por importación. Divide el archivo en partes." });
+
+        var resultado = new ImportarInsumosResultado();
+        var nombresLote = new HashSet<string>();
+        var fila = 0;
+        foreach (var f in req.Filas)
+        {
+            fila++;
+            var nombre = (f.Nombre ?? "").Trim();
+            var unidad = (f.UnidadMedida ?? "").Trim();
+
+            if (nombre.Length == 0 && unidad.Length == 0 && f.StockActual == 0 && f.StockMinimo == 0) continue; // fila vacía
+
+            if (nombre.Length < 2 || nombre.Length > 80)
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Nombre inválido (2 a 80 caracteres)." }); continue; }
+            if (unidad.Length == 0) unidad = "und";
+            if (unidad.Length > 20) unidad = unidad[..20];
+            if (f.StockActual < 0 || f.StockActual > 1_000_000)
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Stock actual fuera de rango." }); continue; }
+            if (f.StockMinimo < 0 || f.StockMinimo > 1_000_000)
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Stock mínimo fuera de rango." }); continue; }
+
+            if (!nombresLote.Add(nombre.ToUpperInvariant()))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Repetido dentro del archivo." }); continue; }
+            if (await _repo.ExisteNombreAsync(nombre, SedeRequeridaId, ct: ct))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe un insumo con ese nombre." }); continue; }
+
+            await _repo.CrearAsync(new Insumo
+            {
+                SedeId = SedeRequeridaId,
+                Nombre = nombre,
+                UnidadMedida = unidad,
+                StockActual = f.StockActual,
+                StockMinimo = f.StockMinimo,
+                Activo = true
+            }, ct);
+            resultado.Creados++;
+        }
+
+        return Ok(resultado);
+    }
+
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, [FromBody] InsumoDto dto, CancellationToken ct)
     {
