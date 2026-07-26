@@ -49,7 +49,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
     const termino = this.normalizar(this.busqueda());
     const estado = this.filtroEstado();
     return this.insumos().filter(i => {
-      const coincideTexto = !termino || this.normalizar(`${i.nombre} ${i.unidadMedida}`).includes(termino);
+      const coincideTexto = !termino || this.normalizar(i.nombre).includes(termino);
       const coincideEstado = estado === 'TODOS'
         || (estado === 'ACTIVOS' && i.activo)
         || (estado === 'BAJO_STOCK' && i.activo && this.bajoStock(i))

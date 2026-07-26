@@ -47,7 +47,7 @@
         <label class="inventory-search">
           <app-icon name="search" [size]="16"></app-icon>
           <span class="sr-only">Buscar insumo</span>
-          <input type="search" maxlength="80" placeholder="Buscar por nombre o unidad"
+          <input type="search" maxlength="80" placeholder="Buscar por nombre del insumo"
             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event); cambiarFiltros()" />
         </label>
         <select aria-label="Filtrar inventario por estado" [ngModel]="filtroEstado()"
