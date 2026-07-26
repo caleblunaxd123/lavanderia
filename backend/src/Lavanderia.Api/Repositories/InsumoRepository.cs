@@ -30,6 +30,8 @@ public class InsumoRepository : IInsumoRepository
         Nombre = r.GetString(r.GetOrdinal("Nombre")),
         UnidadMedida = r.GetString(r.GetOrdinal("UnidadMedida")),
         Clase = r.GetString(r.GetOrdinal("Clase")),
+        ContenidoValor = r.GetNullableDecimal("ContenidoValor"),
+        ContenidoUnidad = r.GetNullableString("ContenidoUnidad"),
         StockActual = r.GetDecimal(r.GetOrdinal("StockActual")),
         StockMinimo = r.GetDecimal(r.GetOrdinal("StockMinimo")),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
@@ -37,7 +39,7 @@ public class InsumoRepository : IInsumoRepository
         EnUso = r.GetBoolean(r.GetOrdinal("EnUso"))
     };
 
-    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, StockActual, StockMinimo, Activo,
+    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo,
         (SELECT MAX(m.Fecha) FROM dbo.MovimientoInsumo m WHERE m.InsumoId = dbo.Insumo.Id AND m.Tipo = 'COMPRA') AS UltimaCompra,
         CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.MovimientoInsumo mu WHERE mu.InsumoId = dbo.Insumo.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Insumo";
@@ -96,13 +98,15 @@ public class InsumoRepository : IInsumoRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Insumo (SedeId, Nombre, UnidadMedida, Clase, StockActual, StockMinimo, Activo)
+            INSERT INTO dbo.Insumo (SedeId, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo)
             OUTPUT INSERTED.Id
-            VALUES (@SedeId, @Nombre, @UnidadMedida, @Clase, @StockActual, @StockMinimo, @Activo)";
+            VALUES (@SedeId, @Nombre, @UnidadMedida, @Clase, @ContenidoValor, @ContenidoUnidad, @StockActual, @StockMinimo, @Activo)";
         cmd.AddParam("@SedeId", i.SedeId);
         cmd.AddParam("@Nombre", i.Nombre);
         cmd.AddParam("@UnidadMedida", i.UnidadMedida);
         cmd.AddParam("@Clase", i.Clase);
+        cmd.AddParam("@ContenidoValor", (object?)i.ContenidoValor ?? DBNull.Value);
+        cmd.AddParam("@ContenidoUnidad", (object?)i.ContenidoUnidad ?? DBNull.Value);
         cmd.AddParam("@StockActual", i.StockActual);
         cmd.AddParam("@StockMinimo", i.StockMinimo);
         cmd.AddParam("@Activo", i.Activo);
@@ -116,12 +120,16 @@ public class InsumoRepository : IInsumoRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             UPDATE dbo.Insumo
-            SET Nombre = @Nombre, UnidadMedida = @UnidadMedida, Clase = @Clase, StockMinimo = @StockMinimo, Activo = @Activo
+            SET Nombre = @Nombre, UnidadMedida = @UnidadMedida, Clase = @Clase,
+                ContenidoValor = @ContenidoValor, ContenidoUnidad = @ContenidoUnidad,
+                StockMinimo = @StockMinimo, Activo = @Activo
             WHERE Id = @Id AND SedeId = @SedeId";
         cmd.AddParam("@Id", i.Id);
         cmd.AddParam("@Nombre", i.Nombre);
         cmd.AddParam("@UnidadMedida", i.UnidadMedida);
         cmd.AddParam("@Clase", i.Clase);
+        cmd.AddParam("@ContenidoValor", (object?)i.ContenidoValor ?? DBNull.Value);
+        cmd.AddParam("@ContenidoUnidad", (object?)i.ContenidoUnidad ?? DBNull.Value);
         cmd.AddParam("@StockMinimo", i.StockMinimo);
         cmd.AddParam("@Activo", i.Activo);
         cmd.AddParam("@SedeId", sedeId);

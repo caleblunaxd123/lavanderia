@@ -89,7 +89,10 @@
                 <div class="insumo-card__icon"><app-icon name="package" [size]="18"></app-icon></div>
                 <div>
                   <strong>{{ i.nombre }}</strong>
-                  <span>{{ i.unidadMedida }} · <span class="insumo-card__clase" [attr.data-clase]="i.clase">{{ claseEtiqueta(i.clase) }}</span></span>
+                  <span>
+                    {{ i.unidadMedida }}@if (i.contenidoValor) { <span class="insumo-card__contenido">× {{ i.contenidoValor | number:'1.0-2' }} {{ i.contenidoUnidad }}</span> }
+                    · <span class="insumo-card__clase" [attr.data-clase]="i.clase">{{ claseEtiqueta(i.clase) }}</span>
+                  </span>
                 </div>
               </div>
               @if (!i.activo) {
@@ -105,6 +108,10 @@
               <div class="insumo-card__actual"><strong>{{ i.stockActual | number:'1.0-2' }}</strong><span>{{ i.unidadMedida }}</span></div>
               <div class="insumo-card__minimum"><span>Mínimo</span><strong>{{ i.stockMinimo | number:'1.0-2' }}</strong></div>
             </div>
+
+            @if (contenidoTotalTexto(i); as total) {
+              <div class="insumo-card__total">{{ total }}</div>
+            }
 
             <div class="stock-meter" aria-hidden="true"><span [style.width.%]="nivelStock(i)"></span></div>
 
@@ -234,14 +241,27 @@
 
         <div class="row-2">
           <div>
-            <label for="insumo-unidad">Unidad de medida *</label>
+            <label for="insumo-unidad">¿Cómo lo cuentas? (unidad) *</label>
             <input id="insumo-unidad" type="text" required maxlength="20"
-              [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: kg, litro, unidad" />
+              [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: bidón, bolsa, unidad, kg" />
           </div>
           <div>
             <label for="insumo-minimo">Stock mínimo</label>
             <input id="insumo-minimo" type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
               [(ngModel)]="formInsumo.stockMinimo" name="stockMinimo" />
+          </div>
+        </div>
+
+        <label>Contenido por unidad <small class="hint">(opcional — ej. un bidón trae 20 litros)</small></label>
+        <div class="row-2">
+          <div class="money-input contenido-input">
+            <span>×</span>
+            <input type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
+              [(ngModel)]="formInsumo.contenidoValor" name="contenidoValor" placeholder="20" aria-label="Cantidad de contenido" />
+          </div>
+          <div>
+            <input type="text" maxlength="20"
+              [(ngModel)]="formInsumo.contenidoUnidad" name="contenidoUnidad" placeholder="Ej: litros, kg, ml" aria-label="Unidad del contenido" />
           </div>
         </div>
 

@@ -658,3 +658,30 @@
   &[data-clase="MATERIAL"] { color: #b45309; }
   &[data-clase="INSUMO"]   { color: #0f766e; }
 }
+
+// Presentación / contenido por unidad
+.insumo-card__contenido { font-weight: 600; color: #475569; }
+.insumo-card__total {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+// Input de contenido con prefijo "×" (reutiliza el patrón de money-input)
+.contenido-input {
+  position: relative;
+
+  > span {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    z-index: 1;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  input { padding-left: 28px !important; }
+}

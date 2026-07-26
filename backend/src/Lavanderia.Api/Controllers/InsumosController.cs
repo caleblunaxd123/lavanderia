@@ -51,6 +51,8 @@ public class InsumosController : TenantAwareControllerBase
             Nombre = nombre,
             UnidadMedida = unidad,
             Clase = NormalizarClase(dto.Clase),
+            ContenidoValor = dto.ContenidoValor is > 0 ? dto.ContenidoValor : null,
+            ContenidoUnidad = string.IsNullOrWhiteSpace(dto.ContenidoUnidad) ? null : dto.ContenidoUnidad.Trim(),
             StockActual = Math.Max(0, dto.StockActual),
             StockMinimo = Math.Max(0, dto.StockMinimo),
             Activo = dto.Activo
@@ -122,6 +124,8 @@ public class InsumosController : TenantAwareControllerBase
         existente.Nombre = nombre;
         existente.UnidadMedida = dto.UnidadMedida.Trim();
         existente.Clase = NormalizarClase(dto.Clase);
+        existente.ContenidoValor = dto.ContenidoValor is > 0 ? dto.ContenidoValor : null;
+        existente.ContenidoUnidad = string.IsNullOrWhiteSpace(dto.ContenidoUnidad) ? null : dto.ContenidoUnidad.Trim();
         existente.StockMinimo = Math.Max(0, dto.StockMinimo);
         existente.Activo = dto.Activo;
         await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
@@ -244,6 +248,8 @@ public class InsumosController : TenantAwareControllerBase
         Nombre = i.Nombre,
         UnidadMedida = i.UnidadMedida,
         Clase = i.Clase,
+        ContenidoValor = i.ContenidoValor,
+        ContenidoUnidad = i.ContenidoUnidad,
         StockActual = i.StockActual,
         StockMinimo = i.StockMinimo,
         Activo = i.Activo,

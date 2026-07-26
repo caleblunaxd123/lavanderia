@@ -10,6 +10,8 @@ export interface Insumo {
   nombre: string;
   unidadMedida: string;
   clase: ClaseInsumo;
+  contenidoValor?: number | null;
+  contenidoUnidad?: string | null;
   stockActual: number;
   stockMinimo: number;
   activo: boolean;

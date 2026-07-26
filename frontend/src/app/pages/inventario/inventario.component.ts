@@ -60,6 +60,13 @@ export class InventarioComponent implements OnInit, OnDestroy {
     return this.clases.find(x => x.valor === c)?.etiqueta ?? 'Insumos consumibles';
   }
 
+  /** "100 litros en total" cuando el insumo define contenido por unidad; si no, null. */
+  contenidoTotalTexto(i: Insumo): string | null {
+    if (!i.contenidoValor || i.contenidoValor <= 0 || !i.contenidoUnidad) return null;
+    const total = i.stockActual * i.contenidoValor;
+    return `${total.toLocaleString('es-PE', { maximumFractionDigits: 2 })} ${i.contenidoUnidad} en total`;
+  }
+
   readonly insumosFiltrados = computed(() => {
     const termino = this.normalizar(this.busqueda());
     const estado = this.filtroEstado();
