@@ -3,10 +3,11 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ConsolidadoSede, ReportesService } from '../../core/services/reportes.service';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 
 @Component({
   selector: 'app-consolidado',
-  imports: [PageHeaderComponent, CommonModule],
+  imports: [PageHeaderComponent, CommonModule, MiniBarrasComponent],
   templateUrl: './consolidado.component.html',
   styleUrl: './consolidado.component.scss'
 })
@@ -25,6 +26,11 @@ export class ConsolidadoComponent implements OnInit {
     pedidosActivos: acc.pedidosActivos + s.pedidosActivos,
     pedidosListos: acc.pedidosListos + s.pedidosListos,
   }), { ventasHoy: 0, ventasMes: 0, saldoPorCobrar: 0, pedidosActivos: 0, pedidosListos: 0 }));
+
+  readonly ventasPorSede = computed<PuntoBarra[]>(() =>
+    this.sedes().map(s => ({ etiqueta: s.sedeNombre, valor: Math.round(s.ventasMes) })));
+  readonly saldoPorSede = computed<PuntoBarra[]>(() =>
+    this.sedes().map(s => ({ etiqueta: s.sedeNombre, valor: Math.round(s.saldoPorCobrar) })));
 
   ngOnInit() { this.cargar(); }
 

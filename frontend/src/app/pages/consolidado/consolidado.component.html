@@ -26,6 +26,13 @@
       </div>
     </div>
 
+    @if (ventasPorSede().length) {
+      <div class="tendencias-grid">
+        <app-mini-barras titulo="Ventas del mes por sede" subtitulo="Comparativo entre sucursales" color="azul" [datos]="ventasPorSede()"></app-mini-barras>
+        <app-mini-barras titulo="Saldo por cobrar por sede" subtitulo="Deuda pendiente" color="ambar" [datos]="saldoPorSede()"></app-mini-barras>
+      </div>
+    }
+
     <div class="card tabla-wrap">
       <table class="tabla">
         <thead>

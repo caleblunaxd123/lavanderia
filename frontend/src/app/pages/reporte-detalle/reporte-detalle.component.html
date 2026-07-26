@@ -32,6 +32,13 @@
   } @else if (!resultado()?.filas?.length) {
     <app-empty-state icono="lista" titulo="Sin datos" mensaje="No hay información para este reporte en el rango seleccionado."></app-empty-state>
   } @else {
+    @if (graficaCfg(); as g) {
+      @if (datosGrafica().length) {
+        <app-mini-barras [titulo]="g.titulo" [subtitulo]="meta?.usaRango ? 'En el rango elegido' : 'Estado actual'"
+                         [color]="g.color" [datos]="datosGrafica()"></app-mini-barras>
+      }
+    }
+
     <div class="card tabla-wrap">
       <table class="tabla">
         <thead>

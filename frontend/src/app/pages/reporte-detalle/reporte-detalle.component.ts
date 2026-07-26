@@ -9,11 +9,24 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 
 interface ReporteMeta {
   titulo: string;
   descripcion: string;
   usaRango: boolean;
+}
+
+/** Config de la gráfica de barras de cada reporte, derivada de las mismas columnas
+ *  que ya trae la tabla. modo: 'directo' = una barra por fila; 'suma'/'conteo' = agrupa por eje. */
+interface GraficaCfg {
+  titulo: string;
+  eje: string;            // columna que va en el eje X (etiqueta)
+  valor?: string;         // columna numérica (no aplica a 'conteo')
+  modo: 'directo' | 'suma' | 'conteo';
+  color: 'azul' | 'verde' | 'ambar';
+  reverse?: boolean;      // invertir orden (reportes por fecha vienen DESC)
+  max?: number;           // tope de barras (deja las de mayor valor)
 }
 
 const REPORTES: Record<ReporteKey, ReporteMeta> = {
@@ -30,9 +43,23 @@ const REPORTES: Record<ReporteKey, ReporteMeta> = {
   'descuento-directo': { titulo: 'Descuento Directo', descripcion: 'Pedidos con descuento aplicado y quién lo hizo.', usaRango: true },
 };
 
+const GRAFICAS: Partial<Record<ReporteKey, GraficaCfg>> = {
+  'general': { titulo: 'Ingresos por día', eje: 'Día', valor: 'Ingresos', modo: 'directo', color: 'azul', reverse: true, max: 31 },
+  'gastos': { titulo: 'Gasto por tipo', eje: 'Tipo de gasto', valor: 'Monto total', modo: 'directo', color: 'ambar' },
+  'servicios': { titulo: 'Top servicios por ingreso', eje: 'Servicio', valor: 'Ingreso generado', modo: 'directo', color: 'azul', max: 12 },
+  'cuadres-caja': { titulo: 'Total contado por día', eje: 'Fecha', valor: 'Total contado', modo: 'directo', color: 'verde', reverse: true, max: 31 },
+  'ordenes-mensual': { titulo: 'Facturado por mes', eje: 'Mes', valor: 'Total facturado', modo: 'directo', color: 'azul', reverse: true },
+  'pagos': { titulo: 'Cobros por método', eje: 'Método de pago', valor: 'Monto', modo: 'suma', color: 'verde' },
+  'ordenes-pendientes': { titulo: 'Pedidos por área', eje: 'Área actual', modo: 'conteo', color: 'azul' },
+  'anulados': { titulo: 'Anulados por responsable', eje: 'Responsable', modo: 'conteo', color: 'ambar' },
+  'registro-entregas': { titulo: 'Movimientos por responsable', eje: 'Responsable', modo: 'conteo', color: 'azul' },
+  'descuento-directo': { titulo: 'Descuento por responsable', eje: 'Responsable', valor: 'Descuento', modo: 'suma', color: 'ambar' },
+  'almacen': { titulo: 'Días en custodia por pedido', eje: 'N°', valor: 'Días en custodia', modo: 'directo', color: 'ambar', max: 15 },
+};
+
 @Component({
   selector: 'app-reporte-detalle',
-  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, MiniBarrasComponent],
   templateUrl: './reporte-detalle.component.html',
   styleUrl: './reporte-detalle.component.scss'
 })
@@ -62,6 +89,37 @@ export class ReporteDetalleComponent implements OnInit {
 
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
+
+  // --- Gráfica de barras derivada de la tabla ---
+  readonly graficaCfg = computed<GraficaCfg | null>(() => (this.clave ? GRAFICAS[this.clave] ?? null : null));
+  readonly datosGrafica = computed<PuntoBarra[]>(() => {
+    const cfg = this.graficaCfg();
+    const r = this.resultado();
+    if (!cfg || !r || r.filas.length === 0) return [];
+    const num = (s: string | undefined) => {
+      if (!s) return 0;
+      const n = parseFloat(s.replace(/[^0-9.-]/g, ''));
+      return isNaN(n) ? 0 : n;
+    };
+    let puntos: PuntoBarra[];
+    if (cfg.modo === 'directo') {
+      puntos = r.filas.map(f => ({ etiqueta: (f[cfg.eje] ?? '—').toString().slice(0, 12), valor: num(f[cfg.valor!]) }));
+      if (cfg.reverse) puntos = puntos.slice().reverse();
+    } else {
+      const mapa = new Map<string, number>();
+      for (const f of r.filas) {
+        const k = (f[cfg.eje] ?? '—').toString().slice(0, 12);
+        const v = cfg.modo === 'conteo' ? 1 : num(f[cfg.valor!]);
+        mapa.set(k, (mapa.get(k) ?? 0) + v);
+      }
+      puntos = [...mapa.entries()].map(([etiqueta, valor]) => ({ etiqueta, valor: Math.round(valor) }));
+    }
+    if (cfg.max && puntos.length > cfg.max) {
+      puntos = puntos.slice().sort((a, b) => b.valor - a.valor).slice(0, cfg.max);
+      if (cfg.reverse) puntos = puntos.slice().reverse();
+    }
+    return puntos;
+  });
 
   // Acción operativa por fila (donar / reenviar-almacen), si el reporte la ofrece.
   readonly accion = computed(() => this.resultado()?.accion ?? null);
