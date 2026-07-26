@@ -18,6 +18,12 @@
       [class.is-active]="tab()==='historial'" (click)="cambiarTab('historial')">Historial</button>
   </div>
 
+  @if (tab() === 'insumos' && tendencia(); as t) {
+    <div class="tendencias-grid">
+      <app-mini-barras titulo="Consumo de insumos por día" subtitulo="Últimos 14 días" color="ambar" [datos]="t"></app-mini-barras>
+    </div>
+  }
+
   @if (tab() === 'insumos') {
     @if (cargando()) {
       <div class="estado">Cargando…</div>

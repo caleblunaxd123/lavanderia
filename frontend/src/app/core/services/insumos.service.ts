@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
+import { PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 
 export interface Insumo {
   id: number;
@@ -42,6 +43,9 @@ export class InsumosService {
 
   listar() { return this.http.get<Insumo[]>(this.base); }
   bajoStock() { return this.http.get<Insumo[]>(`${this.base}/bajo-stock`); }
+  tendenciaConsumo(dias = 14) {
+    return this.http.get<PuntoBarra[]>(`${this.base}/tendencia-consumo`, { params: new HttpParams().set('dias', dias) });
+  }
   crear(i: Partial<Insumo>) { return this.http.post<Insumo>(this.base, i); }
   actualizar(id: number, i: Partial<Insumo>) { return this.http.put<void>(`${this.base}/${id}`, i); }
   desactivar(id: number) { return this.http.delete<{ mensaje: string }>(`${this.base}/${id}`); }

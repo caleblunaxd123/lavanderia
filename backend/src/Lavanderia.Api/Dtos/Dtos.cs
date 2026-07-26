@@ -933,3 +933,10 @@ public class CobrarSolicitudPagoResultDto
     public string? Mensaje { get; set; }
     public decimal SaldoPendiente { get; set; }
 }
+
+// ---------- Tendencias en barras (indicadores por ventana) ----------
+/// <summary>Un punto de una serie de barras: etiqueta corta del eje X + valor.</summary>
+public record TendenciaPuntoDto(string Etiqueta, int Valor);
+
+/// <summary>Pedidos: dos series diarias para la ventana de Pedidos.</summary>
+public record TendenciaPedidosDto(List<TendenciaPuntoDto> Recibidos, List<TendenciaPuntoDto> Entregados);

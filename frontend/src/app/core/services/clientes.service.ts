@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { Cliente } from '../models/models';
+import { PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 
 export interface ClienteFrecuente {
   clienteId: number;
@@ -43,6 +44,10 @@ export interface MovimientoPuntos {
 export class ClientesService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/clientes`;
+
+  tendencia(meses = 6) {
+    return this.http.get<PuntoBarra[]>(`${this.base}/tendencia`, { params: new HttpParams().set('meses', meses) });
+  }
 
   buscar(texto?: string, campo?: string, limite = 50) {
     let params = new HttpParams().set('limite', limite);

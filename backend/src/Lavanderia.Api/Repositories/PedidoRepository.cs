@@ -9,6 +9,9 @@ public interface IPedidoRepository
 {
     Task<int> CrearAsync(Pedido pedido, CancellationToken ct = default);
     Task<Pedido?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
+    /// <summary>Conteo de pedidos por día (para las barras de tendencia). Si porEntrega es true
+    /// cuenta por FechaEntregaReal de los ENTREGADOS; si no, por FechaIngreso de los no anulados.</summary>
+    Task<Dictionary<DateTime, int>> ContarPorDiaAsync(DateTime desde, bool porEntrega, int sedeId, CancellationToken ct = default);
     Task<(List<Pedido> Items, int Total)> ListarPaginadoAsync(string? filtro, string? busqueda, DateTime? desde, DateTime? hasta, string? campoFecha, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task<(List<Pedido> Items, int Total)> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task<int> SiguienteNumeroAsync(int sedeId, CancellationToken ct = default);
@@ -596,6 +599,27 @@ public class PedidoRepository : IPedidoRepository
         cmd.AddParam("@Fecha", fecha.Date);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ReadScalarAsync<decimal>(ct);
+    }
+
+    public async Task<Dictionary<DateTime, int>> ContarPorDiaAsync(DateTime desde, bool porEntrega, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        var col = porEntrega ? "FechaEntregaReal" : "FechaIngreso";
+        var filtro = porEntrega ? "EstadoProceso = 'ENTREGADO' AND FechaEntregaReal IS NOT NULL" : "Anulado = 0";
+        cmd.CommandText = $@"
+            SELECT CAST({col} AS DATE) AS Dia, COUNT(1) AS Cant
+            FROM dbo.Pedido
+            WHERE {filtro} AND SedeId = @SedeId AND CAST({col} AS DATE) >= @Desde
+            GROUP BY CAST({col} AS DATE)";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Desde", desde.Date);
+        var dict = new Dictionary<DateTime, int>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            dict[reader.GetDateTime(0)] = reader.GetInt32(1);
+        return dict;
     }
 
     public async Task<int> PedidosDelMesAsync(DateTime fecha, int sedeId, CancellationToken ct = default)

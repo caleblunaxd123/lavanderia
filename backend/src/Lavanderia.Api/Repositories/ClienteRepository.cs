@@ -14,6 +14,8 @@ public interface IClienteRepository
     Task ActualizarAsync(Cliente c, int negocioId, CancellationToken ct = default);
     Task DesactivarAsync(int id, int negocioId, CancellationToken ct = default);
     Task<int> ContarPedidosAsync(int clienteId, int negocioId, CancellationToken ct = default);
+    /// <summary>Clientes nuevos agrupados por mes (para las barras de tendencia), clave = primer día del mes.</summary>
+    Task<Dictionary<DateTime, int>> ContarNuevosPorMesAsync(DateTime desdeMes, int negocioId, CancellationToken ct = default);
     Task<List<ClienteFrecuenteDto>> ListarFrecuentesAsync(DateTime desde, DateTime hasta, int limite, int negocioId, CancellationToken ct = default);
     Task FusionarAsync(int origenId, int destinoId, int negocioId, CancellationToken ct = default);
     Task<List<MovimientoPuntos>> ListarMovimientosPuntosAsync(int clienteId, int negocioId, CancellationToken ct = default);
@@ -195,6 +197,25 @@ public class ClienteRepository : IClienteRepository
         cmd.AddParam("@Id", clienteId);
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadScalarAsync<int>(ct);
+    }
+
+    public async Task<Dictionary<DateTime, int>> ContarNuevosPorMesAsync(DateTime desdeMes, int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT DATEFROMPARTS(YEAR(FechaCreacion), MONTH(FechaCreacion), 1) AS Mes, COUNT(1) AS Cant
+            FROM dbo.Cliente
+            WHERE NegocioId = @NegocioId AND FechaCreacion >= @Desde
+            GROUP BY DATEFROMPARTS(YEAR(FechaCreacion), MONTH(FechaCreacion), 1)";
+        cmd.AddParam("@NegocioId", negocioId);
+        cmd.AddParam("@Desde", desdeMes.Date);
+        var dict = new Dictionary<DateTime, int>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            dict[reader.GetDateTime(0)] = reader.GetInt32(1);
+        return dict;
     }
 
     public async Task<List<ClienteFrecuenteDto>> ListarFrecuentesAsync(DateTime desde, DateTime hasta, int limite, int negocioId, CancellationToken ct = default)

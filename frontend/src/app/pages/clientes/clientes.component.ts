@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import { Cliente, Pedido } from '../../core/models/models';
 import { ClienteFrecuente, ClientesService, MovimientoPuntos } from '../../core/services/clientes.service';
+import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { ToastService } from '../../core/services/toast.service';
 import { esCelularValido } from '../../core/util/telefono';
@@ -20,7 +21,7 @@ import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importado
 
 @Component({
   selector: 'app-clientes',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective, ImportadorMasivoComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective, ImportadorMasivoComponent, MiniBarrasComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
@@ -35,6 +36,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
   private versionRecarga = 0;
 
   readonly clientes = signal<Cliente[]>([]);
+  readonly tendencia = signal<PuntoBarra[] | null>(null);
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
   readonly modalAbierto = signal(false);
@@ -156,6 +158,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.service.tendencia(6).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
     this.buscar$
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.recargar());

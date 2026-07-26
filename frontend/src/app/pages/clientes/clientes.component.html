@@ -14,6 +14,12 @@
 
   @if (tab() === 'buscar') {
 
+  @if (tendencia(); as t) {
+    <div class="tendencias-grid">
+      <app-mini-barras titulo="Clientes nuevos por mes" subtitulo="Últimos 6 meses" color="azul" [datos]="t"></app-mini-barras>
+    </div>
+  }
+
   <div class="buscador card" data-tour="clientes-buscar">
     <label>Buscar por</label>
     <div class="buscador__row">

@@ -22,6 +22,16 @@ public class ClientesController : TenantAwareControllerBase
     public async Task<ActionResult<List<ClienteCumpleanosDto>>> CumpleanosProximos([FromQuery] int dias = 30, CancellationToken ct = default)
         => Ok(await _repo.ListarCumpleanosProximosAsync(NegocioId, Math.Clamp(dias, 1, 90), ct));
 
+    /// <summary>Barras de tendencia de la ventana de Clientes: clientes nuevos por mes.</summary>
+    [HttpGet("tendencia")]
+    public async Task<ActionResult<List<TendenciaPuntoDto>>> Tendencia([FromQuery] int meses = 6, CancellationToken ct = default)
+    {
+        meses = Math.Clamp(meses, 3, 12);
+        var desde = Lavanderia.Api.Infrastructure.TendenciaBuilder.DesdeMeses(meses);
+        var datos = await _repo.ContarNuevosPorMesAsync(desde, NegocioId, ct);
+        return Ok(Lavanderia.Api.Infrastructure.TendenciaBuilder.SerieMensual(datos, meses));
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<ClienteDto>>> Buscar(
         [FromQuery] string? texto,

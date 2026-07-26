@@ -52,6 +52,13 @@
     </div>
   }
 
+  @if (tendencia(); as t) {
+    <div class="tendencias-grid">
+      <app-mini-barras titulo="Pedidos recibidos por día" subtitulo="Últimos 14 días" color="azul" [datos]="t.recibidos"></app-mini-barras>
+      <app-mini-barras titulo="Pedidos entregados por día" subtitulo="Últimos 14 días" color="verde" [datos]="t.entregados"></app-mini-barras>
+    </div>
+  }
+
   <div class="busqueda" data-tour="pedidos-buscador">
     <input #buscadorInput type="text" class="busqueda__input"
       placeholder="N° de ticket → Enter para abrir directo · o busca por celular, nombre o DNI…"

@@ -3,6 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { CrearPedidoRequest, DestinoDeliveryRequest, Pedido, PedidoAbandonado } from '../models/models';
 import { PromocionValida } from './promociones.service';
+import { PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
+
+export interface TendenciaPedidos {
+  recibidos: PuntoBarra[];
+  entregados: PuntoBarra[];
+}
 
 export interface PagedResult<T> {
   items: T[];
@@ -84,6 +90,10 @@ export interface PedidoContadores {
 export class PedidosService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/pedidos`;
+
+  tendencia(dias = 14) {
+    return this.http.get<TendenciaPedidos>(`${this.base}/tendencia`, { params: new HttpParams().set('dias', dias) });
+  }
 
   listar(
     filtro?: string,

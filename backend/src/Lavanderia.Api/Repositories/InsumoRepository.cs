@@ -15,6 +15,8 @@ public interface IInsumoRepository
     Task CambiarEstadoAsync(int id, bool activo, int sedeId, CancellationToken ct = default);
     Task<int> RegistrarMovimientoAsync(MovimientoInsumo m, string? metodoPagoParaGasto, int? tipoGastoIdParaGasto, CancellationToken ct = default);
     Task<List<MovimientoInsumo>> ListarMovimientosAsync(int? insumoId, DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
+    /// <summary>Suma de cantidades consumidas por día (para las barras de tendencia).</summary>
+    Task<Dictionary<DateTime, int>> ContarConsumoPorDiaAsync(DateTime desde, int sedeId, CancellationToken ct = default);
 }
 
 public class InsumoRepository : IInsumoRepository
@@ -254,5 +256,24 @@ public class InsumoRepository : IInsumoRepository
             UsuarioNombre = r.GetNullableString("UsuarioNombre"),
             Descripcion = r.GetNullableString("Descripcion")
         }, ct);
+    }
+
+    public async Task<Dictionary<DateTime, int>> ContarConsumoPorDiaAsync(DateTime desde, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT CAST(Fecha AS DATE) AS Dia, CAST(ROUND(SUM(Cantidad), 0) AS INT) AS Cant
+            FROM dbo.MovimientoInsumo
+            WHERE Tipo = 'CONSUMO' AND SedeId = @SedeId AND CAST(Fecha AS DATE) >= @Desde
+            GROUP BY CAST(Fecha AS DATE)";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Desde", desde.Date);
+        var dict = new Dictionary<DateTime, int>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            dict[reader.GetDateTime(0)] = reader.GetInt32(1);
+        return dict;
     }
 }

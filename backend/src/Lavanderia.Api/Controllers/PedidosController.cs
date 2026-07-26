@@ -12,11 +12,27 @@ public class PedidosController : TenantAwareControllerBase
     private readonly IPedidoService _service;
     private readonly IPromocionRepository _promociones;
     private readonly IRutaRepartoRepository _rutas;
-    public PedidosController(IPedidoService service, IPromocionRepository promociones, IRutaRepartoRepository rutas)
+    private readonly IPedidoRepository _pedidos;
+    public PedidosController(IPedidoService service, IPromocionRepository promociones, IRutaRepartoRepository rutas, IPedidoRepository pedidos)
     {
         _service = service;
         _promociones = promociones;
         _rutas = rutas;
+        _pedidos = pedidos;
+    }
+
+    /// <summary>Barras de tendencia de la ventana de Pedidos: recibidos y entregados por día.</summary>
+    [HttpGet("tendencia")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<TendenciaPedidosDto>> Tendencia([FromQuery] int dias = 14, CancellationToken ct = default)
+    {
+        dias = Math.Clamp(dias, 7, 60);
+        var desde = Lavanderia.Api.Infrastructure.TendenciaBuilder.DesdeDias(dias);
+        var recibidos = await _pedidos.ContarPorDiaAsync(desde, porEntrega: false, SedeRequeridaId, ct);
+        var entregados = await _pedidos.ContarPorDiaAsync(desde, porEntrega: true, SedeRequeridaId, ct);
+        return Ok(new TendenciaPedidosDto(
+            Lavanderia.Api.Infrastructure.TendenciaBuilder.SerieDiaria(recibidos, dias),
+            Lavanderia.Api.Infrastructure.TendenciaBuilder.SerieDiaria(entregados, dias)));
     }
 
     [HttpGet]

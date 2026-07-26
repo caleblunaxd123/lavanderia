@@ -27,6 +27,16 @@ public class InsumosController : TenantAwareControllerBase
     public async Task<ActionResult<List<InsumoDto>>> BajoStock(CancellationToken ct)
         => Ok((await _repo.ListarBajoStockAsync(SedeRequeridaId, ct)).Select(Map).ToList());
 
+    /// <summary>Barras de tendencia de la ventana de Inventario: consumo de insumos por día.</summary>
+    [HttpGet("tendencia-consumo")]
+    public async Task<ActionResult<List<TendenciaPuntoDto>>> TendenciaConsumo([FromQuery] int dias = 14, CancellationToken ct = default)
+    {
+        dias = Math.Clamp(dias, 7, 60);
+        var desde = Lavanderia.Api.Infrastructure.TendenciaBuilder.DesdeDias(dias);
+        var datos = await _repo.ContarConsumoPorDiaAsync(desde, SedeRequeridaId, ct);
+        return Ok(Lavanderia.Api.Infrastructure.TendenciaBuilder.SerieDiaria(datos, dias));
+    }
+
     [HttpPost]
     public async Task<ActionResult<InsumoDto>> Crear([FromBody] InsumoDto dto, CancellationToken ct)
     {

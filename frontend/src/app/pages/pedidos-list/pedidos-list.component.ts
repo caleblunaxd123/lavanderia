@@ -7,7 +7,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AreaLavado, Pedido, PedidoAbandonado } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
-import { PedidosService } from '../../core/services/pedidos.service';
+import { PedidosService, TendenciaPedidos } from '../../core/services/pedidos.service';
+import { MiniBarrasComponent } from '../../shared/mini-barras/mini-barras.component';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
@@ -37,7 +38,7 @@ interface KanbanColumn {
  */
 @Component({
   selector: 'app-pedidos-list',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, SkeletonComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, SkeletonComponent, PageHeaderComponent, MiniBarrasComponent],
   templateUrl: './pedidos-list.component.html',
   styleUrl: './pedidos-list.component.scss'
 })
@@ -56,6 +57,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly soloFueraDeTiempo = signal(false);
 
   readonly pedidos = signal<Pedido[]>([]);
+  readonly tendencia = signal<TendenciaPedidos | null>(null);
   readonly areas = signal<AreaLavado[]>([]);
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
@@ -251,6 +253,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.whatsapp.cargar();
     this.cargarAbandonados();
     this.cargarMetaMensual();
+    this.service.tendencia(14).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
     this.timerId = setInterval(() => this.refrescarDinamicamente(), 10_000);
 
     let primera = true;

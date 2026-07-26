@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CajaService } from '../../core/services/caja.service';
 import { Insumo, InsumosService, MovimientoInsumo } from '../../core/services/insumos.service';
+import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { ToastService } from '../../core/services/toast.service';
 import { TipoGasto } from '../../core/models/models';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
@@ -17,7 +18,7 @@ import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importado
 
 @Component({
   selector: 'app-inventario',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, ImportadorMasivoComponent],
+  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, ImportadorMasivoComponent, MiniBarrasComponent],
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })
@@ -31,6 +32,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
   readonly tab = signal<'insumos' | 'historial'>('insumos');
 
   readonly insumos = signal<Insumo[]>([]);
+  readonly tendencia = signal<PuntoBarra[] | null>(null);
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
   readonly tiposGasto = signal<TipoGasto[]>([]);
@@ -123,6 +125,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.cargar();
+    this.svc.tendenciaConsumo(14).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
     this.cajaSvc.tiposGasto().subscribe(t => this.tiposGasto.set(t));
     this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 20_000);
   }
