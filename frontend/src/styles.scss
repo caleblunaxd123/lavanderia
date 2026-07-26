@@ -352,3 +352,35 @@ a.card:hover,
 
   &--sm { padding: 6px 12px; font-size: 11.5px; border-radius: 8px; }
 }
+
+/* ===== Registros inactivos en listados =====
+ * Antes solo se apagaban con opacity y costaba distinguirlos. Ahora resaltan con un
+ * acento rojo tenue: fondo rosado sutil + franja roja a la izquierda. Se aplica a las
+ * tablas y a las tarjetas móviles de todos los módulos, sobrescribiendo el desvanecido
+ * que cada componente define localmente (por eso el !important puntual en opacity). */
+tr.inactivo {
+  background: #fdf3f4;
+}
+tr.inactivo td {
+  opacity: 1 !important;
+  color: #94a3b8;
+}
+tr.inactivo td:first-child {
+  box-shadow: inset 3px 0 0 var(--rojo, #e74c3c);
+}
+
+/* Tarjetas (vista móvil) inactivas */
+[class*="card"].inactivo {
+  opacity: 1 !important;
+  background: #fdf3f4;
+  border-left: 3px solid var(--rojo, #e74c3c);
+}
+
+/* La etiqueta "Inactivo" pasa de gris a rojo tenue, pero SOLO dentro de una fila o
+ * tarjeta inactiva (así no afecta otros badge--gris con distinto significado, p. ej.
+ * el de saldo pendiente en Pedidos). */
+tr.inactivo .badge--gris,
+[class*="card"].inactivo .badge--gris {
+  background: #fdeaea !important;
+  color: #c0392b !important;
+}
