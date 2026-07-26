@@ -40,7 +40,9 @@
       </select>
       <select [ngModel]="filtroCategoria()" (ngModelChange)="actualizarCategoria($event)" aria-label="Filtrar por categoría">
         <option value="todas">Todas las categorías</option>
-        @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        @for (c of categorias(); track c.id) {
+          @if (c.activa) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        }
       </select>
     </div>
 
