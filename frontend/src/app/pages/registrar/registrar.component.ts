@@ -1,13 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
 import { AreaLavado, Cliente, ModalidadPedido, Pedido, Servicio } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
+import { FotosPedidoService } from '../../core/services/fotos-pedido.service';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { PromocionValida } from '../../core/services/promociones.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -33,7 +35,7 @@ interface ItemAgregado {
   templateUrl: './registrar.component.html',
   styleUrl: './registrar.component.scss'
 })
-export class RegistrarComponent implements OnInit {
+export class RegistrarComponent implements OnInit, OnDestroy {
   private readonly catalogosSvc = inject(CatalogosService);
   private readonly clientesSvc = inject(ClientesService);
   private readonly pedidosSvc = inject(PedidosService);
@@ -41,6 +43,7 @@ export class RegistrarComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly whatsapp = inject(WhatsappService);
   private readonly config = inject(ConfiguracionService);
+  private readonly fotosSvc = inject(FotosPedidoService);
 
   readonly catalogo = signal<Servicio[]>([]);
   readonly areas = signal<AreaLavado[]>([]);
@@ -495,12 +498,80 @@ export class RegistrarComponent implements OnInit {
         this.registrado.set(true);
         this.pedidoCreado.set(p);
         this.toast.exito(`Pedido #${p.numero} registrado`);
+        this.subirFotosStaged(p.id);
       },
       error: (err: HttpErrorResponse) => {
         this.registrando.set(false);
         this.toast.desdeHttp(err, 'No se pudo registrar el pedido.');
       }
     });
+  }
+
+  // ---------- Fotos de evidencia (se toman al registrar, momento "Recepción") ----------
+  readonly maxFotos = 15;
+  readonly fotosStaged = signal<{ blob: Blob; url: string }[]>([]);
+  readonly procesandoFotos = signal(false);
+  readonly subiendoFotos = signal(false);
+
+  async onFotosSeleccionadas(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const archivos = Array.from(input.files ?? []);
+    input.value = '';
+    if (archivos.length === 0) return;
+
+    this.procesandoFotos.set(true);
+    for (const archivo of archivos) {
+      if (this.fotosStaged().length >= this.maxFotos) {
+        this.toast.info(`Puedes adjuntar hasta ${this.maxFotos} fotos por pedido.`);
+        break;
+      }
+      if (!archivo.type.startsWith('image/')) continue;
+      try {
+        const blob = await this.fotosSvc.comprimir(archivo);
+        const url = URL.createObjectURL(blob);
+        this.fotosStaged.update(list => [...list, { blob, url }]);
+      } catch {
+        this.toast.error('No se pudo procesar una de las fotos.');
+      }
+    }
+    this.procesandoFotos.set(false);
+  }
+
+  quitarFoto(indice: number) {
+    this.fotosStaged.update(list => {
+      const f = list[indice];
+      if (f) URL.revokeObjectURL(f.url);
+      return list.filter((_, i) => i !== indice);
+    });
+  }
+
+  /** Sube las fotos adjuntas al pedido recién creado. Si falla, no rompe nada: el pedido ya existe
+   *  y las fotos se pueden agregar luego desde el detalle. */
+  private subirFotosStaged(pedidoId: number) {
+    const fotos = this.fotosStaged();
+    if (fotos.length === 0) return;
+    this.subiendoFotos.set(true);
+    forkJoin(fotos.map(f => this.fotosSvc.subir(pedidoId, f.blob, 'RECEPCION'))).subscribe({
+      next: () => {
+        this.subiendoFotos.set(false);
+        this.toast.exito(`${fotos.length} foto(s) de evidencia guardada(s)`);
+        this.limpiarFotos();
+      },
+      error: () => {
+        this.subiendoFotos.set(false);
+        this.toast.advertencia('El pedido se registró, pero algunas fotos no se subieron. Puedes agregarlas desde el detalle del pedido.');
+        this.limpiarFotos();
+      }
+    });
+  }
+
+  private limpiarFotos() {
+    this.fotosStaged().forEach(f => URL.revokeObjectURL(f.url));
+    this.fotosStaged.set([]);
+  }
+
+  ngOnDestroy() {
+    this.fotosStaged().forEach(f => URL.revokeObjectURL(f.url));
   }
 
   irAPedidos() {

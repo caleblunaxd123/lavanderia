@@ -129,6 +129,7 @@
         <input type="text" placeholder="RUC" [(ngModel)]="documentoFiscal" />
       </div>
 
+      <div class="columna-central">
       <div class="card paso paso--items" data-tour="registrar-servicios"><h4>PASO 2 <span>¿Qué trajo el cliente?</span></h4>
 
         <label>Productos y servicios</label>
@@ -188,6 +189,37 @@
           <div class="total-neto"><span>Total:</span> S/ {{ totalFinal().toFixed(2) }}</div>
         </div>
       </div>
+
+      <!-- Fotos de evidencia (opcional) — se suben al registrar, momento "Recepción" -->
+      <div class="card paso paso--fotos">
+        <h4>Fotos <span>de la prenda (opcional)</span></h4>
+        <p class="hint">Evidencia del estado en que llega la ropa. El cliente las verá en su seguimiento.</p>
+
+        <div class="fotos-grid">
+          @for (f of fotosStaged(); track f.url; let i = $index) {
+            <div class="foto-thumb">
+              <img [src]="f.url" alt="Foto de la prenda" />
+              <button type="button" class="foto-quitar" (click)="quitarFoto(i)" aria-label="Quitar foto"><app-icon name="close" [size]="12"></app-icon></button>
+            </div>
+          }
+          @if (fotosStaged().length < maxFotos) {
+            <label class="foto-agregar" [class.is-loading]="procesandoFotos()">
+              @if (procesandoFotos()) {
+                <span class="foto-spinner"></span><small>Procesando…</small>
+              } @else {
+                <app-icon name="camera" [size]="22"></app-icon><small>Agregar foto</small>
+              }
+              <input type="file" accept="image/*" capture="environment" multiple hidden
+                     (change)="onFotosSeleccionadas($event)" [disabled]="procesandoFotos()" />
+            </label>
+          }
+        </div>
+
+        @if (fotosStaged().length > 0) {
+          <p class="fotos-contador">{{ fotosStaged().length }} de {{ maxFotos }} · se subirán al registrar el pedido</p>
+        }
+      </div>
+      </div><!-- /columna-central -->
 
       <div class="columna-derecha">
         <div class="card paso">
