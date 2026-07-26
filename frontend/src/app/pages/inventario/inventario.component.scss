@@ -649,3 +649,12 @@
 
   .insumo-card__iconos { justify-content: center; }
 }
+
+// Clase de inventario en la tarjeta: palabra con color por tipo para distinguir de un vistazo
+.insumo-card__clase {
+  font-weight: 600;
+
+  &[data-clase="EQUIPO"]   { color: #1d4ed8; }
+  &[data-clase="MATERIAL"] { color: #b45309; }
+  &[data-clase="INSUMO"]   { color: #0f766e; }
+}

@@ -410,6 +410,8 @@ public class InsumoDto
     public int Id { get; set; }
     [Required, StringLength(80, MinimumLength = 2)] public string Nombre { get; set; } = "";
     [Required, StringLength(20)] public string UnidadMedida { get; set; } = "";
+    /// <summary>EQUIPO, MATERIAL o INSUMO (consumible). Si viene vacío/ inválido se usa INSUMO.</summary>
+    public string Clase { get; set; } = "INSUMO";
     public decimal StockActual { get; set; }
     [Range(0, 1000000)] public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;

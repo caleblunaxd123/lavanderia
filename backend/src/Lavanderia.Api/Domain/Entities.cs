@@ -306,6 +306,8 @@ public class Insumo
     public int SedeId { get; set; }
     public string Nombre { get; set; } = "";
     public string UnidadMedida { get; set; } = "";
+    /// <summary>Clase de inventario: EQUIPO, MATERIAL o INSUMO (consumible).</summary>
+    public string Clase { get; set; } = "INSUMO";
     public decimal StockActual { get; set; }
     public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;

@@ -4,7 +4,7 @@ import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CajaService } from '../../core/services/caja.service';
-import { Insumo, InsumosService, MovimientoInsumo } from '../../core/services/insumos.service';
+import { ClaseInsumo, Insumo, InsumosService, MovimientoInsumo } from '../../core/services/insumos.service';
 import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { ToastService } from '../../core/services/toast.service';
 import { TipoGasto } from '../../core/models/models';
@@ -48,16 +48,30 @@ export class InventarioComponent implements OnInit, OnDestroy {
   readonly insumosActivos = computed(() => this.insumos().filter(i => i.activo).length);
   readonly busqueda = signal('');
   readonly filtroEstado = signal<'TODOS' | 'ACTIVOS' | 'BAJO_STOCK' | 'INACTIVOS'>('TODOS');
+  readonly filtroClase = signal<'TODAS' | ClaseInsumo>('TODAS');
+
+  // Clases de inventario: valor almacenado + etiqueta visible.
+  readonly clases: { valor: ClaseInsumo; etiqueta: string }[] = [
+    { valor: 'EQUIPO', etiqueta: 'Equipos de trabajo' },
+    { valor: 'MATERIAL', etiqueta: 'Materiales y herramientas' },
+    { valor: 'INSUMO', etiqueta: 'Insumos consumibles' },
+  ];
+  claseEtiqueta(c: ClaseInsumo | undefined): string {
+    return this.clases.find(x => x.valor === c)?.etiqueta ?? 'Insumos consumibles';
+  }
+
   readonly insumosFiltrados = computed(() => {
     const termino = this.normalizar(this.busqueda());
     const estado = this.filtroEstado();
+    const clase = this.filtroClase();
     return this.insumos().filter(i => {
       const coincideTexto = !termino || this.normalizar(i.nombre).includes(termino);
       const coincideEstado = estado === 'TODOS'
         || (estado === 'ACTIVOS' && i.activo)
         || (estado === 'BAJO_STOCK' && i.activo && this.bajoStock(i))
         || (estado === 'INACTIVOS' && !i.activo);
-      return coincideTexto && coincideEstado;
+      const coincideClase = clase === 'TODAS' || i.clase === clase;
+      return coincideTexto && coincideEstado && coincideClase;
     });
   });
   readonly insumosOrdenados = computed(() => [...this.insumosFiltrados()].sort((a, b) => {
@@ -72,7 +86,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
   cambiarPaginaInsumos(p: number) { this.paginaInsumos.set(p); }
   cambiarTamanoPaginaInsumos(t: number) { this.tamanoPaginaInsumos.set(t); this.paginaInsumos.set(1); }
   cambiarFiltros() { this.paginaInsumos.set(1); }
-  limpiarFiltros() { this.busqueda.set(''); this.filtroEstado.set('TODOS'); this.paginaInsumos.set(1); }
+  limpiarFiltros() { this.busqueda.set(''); this.filtroEstado.set('TODOS'); this.filtroClase.set('TODAS'); this.paginaInsumos.set(1); }
 
   readonly paginaHistorial = signal(1);
   readonly tamanoPaginaHistorial = signal(15);
@@ -333,7 +347,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
   }
 
   private formInsumoVacio(): Partial<Insumo> {
-    return { nombre: '', unidadMedida: '', stockActual: 0, stockMinimo: 0, activo: true };
+    return { nombre: '', unidadMedida: '', clase: 'INSUMO', stockActual: 0, stockMinimo: 0, activo: true };
   }
 
   // ---------- Registrar movimiento ----------

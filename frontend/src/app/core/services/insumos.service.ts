@@ -3,10 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 
+export type ClaseInsumo = 'EQUIPO' | 'MATERIAL' | 'INSUMO';
+
 export interface Insumo {
   id: number;
   nombre: string;
   unidadMedida: string;
+  clase: ClaseInsumo;
   stockActual: number;
   stockMinimo: number;
   activo: boolean;

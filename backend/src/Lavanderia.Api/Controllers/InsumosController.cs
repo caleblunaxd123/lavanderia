@@ -50,6 +50,7 @@ public class InsumosController : TenantAwareControllerBase
             SedeId = SedeRequeridaId,
             Nombre = nombre,
             UnidadMedida = unidad,
+            Clase = NormalizarClase(dto.Clase),
             StockActual = Math.Max(0, dto.StockActual),
             StockMinimo = Math.Max(0, dto.StockMinimo),
             Activo = dto.Activo
@@ -120,6 +121,7 @@ public class InsumosController : TenantAwareControllerBase
 
         existente.Nombre = nombre;
         existente.UnidadMedida = dto.UnidadMedida.Trim();
+        existente.Clase = NormalizarClase(dto.Clase);
         existente.StockMinimo = Math.Max(0, dto.StockMinimo);
         existente.Activo = dto.Activo;
         await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
@@ -241,10 +243,20 @@ public class InsumosController : TenantAwareControllerBase
         Id = i.Id,
         Nombre = i.Nombre,
         UnidadMedida = i.UnidadMedida,
+        Clase = i.Clase,
         StockActual = i.StockActual,
         StockMinimo = i.StockMinimo,
         Activo = i.Activo,
         UltimaCompra = i.UltimaCompra,
         EnUso = i.EnUso
     };
+
+    private static readonly string[] ClasesValidas = { "EQUIPO", "MATERIAL", "INSUMO" };
+
+    /// <summary>Normaliza la clase de inventario; si viene vacía o inválida, usa INSUMO (consumible).</summary>
+    private static string NormalizarClase(string? clase)
+    {
+        var c = (clase ?? "").Trim().ToUpperInvariant();
+        return ClasesValidas.Contains(c) ? c : "INSUMO";
+    }
 }

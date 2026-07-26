@@ -59,6 +59,11 @@
           <input type="search" maxlength="80" placeholder="Buscar por nombre del insumo"
             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event); cambiarFiltros()" />
         </label>
+        <select aria-label="Filtrar inventario por clase" [ngModel]="filtroClase()"
+          (ngModelChange)="filtroClase.set($event); cambiarFiltros()">
+          <option value="TODAS">Todas las clases</option>
+          @for (c of clases; track c.valor) { <option [value]="c.valor">{{ c.etiqueta }}</option> }
+        </select>
         <select aria-label="Filtrar inventario por estado" [ngModel]="filtroEstado()"
           (ngModelChange)="filtroEstado.set($event); cambiarFiltros()">
           <option value="TODOS">Todos los insumos</option>
@@ -82,7 +87,10 @@
             <div class="insumo-card__head">
               <div class="insumo-card__identity">
                 <div class="insumo-card__icon"><app-icon name="package" [size]="18"></app-icon></div>
-                <div><strong>{{ i.nombre }}</strong><span>{{ i.unidadMedida }}</span></div>
+                <div>
+                  <strong>{{ i.nombre }}</strong>
+                  <span>{{ i.unidadMedida }} · <span class="insumo-card__clase" [attr.data-clase]="i.clase">{{ claseEtiqueta(i.clase) }}</span></span>
+                </div>
               </div>
               @if (!i.activo) {
                 <span class="badge badge--gris">Inactivo</span>
@@ -218,6 +226,11 @@
         <label for="insumo-nombre">Nombre *</label>
         <input id="insumo-nombre" type="text" required minlength="2" maxlength="80"
           [(ngModel)]="formInsumo.nombre" name="nombre" placeholder="Ej: Detergente en polvo" />
+
+        <label for="insumo-clase">Clase *</label>
+        <select id="insumo-clase" name="clase" [(ngModel)]="formInsumo.clase" required>
+          @for (c of clases; track c.valor) { <option [value]="c.valor">{{ c.etiqueta }}</option> }
+        </select>
 
         <div class="row-2">
           <div>
