@@ -12,6 +12,7 @@ public interface IServicioRepository
     Task<int> CrearAsync(Servicio s, CancellationToken ct = default);
     Task ActualizarAsync(Servicio s, int negocioId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int negocioId, CancellationToken ct = default);
+    Task EliminarAsync(int id, int negocioId, CancellationToken ct = default);
     Task<int> ContarUsoAsync(int servicioId, int negocioId, CancellationToken ct = default);
     Task<Servicio?> ObtenerCargoDeliveryAsync(int negocioId, CancellationToken ct = default);
 }
@@ -166,6 +167,17 @@ public class ServicioRepository : IServicioRepository
         cmd.AddParam("@Id", servicioId);
         cmd.AddParam("@NegocioId", negocioId);
         return await cmd.ReadScalarAsync<int>(ct);
+    }
+
+    public async Task EliminarAsync(int id, int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM dbo.Servicio WHERE Id = @Id AND NegocioId = @NegocioId";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@NegocioId", negocioId);
+        await cmd.ExecuteNonQueryAsync(ct);
     }
 }
 

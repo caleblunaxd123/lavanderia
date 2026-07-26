@@ -12,7 +12,12 @@ namespace Lavanderia.Api.Controllers;
 public class CategoriasController : TenantAwareControllerBase
 {
     private readonly ICategoriaRepository _repo;
-    public CategoriasController(ICategoriaRepository repo) => _repo = repo;
+    private readonly Lavanderia.Api.Infrastructure.ISqlConnectionFactory _factory;
+    public CategoriasController(ICategoriaRepository repo, Lavanderia.Api.Infrastructure.ISqlConnectionFactory factory)
+    {
+        _repo = repo;
+        _factory = factory;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<CategoriaDto>>> Listar(CancellationToken ct)
@@ -50,14 +55,10 @@ public class CategoriasController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        var usos = await _repo.ContarUsoAsync(id, NegocioId, ct);
+        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "Categoria", "NegocioId", id, NegocioId, ct))
+            return Ok(new { mensaje = "Categoría eliminada.", eliminado = true });
         await _repo.CambiarEstadoAsync(id, false, NegocioId, ct);
-        return Ok(new
-        {
-            mensaje = usos > 0
-                ? $"Categoría desactivada (usada en {usos} servicios)."
-                : "Categoría eliminada."
-        });
+        return Ok(new { mensaje = "No se puede eliminar: la categoría está en uso. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]

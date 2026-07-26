@@ -12,7 +12,12 @@ namespace Lavanderia.Api.Controllers;
 public class RolesPersonalController : TenantAwareControllerBase
 {
     private readonly IRolPersonalRepository _repo;
-    public RolesPersonalController(IRolPersonalRepository repo) => _repo = repo;
+    private readonly Lavanderia.Api.Infrastructure.ISqlConnectionFactory _factory;
+    public RolesPersonalController(IRolPersonalRepository repo, Lavanderia.Api.Infrastructure.ISqlConnectionFactory factory)
+    {
+        _repo = repo;
+        _factory = factory;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<RolPersonalDto>>> Listar(CancellationToken ct)
@@ -50,8 +55,10 @@ public class RolesPersonalController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
+        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "RolPersonal", "NegocioId", id, NegocioId, ct))
+            return Ok(new { mensaje = "Rol eliminado.", eliminado = true });
         await _repo.CambiarEstadoAsync(id, false, NegocioId, ct);
-        return Ok(new { mensaje = "Rol desactivado." });
+        return Ok(new { mensaje = "No se puede eliminar: el rol está en uso. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]

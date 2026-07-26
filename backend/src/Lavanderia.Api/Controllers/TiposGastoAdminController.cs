@@ -16,7 +16,12 @@ namespace Lavanderia.Api.Controllers;
 public class TiposGastoAdminController : TenantAwareControllerBase
 {
     private readonly ICajaRepository _repo;
-    public TiposGastoAdminController(ICajaRepository repo) => _repo = repo;
+    private readonly Lavanderia.Api.Infrastructure.ISqlConnectionFactory _factory;
+    public TiposGastoAdminController(ICajaRepository repo, Lavanderia.Api.Infrastructure.ISqlConnectionFactory factory)
+    {
+        _repo = repo;
+        _factory = factory;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<TipoGastoEditableDto>>> Listar(CancellationToken ct)
@@ -54,14 +59,10 @@ public class TiposGastoAdminController : TenantAwareControllerBase
         var existente = await _repo.ObtenerTipoGastoPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        var usos = await _repo.ContarUsoTipoGastoAsync(id, NegocioId, ct);
+        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "TipoGasto", "NegocioId", id, NegocioId, ct))
+            return Ok(new { mensaje = "Tipo de gasto eliminado.", eliminado = true });
         await _repo.CambiarEstadoTipoGastoAsync(id, false, NegocioId, ct);
-        return Ok(new
-        {
-            mensaje = usos > 0
-                ? $"Tipo de gasto desactivado (usado en {usos} movimientos de caja)."
-                : "Tipo de gasto eliminado."
-        });
+        return Ok(new { mensaje = "No se puede eliminar: está usado en movimientos de caja. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]

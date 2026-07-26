@@ -11,10 +11,12 @@ public class InsumosController : TenantAwareControllerBase
 {
     private readonly IInsumoRepository _repo;
     private readonly ICajaRepository _caja;
-    public InsumosController(IInsumoRepository repo, ICajaRepository caja)
+    private readonly Lavanderia.Api.Infrastructure.ISqlConnectionFactory _factory;
+    public InsumosController(IInsumoRepository repo, ICajaRepository caja, Lavanderia.Api.Infrastructure.ISqlConnectionFactory factory)
     {
         _repo = repo;
         _caja = caja;
+        _factory = factory;
     }
 
     [HttpGet]
@@ -119,8 +121,10 @@ public class InsumosController : TenantAwareControllerBase
     {
         var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
+        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "Insumo", "SedeId", id, SedeRequeridaId, ct))
+            return Ok(new { mensaje = "Insumo eliminado.", eliminado = true });
         await _repo.CambiarEstadoAsync(id, false, SedeRequeridaId, ct);
-        return Ok(new { mensaje = "Insumo desactivado." });
+        return Ok(new { mensaje = "No se puede eliminar: el insumo tiene movimientos registrados. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]

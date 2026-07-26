@@ -16,7 +16,12 @@ namespace Lavanderia.Api.Controllers;
 public class AreasLavadoAdminController : TenantAwareControllerBase
 {
     private readonly IAreaLavadoRepository _repo;
-    public AreasLavadoAdminController(IAreaLavadoRepository repo) => _repo = repo;
+    private readonly Lavanderia.Api.Infrastructure.ISqlConnectionFactory _factory;
+    public AreasLavadoAdminController(IAreaLavadoRepository repo, Lavanderia.Api.Infrastructure.ISqlConnectionFactory factory)
+    {
+        _repo = repo;
+        _factory = factory;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<AreaLavadoEditableDto>>> Listar(CancellationToken ct)
@@ -74,14 +79,10 @@ public class AreasLavadoAdminController : TenantAwareControllerBase
         if (existente.Activa && await EsUltimaAreaActivaAsync(id, ct))
             return BadRequest(new { mensaje = "No puedes desactivar la última área activa: los pedidos de esta sede no podrían avanzar. Crea o reactiva otra área primero." });
 
-        var usos = await _repo.ContarUsoAsync(id, SedeRequeridaId, ct);
+        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "AreaLavado", "SedeId", id, SedeRequeridaId, ct))
+            return Ok(new { mensaje = "Área eliminada.", eliminado = true });
         await _repo.CambiarEstadoAsync(id, false, SedeRequeridaId, ct);
-        return Ok(new
-        {
-            mensaje = usos > 0
-                ? $"Área desactivada (tiene {usos} pedidos actualmente en ella)."
-                : "Área eliminada."
-        });
+        return Ok(new { mensaje = "No se puede eliminar: el área tiene pedidos asociados. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]

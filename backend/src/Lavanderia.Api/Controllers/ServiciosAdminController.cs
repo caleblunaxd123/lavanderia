@@ -160,12 +160,16 @@ public class ServiciosAdminController : TenantAwareControllerBase
             return BadRequest(new { mensaje = "El cargo interno de delivery no puede desactivarse desde Servicios." });
 
         var usos = await _repo.ContarUsoAsync(id, NegocioId, ct);
+        if (usos == 0)
+        {
+            await _repo.EliminarAsync(id, NegocioId, ct);
+            return Ok(new { mensaje = "Servicio eliminado.", eliminado = true });
+        }
         await _repo.CambiarEstadoAsync(id, false, NegocioId, ct);
         return Ok(new
         {
-            mensaje = usos > 0
-                ? $"Servicio desactivado (usado en {usos} pedidos históricos)."
-                : "Servicio desactivado."
+            mensaje = $"No se puede eliminar: está usado en {usos} pedido(s). Se desactivó.",
+            eliminado = false
         });
     }
 

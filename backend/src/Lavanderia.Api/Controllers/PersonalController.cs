@@ -12,7 +12,12 @@ namespace Lavanderia.Api.Controllers;
 public class PersonalController : TenantAwareControllerBase
 {
     private readonly IEmpleadoRepository _repo;
-    public PersonalController(IEmpleadoRepository repo) => _repo = repo;
+    private readonly Lavanderia.Api.Infrastructure.ISqlConnectionFactory _factory;
+    public PersonalController(IEmpleadoRepository repo, Lavanderia.Api.Infrastructure.ISqlConnectionFactory factory)
+    {
+        _repo = repo;
+        _factory = factory;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<EmpleadoDto>>> Listar(CancellationToken ct)
@@ -65,8 +70,10 @@ public class PersonalController : TenantAwareControllerBase
         var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (existente is null) return NotFound();
 
+        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "Empleado", "SedeId", id, SedeRequeridaId, ct))
+            return Ok(new { mensaje = "Empleado eliminado.", eliminado = true });
         await _repo.CambiarEstadoAsync(id, false, SedeRequeridaId, ct);
-        return Ok(new { mensaje = "Empleado desactivado." });
+        return Ok(new { mensaje = "No se puede eliminar: el empleado tiene registros asociados. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]

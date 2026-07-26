@@ -260,7 +260,7 @@
       <button type="button" class="modal__close" aria-label="Cerrar confirmación" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
-      <p>Vas a eliminar <strong>{{ i.nombre }}</strong>. Quedará desactivado y podrás reactivarlo luego.</p>
+      <p>Vas a eliminar <strong>{{ i.nombre }}</strong>. Si tiene movimientos registrados, quedará desactivado; si no, se elimina definitivamente.</p>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
         <button type="button" class="btn btn--danger" [disabled]="guardandoInsumo()" (click)="eliminar()">

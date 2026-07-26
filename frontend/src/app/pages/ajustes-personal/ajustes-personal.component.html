@@ -150,7 +150,7 @@
       <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
-      <p>Vas a eliminar a <strong>{{ e.nombre }}</strong>. Quedará desactivado y podrás reactivarlo luego.</p>
+      <p>Vas a eliminar a <strong>{{ e.nombre }}</strong>. Si tiene registros asociados, quedará desactivado; si no, se elimina definitivamente.</p>
       <div class="modal__actions">
         <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
         <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">
