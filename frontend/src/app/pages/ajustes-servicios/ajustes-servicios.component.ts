@@ -40,7 +40,11 @@ export class AjustesServiciosComponent implements OnInit {
     const categoria = this.filtroCategoria();
     return [...this.servicios()]
       .filter(s =>
-        (!texto || this.normalizar(`${s.nombre} ${s.unidad} ${s.categoriaNombre ?? ''}`).includes(texto)) &&
+        // El texto libre busca por NOMBRE (y unidad). La categoría NO entra aquí a propósito:
+        // como casi todos los servicios comparten categoría (ej. "Lavado al agua"), incluirla
+        // hacía que escribir esa palabra mostrara todo. Para filtrar por categoría está el
+        // desplegable de al lado.
+        (!texto || this.normalizar(`${s.nombre} ${s.unidad}`).includes(texto)) &&
         (estado === 'todos' || (estado === 'activos' ? s.activo : !s.activo)) &&
         (categoria === 'todas' || s.categoriaId === categoria)
       )

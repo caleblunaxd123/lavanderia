@@ -25,7 +25,7 @@
     <div class="catalog-toolbar" aria-label="Filtros del catálogo">
       <label class="catalog-search">
         <app-icon name="search" [size]="16"></app-icon>
-        <input type="search" placeholder="Buscar por servicio, unidad o categoría"
+        <input type="search" placeholder="Buscar por nombre del servicio"
           [ngModel]="busqueda()" (ngModelChange)="actualizarBusqueda($event)" aria-label="Buscar servicios" />
         @if (busqueda()) {
           <button type="button" (click)="actualizarBusqueda('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
