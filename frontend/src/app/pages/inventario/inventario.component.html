@@ -108,7 +108,7 @@
                 <button type="button" class="btn-icon" (click)="toggleActivo(i)" [title]="i.activo ? 'Desactivar' : 'Reactivar'" [attr.aria-label]="(i.activo ? 'Desactivar ' : 'Reactivar ') + i.nombre">
                   @if (i.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
                 </button>
-                <button type="button" class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" title="Eliminar" [attr.aria-label]="'Eliminar ' + i.nombre"><app-icon name="trash" [size]="15"></app-icon></button>
+                <button type="button" class="btn-icon btn-icon--del" (click)="pedirEliminar(i)" [disabled]="i.enUso" [title]="i.enUso ? 'Tiene movimientos registrados — solo puedes desactivarlo' : 'Eliminar'" [attr.aria-label]="'Eliminar ' + i.nombre"><app-icon name="trash" [size]="15"></app-icon></button>
               </div>
             </div>
           </article>
@@ -260,7 +260,7 @@
       <button type="button" class="modal__close" aria-label="Cerrar confirmación" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
-      <p>Vas a eliminar <strong>{{ i.nombre }}</strong>. Si tiene movimientos registrados, quedará desactivado; si no, se elimina definitivamente.</p>
+      <p>Vas a eliminar <strong>{{ i.nombre }}</strong> de forma permanente. Esta acción no se puede deshacer.</p>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
         <button type="button" class="btn btn--danger" [disabled]="guardandoInsumo()" (click)="eliminar()">

@@ -145,6 +145,8 @@ public class Categoria
     public int NegocioId { get; set; }
     public string Nombre { get; set; } = "";
     public bool Activa { get; set; } = true;
+    /// <summary>No persistida: la calcula la query de listado (tiene servicios asociados).</summary>
+    public bool EnUso { get; set; }
 }
 
 public class Servicio
@@ -158,6 +160,8 @@ public class Servicio
     public string? CategoriaNombre { get; set; }
     public bool Activo { get; set; } = true;
     public bool EsCargoDelivery { get; set; }
+    /// <summary>No persistida: la calcula la query de listado (usado en algún pedido).</summary>
+    public bool EnUso { get; set; }
 }
 
 public class AreaLavado
@@ -168,6 +172,8 @@ public class AreaLavado
     public int Orden { get; set; }
     public int TiempoEstMinutos { get; set; }
     public bool Activa { get; set; } = true;
+    /// <summary>No persistida: la calcula la query de listado (algún pedido pasó por el área).</summary>
+    public bool EnUso { get; set; }
 }
 
 public class Promocion
@@ -290,6 +296,8 @@ public class TipoGasto
     public int NegocioId { get; set; }
     public string Nombre { get; set; } = "";
     public bool Activo { get; set; } = true;
+    /// <summary>No persistida: la calcula la query de listado (tiene movimientos de caja asociados).</summary>
+    public bool EnUso { get; set; }
 }
 
 public class Insumo
@@ -302,6 +310,8 @@ public class Insumo
     public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime? UltimaCompra { get; set; }
+    /// <summary>No persistida: la calcula la query de listado (tiene movimientos registrados).</summary>
+    public bool EnUso { get; set; }
 }
 
 public class MovimientoInsumo

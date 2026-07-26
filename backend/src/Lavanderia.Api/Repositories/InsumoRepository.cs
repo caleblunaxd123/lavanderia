@@ -30,11 +30,13 @@ public class InsumoRepository : IInsumoRepository
         StockActual = r.GetDecimal(r.GetOrdinal("StockActual")),
         StockMinimo = r.GetDecimal(r.GetOrdinal("StockMinimo")),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
-        UltimaCompra = r.GetNullableDateTime("UltimaCompra")
+        UltimaCompra = r.GetNullableDateTime("UltimaCompra"),
+        EnUso = r.GetBoolean(r.GetOrdinal("EnUso"))
     };
 
     private const string Select = @"SELECT Id, Nombre, UnidadMedida, StockActual, StockMinimo, Activo,
-        (SELECT MAX(m.Fecha) FROM dbo.MovimientoInsumo m WHERE m.InsumoId = dbo.Insumo.Id AND m.Tipo = 'COMPRA') AS UltimaCompra
+        (SELECT MAX(m.Fecha) FROM dbo.MovimientoInsumo m WHERE m.InsumoId = dbo.Insumo.Id AND m.Tipo = 'COMPRA') AS UltimaCompra,
+        CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.MovimientoInsumo mu WHERE mu.InsumoId = dbo.Insumo.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Insumo";
 
     public async Task<List<Insumo>> ListarTodosAsync(int sedeId, CancellationToken ct = default)

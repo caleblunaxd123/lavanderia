@@ -307,6 +307,8 @@ public class ServicioEditableDto
     public int? CategoriaId { get; set; }
     public string? CategoriaNombre { get; set; }
     public bool Activo { get; set; } = true;
+    /// <summary>True si ya se usó en algún pedido: no se puede eliminar, solo desactivar.</summary>
+    public bool EnUso { get; set; }
 }
 
 // Importación masiva de servicios (desde CSV / pegado de Excel en el frontend)
@@ -388,6 +390,8 @@ public class CategoriaDto
     public int Id { get; set; }
     [Required, StringLength(80, MinimumLength = 2)] public string Nombre { get; set; } = "";
     public bool Activa { get; set; } = true;
+    /// <summary>True si tiene servicios asociados: no se puede eliminar, solo desactivar.</summary>
+    public bool EnUso { get; set; }
 }
 
 // ---------- Tipos de gasto ----------
@@ -396,6 +400,8 @@ public class TipoGastoEditableDto
     public int Id { get; set; }
     [Required, StringLength(80, MinimumLength = 2)] public string Nombre { get; set; } = "";
     public bool Activo { get; set; } = true;
+    /// <summary>True si tiene movimientos de caja asociados: no se puede eliminar, solo desactivar.</summary>
+    public bool EnUso { get; set; }
 }
 
 // ---------- Inventario de consumibles ----------
@@ -408,6 +414,8 @@ public class InsumoDto
     [Range(0, 1000000)] public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime? UltimaCompra { get; set; }
+    /// <summary>True si tiene movimientos registrados: no se puede eliminar, solo desactivar.</summary>
+    public bool EnUso { get; set; }
 }
 
 public class RegistrarMovimientoInsumoRequest
@@ -536,6 +544,8 @@ public class AreaLavadoEditableDto
     [Range(1, 100)] public int Orden { get; set; }
     [Range(1, 1000)] public int TiempoEstMinutos { get; set; } = 30;
     public bool Activa { get; set; } = true;
+    /// <summary>True si algún pedido pasó por esta área: no se puede eliminar, solo desactivar.</summary>
+    public bool EnUso { get; set; }
 }
 
 // ---------- Promociones ----------

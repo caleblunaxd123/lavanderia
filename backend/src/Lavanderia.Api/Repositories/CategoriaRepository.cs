@@ -31,9 +31,12 @@ public class CategoriaRepository : ICategoriaRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Nombre, Activa FROM dbo.Categoria WHERE NegocioId = @NegocioId ORDER BY Activa DESC, Nombre";
+        cmd.CommandText = @"
+            SELECT c.Id, c.Nombre, c.Activa,
+                   CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Servicio s WHERE s.CategoriaId = c.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
+            FROM dbo.Categoria c WHERE c.NegocioId = @NegocioId ORDER BY c.Activa DESC, c.Nombre";
         cmd.AddParam("@NegocioId", negocioId);
-        return await cmd.ReadListAsync(Map, ct);
+        return await cmd.ReadListAsync(r => { var c = Map(r); c.EnUso = r.GetBoolean(r.GetOrdinal("EnUso")); return c; }, ct);
     }
 
     public async Task<Categoria?> ObtenerPorIdAsync(int id, int negocioId, CancellationToken ct = default)

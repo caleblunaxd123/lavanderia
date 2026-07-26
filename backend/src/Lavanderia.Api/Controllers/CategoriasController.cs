@@ -70,5 +70,5 @@ public class CategoriasController : TenantAwareControllerBase
         return NoContent();
     }
 
-    private static CategoriaDto Map(Categoria c) => new() { Id = c.Id, Nombre = c.Nombre, Activa = c.Activa };
+    private static CategoriaDto Map(Categoria c) => new() { Id = c.Id, Nombre = c.Nombre, Activa = c.Activa, EnUso = c.EnUso };
 }

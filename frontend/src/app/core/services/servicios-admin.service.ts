@@ -10,6 +10,7 @@ export interface ServicioEditable {
   categoriaId: number | null;
   categoriaNombre?: string | null;
   activo: boolean;
+  enUso?: boolean;
 }
 
 export interface ImportarServicioFila {

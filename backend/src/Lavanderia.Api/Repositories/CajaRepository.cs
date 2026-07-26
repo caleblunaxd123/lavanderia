@@ -124,9 +124,12 @@ public class CajaRepository : ICajaRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Nombre, Activo FROM dbo.TipoGasto WHERE NegocioId = @NegocioId ORDER BY Activo DESC, Nombre";
+        cmd.CommandText = @"
+            SELECT t.Id, t.Nombre, t.Activo,
+                   CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.MovimientoCaja mc WHERE mc.TipoGastoId = t.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
+            FROM dbo.TipoGasto t WHERE t.NegocioId = @NegocioId ORDER BY t.Activo DESC, t.Nombre";
         cmd.AddParam("@NegocioId", negocioId);
-        return await cmd.ReadListAsync(MapTipoGasto, ct);
+        return await cmd.ReadListAsync(r => { var t = MapTipoGasto(r); t.EnUso = r.GetBoolean(r.GetOrdinal("EnUso")); return t; }, ct);
     }
 
     public async Task<TipoGasto?> ObtenerTipoGastoPorIdAsync(int id, int negocioId, CancellationToken ct = default)

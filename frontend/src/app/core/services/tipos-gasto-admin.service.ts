@@ -6,6 +6,7 @@ export interface TipoGastoEditable {
   id: number;
   nombre: string;
   activo: boolean;
+  enUso?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

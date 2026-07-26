@@ -76,7 +76,7 @@
                   [title]="s.activo ? 'Desactivar' : 'Reactivar'" [attr.aria-label]="(s.activo ? 'Desactivar ' : 'Reactivar ') + s.nombre">
                   @if (s.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
                 </button>
-                <button type="button" class="btn-icon btn-icon--del" (click)="pedirEliminar(s)" title="Eliminar" [attr.aria-label]="'Eliminar ' + s.nombre"><app-icon name="trash" [size]="15"></app-icon></button>
+                <button type="button" class="btn-icon btn-icon--del" (click)="pedirEliminar(s)" [disabled]="s.enUso" [title]="s.enUso ? 'En uso en pedidos — solo puedes desactivarlo' : 'Eliminar'" [attr.aria-label]="'Eliminar ' + s.nombre"><app-icon name="trash" [size]="15"></app-icon></button>
               </td>
             </tr>
           }
@@ -104,7 +104,7 @@
             <button type="button" class="btn btn--ghost btn--sm" (click)="toggleActivo(s)" [disabled]="guardando()">
               {{ s.activo ? 'Desactivar' : 'Reactivar' }}
             </button>
-            <button type="button" class="btn btn--danger btn--sm" (click)="pedirEliminar(s)" aria-label="Eliminar servicio"><app-icon name="trash" [size]="14"></app-icon></button>
+            <button type="button" class="btn btn--danger btn--sm" (click)="pedirEliminar(s)" [disabled]="s.enUso" [title]="s.enUso ? 'En uso en pedidos — solo puedes desactivarlo' : 'Eliminar'" aria-label="Eliminar servicio"><app-icon name="trash" [size]="14"></app-icon></button>
           </div>
         </div>
       }
@@ -192,7 +192,7 @@
       <button type="button" class="modal__close" (click)="confirmarEliminar.set(null)" aria-label="Cerrar confirmación"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
-      <p>Vas a eliminar <strong>{{ s.nombre }}</strong>. Si tiene pedidos históricos, quedará desactivado (no se borra para no romper los reportes).</p>
+      <p>Vas a eliminar <strong>{{ s.nombre }}</strong> de forma permanente. Esta acción no se puede deshacer.</p>
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
         <button type="button" class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">

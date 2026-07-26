@@ -59,10 +59,16 @@ public class TiposGastoAdminController : TenantAwareControllerBase
         var existente = await _repo.ObtenerTipoGastoPorIdAsync(id, NegocioId, ct);
         if (existente is null) return NotFound();
 
-        if (await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "TipoGasto", "NegocioId", id, NegocioId, ct))
+        // TipoGasto no tiene FK real desde MovimientoCaja, así que el DELETE no fallaría solo:
+        // hay que verificar el uso explícitamente para no dejar movimientos huérfanos.
+        var usos = await _repo.ContarUsoTipoGastoAsync(id, NegocioId, ct);
+        if (usos == 0)
+        {
+            await Lavanderia.Api.Infrastructure.CatalogoEliminacion.EliminarCatalogoAsync(_factory, "TipoGasto", "NegocioId", id, NegocioId, ct);
             return Ok(new { mensaje = "Tipo de gasto eliminado.", eliminado = true });
+        }
         await _repo.CambiarEstadoTipoGastoAsync(id, false, NegocioId, ct);
-        return Ok(new { mensaje = "No se puede eliminar: está usado en movimientos de caja. Se desactivó.", eliminado = false });
+        return Ok(new { mensaje = $"No se puede eliminar: está usado en {usos} movimiento(s) de caja. Se desactivó.", eliminado = false });
     }
 
     [HttpPatch("{id:int}/estado")]
@@ -74,5 +80,5 @@ public class TiposGastoAdminController : TenantAwareControllerBase
         return NoContent();
     }
 
-    private static TipoGastoEditableDto Map(TipoGasto t) => new() { Id = t.Id, Nombre = t.Nombre, Activo = t.Activo };
+    private static TipoGastoEditableDto Map(TipoGasto t) => new() { Id = t.Id, Nombre = t.Nombre, Activo = t.Activo, EnUso = t.EnUso };
 }

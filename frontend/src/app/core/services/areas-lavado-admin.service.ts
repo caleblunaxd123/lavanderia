@@ -8,6 +8,7 @@ export interface AreaLavadoEditable {
   orden: number;
   tiempoEstMinutos: number;
   activa: boolean;
+  enUso?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

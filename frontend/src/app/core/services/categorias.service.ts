@@ -6,6 +6,7 @@ export interface Categoria {
   id: number;
   nombre: string;
   activa: boolean;
+  enUso?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

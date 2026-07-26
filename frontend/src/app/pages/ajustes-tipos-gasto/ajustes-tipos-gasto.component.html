@@ -31,7 +31,7 @@
                 <button class="btn-icon" (click)="toggleActivo(t)" [title]="t.activo ? 'Desactivar' : 'Reactivar'">
                   @if (t.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
                 </button>
-                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(t)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(t)" [disabled]="t.enUso" [title]="t.enUso ? 'Usado en movimientos de caja — solo puedes desactivarlo' : 'Eliminar'"><app-icon name="trash" [size]="15"></app-icon></button>
               </td>
             </tr>
           }
@@ -112,7 +112,7 @@
       <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
-      <p>Vas a eliminar <strong>{{ t.nombre }}</strong>. Si tiene movimientos de caja asociados, quedará desactivado.</p>
+      <p>Vas a eliminar <strong>{{ t.nombre }}</strong> de forma permanente. Esta acción no se puede deshacer.</p>
       <div class="modal__actions">
         <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
         <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">

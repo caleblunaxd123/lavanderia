@@ -31,11 +31,13 @@ public class ServicioRepository : IServicioRepository
         CategoriaId = r.GetNullableInt("CategoriaId"),
         CategoriaNombre = r.GetNullableString("CategoriaNombre"),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
-        EsCargoDelivery = r.GetBoolean(r.GetOrdinal("EsCargoDelivery"))
+        EsCargoDelivery = r.GetBoolean(r.GetOrdinal("EsCargoDelivery")),
+        EnUso = r.GetBoolean(r.GetOrdinal("EnUso"))
     };
 
     private const string SelectConCategoria = @"
-        SELECT s.Id, s.Nombre, s.Precio, s.Unidad, s.CategoriaId, cat.Nombre AS CategoriaNombre, s.Activo, s.EsCargoDelivery
+        SELECT s.Id, s.Nombre, s.Precio, s.Unidad, s.CategoriaId, cat.Nombre AS CategoriaNombre, s.Activo, s.EsCargoDelivery,
+               CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.PedidoItem pi WHERE pi.ServicioId = s.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Servicio s
         LEFT JOIN dbo.Categoria cat ON cat.Id = s.CategoriaId";
 
@@ -227,9 +229,14 @@ public class AreaLavadoRepository : IAreaLavadoRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Nombre, Orden, TiempoEstMinutos, Activa FROM dbo.AreaLavado WHERE SedeId = @SedeId ORDER BY Orden";
+        cmd.CommandText = @"
+            SELECT Id, Nombre, Orden, TiempoEstMinutos, Activa,
+                   CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Pedido p WHERE p.AreaActualId = a.Id)
+                              OR EXISTS (SELECT 1 FROM dbo.PedidoHistorial ph WHERE ph.AreaId = a.Id)
+                        THEN 1 ELSE 0 END AS BIT) AS EnUso
+            FROM dbo.AreaLavado a WHERE a.SedeId = @SedeId ORDER BY a.Orden";
         cmd.AddParam("@SedeId", sedeId);
-        return await cmd.ReadListAsync(Map, ct);
+        return await cmd.ReadListAsync(r => { var a = Map(r); a.EnUso = r.GetBoolean(r.GetOrdinal("EnUso")); return a; }, ct);
     }
 
     public async Task<AreaLavado?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default)

@@ -194,6 +194,7 @@ public class ServiciosAdminController : TenantAwareControllerBase
         Unidad = s.Unidad,
         CategoriaId = s.CategoriaId,
         CategoriaNombre = s.CategoriaNombre,
-        Activo = s.Activo
+        Activo = s.Activo,
+        EnUso = s.EnUso
     };
 }

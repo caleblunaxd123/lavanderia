@@ -33,7 +33,7 @@
                 <button class="btn-icon" (click)="toggleActiva(a)" [title]="a.activa ? 'Desactivar' : 'Reactivar'">
                   @if (a.activa) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
                 </button>
-                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(a)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(a)" [disabled]="a.enUso" [title]="a.enUso ? 'Ya hay pedidos que pasaron por esta área — solo puedes desactivarla' : 'Eliminar'"><app-icon name="trash" [size]="15"></app-icon></button>
               </td>
             </tr>
           }
@@ -128,7 +128,7 @@
       <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
-      <p>Vas a eliminar <strong>{{ a.nombre }}</strong>. Si tiene pedidos actualmente en ella, quedará desactivada.</p>
+      <p>Vas a eliminar <strong>{{ a.nombre }}</strong> de forma permanente. Esta acción no se puede deshacer.</p>
       <div class="modal__actions">
         <button class="btn btn--ghost" (click)="confirmarEliminar.set(null)">Cancelar</button>
         <button class="btn btn--danger" [disabled]="guardando()" (click)="eliminar()">

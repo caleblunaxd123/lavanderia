@@ -10,6 +10,7 @@ export interface Insumo {
   stockMinimo: number;
   activo: boolean;
   ultimaCompra?: string | null;
+  enUso?: boolean;
 }
 
 export interface MovimientoInsumo {

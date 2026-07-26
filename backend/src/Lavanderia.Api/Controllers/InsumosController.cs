@@ -234,6 +234,7 @@ public class InsumosController : TenantAwareControllerBase
         StockActual = i.StockActual,
         StockMinimo = i.StockMinimo,
         Activo = i.Activo,
-        UltimaCompra = i.UltimaCompra
+        UltimaCompra = i.UltimaCompra,
+        EnUso = i.EnUso
     };
 }

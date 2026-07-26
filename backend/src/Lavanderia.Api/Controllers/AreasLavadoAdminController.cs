@@ -109,6 +109,7 @@ public class AreasLavadoAdminController : TenantAwareControllerBase
         Nombre = a.Nombre,
         Orden = a.Orden,
         TiempoEstMinutos = a.TiempoEstMinutos,
-        Activa = a.Activa
+        Activa = a.Activa,
+        EnUso = a.EnUso
     };
 }
