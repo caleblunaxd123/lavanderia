@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -44,6 +44,26 @@ export class RegistrarComponent implements OnInit, OnDestroy {
   private readonly whatsapp = inject(WhatsappService);
   private readonly config = inject(ConfiguracionService);
   private readonly fotosSvc = inject(FotosPedidoService);
+
+  // ---------- Botón Registrar arriba/abajo dinámico ----------
+  // La barra de arriba está en el flujo normal; cuando el trabajador hace scroll y deja de
+  // verse, aparece la barra fija abajo. Así el botón Registrar siempre está a la vista.
+  readonly mostrarBarraAbajo = signal(false);
+  private observadorBarra?: IntersectionObserver;
+
+  @ViewChild('barraTop') set barraTopRef(el: ElementRef<HTMLElement> | undefined) {
+    this.observadorBarra?.disconnect();
+    this.observadorBarra = undefined;
+    if (el && typeof IntersectionObserver !== 'undefined') {
+      this.observadorBarra = new IntersectionObserver(
+        entradas => this.mostrarBarraAbajo.set(!entradas[0].isIntersecting),
+        { threshold: 0 }
+      );
+      this.observadorBarra.observe(el.nativeElement);
+    } else {
+      this.mostrarBarraAbajo.set(false);
+    }
+  }
 
   readonly catalogo = signal<Servicio[]>([]);
   readonly areas = signal<AreaLavado[]>([]);
@@ -572,6 +592,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.fotosStaged().forEach(f => URL.revokeObjectURL(f.url));
+    this.observadorBarra?.disconnect();
   }
 
   irAPedidos() {

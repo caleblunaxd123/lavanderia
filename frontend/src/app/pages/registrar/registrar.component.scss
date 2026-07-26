@@ -40,6 +40,14 @@
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(11, 40, 96, .16);
 
+  // Barra de arriba: en el flujo normal (no fija), se ve por defecto sin hacer scroll.
+  &--top {
+    position: static;
+    margin-top: 0;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 14px rgba(11, 40, 96, .10);
+  }
+
   &__total {
     display: flex;
     flex-direction: column;

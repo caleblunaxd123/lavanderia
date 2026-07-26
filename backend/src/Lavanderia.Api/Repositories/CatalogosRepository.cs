@@ -86,7 +86,7 @@ public class ServicioRepository : IServicioRepository
                   FROM dbo.Servicio
                  WHERE NegocioId = @NegocioId
                    AND EsCargoDelivery = 0
-                   AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(@Nombre)
+                   AND LTRIM(RTRIM(Nombre)) COLLATE Latin1_General_CI_AI = LTRIM(RTRIM(@Nombre)) COLLATE Latin1_General_CI_AI
                    AND (@ExcluirId IS NULL OR Id <> @ExcluirId)
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END";
         cmd.AddParam("@NegocioId", negocioId);
@@ -251,7 +251,7 @@ public class AreaLavadoRepository : IAreaLavadoRepository
     }
 
     public async Task<bool> ExisteNombreAsync(string nombre, int sedeId, int? excluirId = null, CancellationToken ct = default)
-        => await ExisteAsync("UPPER(LTRIM(RTRIM(Nombre))) = UPPER(@Valor)", nombre.Trim(), sedeId, excluirId, ct);
+        => await ExisteAsync("LTRIM(RTRIM(Nombre)) COLLATE Latin1_General_CI_AI = LTRIM(RTRIM(@Valor)) COLLATE Latin1_General_CI_AI", nombre.Trim(), sedeId, excluirId, ct);
 
     public async Task<bool> ExisteOrdenAsync(int orden, int sedeId, int? excluirId = null, CancellationToken ct = default)
         => await ExisteAsync("Orden = @Valor", orden, sedeId, excluirId, ct);

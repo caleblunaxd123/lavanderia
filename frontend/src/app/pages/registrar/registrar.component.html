@@ -64,6 +64,22 @@
       </div>
     </div>
   } @else {
+    <!-- Barra de acción de arriba: visible por defecto cuando el pedido cabe sin scroll -->
+    <div class="barra-registrar barra-registrar--top" #barraTop>
+      <div class="barra-registrar__total">
+        <span>Total del pedido</span>
+        <strong>S/ {{ totalFinal().toFixed(2) }}</strong>
+      </div>
+      @if (!puedeRegistrar && validacionPedido) {
+        <span class="barra-registrar__aviso">{{ validacionPedido }}</span>
+      }
+      <button type="button" class="btn btn--primario barra-registrar__btn"
+        [disabled]="!puedeRegistrar" (click)="registrarOrden()">
+        <app-icon name="check" [size]="17"></app-icon>
+        {{ registrando() ? 'Registrando…' : 'Registrar pedido' }}
+      </button>
+    </div>
+
     <div class="pasos">
       <div class="card paso" data-tour="registrar-cliente"><h4>PASO 1 <span>Información del cliente</span></h4>
 
@@ -392,20 +408,22 @@
       </div>
     </div>
 
-    <!-- Barra de acción fija: siempre visible (web) y al final del formulario (móvil) -->
-    <div class="barra-registrar" data-tour="registrar-confirmar">
-      <div class="barra-registrar__total">
-        <span>Total del pedido</span>
-        <strong>S/ {{ totalFinal().toFixed(2) }}</strong>
+    <!-- Barra de acción fija abajo: aparece al hacer scroll (cuando la de arriba ya no se ve) -->
+    @if (mostrarBarraAbajo()) {
+      <div class="barra-registrar barra-registrar--abajo" data-tour="registrar-confirmar">
+        <div class="barra-registrar__total">
+          <span>Total del pedido</span>
+          <strong>S/ {{ totalFinal().toFixed(2) }}</strong>
+        </div>
+        @if (!puedeRegistrar && validacionPedido) {
+          <span class="barra-registrar__aviso">{{ validacionPedido }}</span>
+        }
+        <button type="button" class="btn btn--primario barra-registrar__btn"
+          [disabled]="!puedeRegistrar" (click)="registrarOrden()">
+          <app-icon name="check" [size]="17"></app-icon>
+          {{ registrando() ? 'Registrando…' : 'Registrar pedido' }}
+        </button>
       </div>
-      @if (!puedeRegistrar && validacionPedido) {
-        <span class="barra-registrar__aviso">{{ validacionPedido }}</span>
-      }
-      <button type="button" class="btn btn--primario barra-registrar__btn"
-        [disabled]="!puedeRegistrar" (click)="registrarOrden()">
-        <app-icon name="check" [size]="17"></app-icon>
-        {{ registrando() ? 'Registrando…' : 'Registrar pedido' }}
-      </button>
-    </div>
+    }
   }
 </div>

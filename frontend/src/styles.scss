@@ -360,6 +360,17 @@ a.card:hover,
   &--sm { padding: 6px 12px; font-size: 11.5px; border-radius: 8px; }
 }
 
+/* ===== Inputs numéricos sin flechitas (spinner) — se escribe la cantidad a mano ===== */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ===== Registros inactivos en listados =====
  * Antes solo se apagaban con opacity y costaba distinguirlos. Ahora resaltan con un
  * acento rojo tenue: fondo rosado sutil + franja roja a la izquierda. Se aplica a las

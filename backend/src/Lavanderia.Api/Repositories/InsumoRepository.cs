@@ -84,7 +84,7 @@ public class InsumoRepository : IInsumoRepository
             SELECT COUNT(1)
             FROM dbo.Insumo
             WHERE SedeId = @SedeId
-              AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(LTRIM(RTRIM(@Nombre)))
+              AND LTRIM(RTRIM(Nombre)) COLLATE Latin1_General_CI_AI = LTRIM(RTRIM(@Nombre)) COLLATE Latin1_General_CI_AI
               AND (@ExcluirId IS NULL OR Id <> @ExcluirId)";
         cmd.AddParam("@SedeId", sedeId);
         cmd.AddParam("@Nombre", nombre);

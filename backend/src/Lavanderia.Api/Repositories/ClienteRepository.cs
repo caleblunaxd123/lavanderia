@@ -106,7 +106,7 @@ public class ClienteRepository : IClienteRepository
         if (!string.IsNullOrWhiteSpace(dni)) condiciones.Add("Dni = @Dni");
         if (!string.IsNullOrWhiteSpace(documentoFiscal)) condiciones.Add("DocumentoFiscal = @DocumentoFiscal");
         if (!string.IsNullOrWhiteSpace(celular) && !string.IsNullOrWhiteSpace(nombre))
-            condiciones.Add("(Celular = @Celular AND UPPER(LTRIM(RTRIM(Nombre))) = UPPER(LTRIM(RTRIM(@Nombre))))");
+            condiciones.Add("(Celular = @Celular AND LTRIM(RTRIM(Nombre)) COLLATE Latin1_General_CI_AI = LTRIM(RTRIM(@Nombre)) COLLATE Latin1_General_CI_AI)");
         if (condiciones.Count == 0) return null;
 
         await using var conn = _factory.Create();
