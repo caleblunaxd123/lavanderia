@@ -257,12 +257,6 @@ public class InsumosController : TenantAwareControllerBase
         EnUso = i.EnUso
     };
 
-    private static readonly string[] ClasesValidas = { "EQUIPO", "MATERIAL", "INSUMO" };
-
     /// <summary>Normaliza la clase de inventario; si viene vacía o inválida, usa INSUMO (consumible).</summary>
-    private static string NormalizarClase(string? clase)
-    {
-        var c = (clase ?? "").Trim().ToUpperInvariant();
-        return ClasesValidas.Contains(c) ? c : "INSUMO";
-    }
+    private static string NormalizarClase(string? clase) => InventarioReglas.NormalizarClase(clase);
 }

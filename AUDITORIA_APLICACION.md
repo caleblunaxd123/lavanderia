@@ -32,10 +32,14 @@ Módulos funcionales principales: Autenticación/Sedes · Pedidos (registro, lis
 
 ## 3. Línea base (build + tests)
 
-- ✅ **Frontend compila** (`npm run build`) sin errores.
+- ✅ **Frontend compila** (`npm run build`) sin errores. **Typecheck estricto** (`tsc --noEmit`) sin errores.
 - ✅ **Backend compila** (`dotnet build -c Debug`) — 0 errores.
-- ⚠️ **Tests unitarios**: no se pudieron ejecutar en esta sesión porque otra instancia (Visual Studio / IIS Express) mantiene bloqueado `bin/Debug/Lavanderia.Api.dll` en el mismo proyecto. Los tests existen y corren en CI (`quality.yml`). **Limitación de entorno concurrente**, no del código.
+- ✅ **Tests unitarios**: `dotnet test` → **50 correctas / 0 con error** (294 ms). (Se ejecutaron tras liberar el lock de Visual Studio.)
 - ✅ **Migraciones**: 040–043 aplicadas y verificadas en la BD de demo; el runner del demo las aplica en orden.
+
+### Escaneo de antipatrones (0 hallazgos)
+- Backend: sin `catch {}` vacíos, sin `async void`, sin bloqueos `.Result`/`.Wait()`, sin `await` dentro de `foreach` en repositorios (N+1). SQL 100% parametrizado.
+- Frontend: sin `console.log`/`debugger` olvidados; los 2 `catch {}` existentes son guardas de `localStorage` con fallback (correcto).
 
 ## 4. Auditoría de seguridad (pasada de esta sesión)
 
