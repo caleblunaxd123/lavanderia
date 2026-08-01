@@ -562,11 +562,12 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private vistaInicial(): VistaPedidos {
+    // Por defecto se abre en vista Lista. Si el usuario cambia a Tablero, se recuerda su elección.
     try {
       const guardada = localStorage.getItem('lavanderia.pedidos.vista');
       if (guardada === 'lista' || guardada === 'tablero') return guardada;
     } catch {}
-    return typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches ? 'lista' : 'tablero';
+    return 'lista';
   }
 
   abrirWhatsapp(p: Pedido) {
