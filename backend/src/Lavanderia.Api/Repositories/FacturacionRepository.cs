@@ -10,8 +10,10 @@ public interface IFacturacionRepository
     Task GuardarConfigAsync(ConfiguracionFacturacion c, CancellationToken ct = default);
     Task<int> SiguienteCorrelativoAsync(int negocioId, string tipo, CancellationToken ct = default);
     Task<int> CrearComprobanteAsync(ComprobanteElectronico c, CancellationToken ct = default);
+    /// <summary>Guarda el resultado de SUNAT. Acota por sede (defensa en profundidad: el Id ya
+    /// viene de una lectura autorizada, pero el UPDATE no debe poder cruzar de sede nunca).</summary>
     Task ActualizarResultadoAsync(
-        int id, string estado, string? codigoRespuesta, string? descripcionRespuesta,
+        int id, int sedeId, string estado, string? codigoRespuesta, string? descripcionRespuesta,
         byte[]? xmlFirmado, byte[]? cdrZip, string? hashCpe, DateTime? fechaEnvio, CancellationToken ct = default);
     Task<ComprobanteElectronico?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default);
     /// <summary>Comprobante ya emitido (PENDIENTE o ACEPTADO) para este pedido, si existe.
@@ -148,7 +150,7 @@ public class FacturacionRepository : IFacturacionRepository
     }
 
     public async Task ActualizarResultadoAsync(
-        int id, string estado, string? codigoRespuesta, string? descripcionRespuesta,
+        int id, int sedeId, string estado, string? codigoRespuesta, string? descripcionRespuesta,
         byte[]? xmlFirmado, byte[]? cdrZip, string? hashCpe, DateTime? fechaEnvio, CancellationToken ct = default)
     {
         await using var conn = _factory.Create();
@@ -158,8 +160,9 @@ public class FacturacionRepository : IFacturacionRepository
             UPDATE dbo.ComprobanteElectronico
                SET Estado = @Estado, CodigoRespuestaSunat = @Codigo, DescripcionRespuestaSunat = @Descripcion,
                    XmlFirmado = @Xml, CdrZip = @Cdr, HashCpe = @Hash, FechaEnvio = @FechaEnvio
-             WHERE Id = @Id";
+             WHERE Id = @Id AND SedeId = @SedeId";
         cmd.AddParam("@Id", id);
+        cmd.AddParam("@SedeId", sedeId);
         cmd.AddParam("@Estado", estado);
         cmd.AddParam("@Codigo", codigoRespuesta);
         cmd.AddParam("@Descripcion", descripcionRespuesta);

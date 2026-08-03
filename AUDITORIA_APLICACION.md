@@ -1,7 +1,77 @@
 # Auditoría de la aplicación — Lavandería (LaviSystem)
 
-> Documento vivo de seguimiento. Última actualización: 2026-08-01.
+> Documento vivo de seguimiento. Última actualización: 2026-08-03 (ronda 2).
 > Sin secretos, tokens ni datos personales.
+
+## 0. Ronda 2 (2026-08-03) — resumen
+
+Estado del repo al iniciar: 95 archivos modificados sin commitear respecto a la ronda 1.
+Inventario actualizado: **31 controllers · 24 repos · 45 páginas · 47 migraciones (001→046)**.
+
+**Línea base re-ejecutada:** backend compila (0 errores) · frontend compila (0 errores) ·
+**tests 60/60 verdes** (la ronda 1 no pudo correrlos por el lock de Visual Studio; se resolvió
+usando `-p:BaseOutputPath` a un directorio temporal). Tras las correcciones: **67/67 verdes**.
+
+### Hallazgos de esta ronda
+
+| ID | Severidad | Módulo | Estado |
+|---|---|---|---|
+| H-001 | Medio (UX/soporte) | Usuarios | ✅ corregido y verificado en vivo |
+| H-002 | **Alto (seguridad)** | Pedidos · fotos | ✅ corregido, con tests y verificado en vivo |
+| H-003 | Bajo (defensa en profundidad) | Facturación electrónica | ✅ corregido |
+
+#### H-001 · Medio · No había forma descubrible de recuperar la clave de un trabajador
+- **Reproducción:** el admin crea un usuario, el trabajador olvida su contraseña. La única vía era
+  *Editar usuario* → campo "Nueva contraseña", poco descubrible: el cliente creyó que debía
+  borrar y recrear al usuario.
+- **Causa raíz:** faltaba una acción explícita de restablecer. (No es un defecto de seguridad: las
+  claves se guardan con hash BCrypt y son irrecuperables **por diseño**; mostrarlas sería la falla.)
+- **Corrección:** acción "Restablecer contraseña" (icono de llave) por usuario → modal con
+  generación de clave temporal pronunciable (`crypto.getRandomValues`, cumple la política del
+  backend), mostrada **una sola vez** con botón Copiar. Reutiliza `PUT /api/usuarios/{id}`.
+  Sin cambios de BD.
+- **Archivos:** `frontend/src/app/pages/ajustes-usuarios/*`, `frontend/src/app/shared/icon/*`
+- **Verificación:** reset a `jtrabajador` → **login exitoso con la clave generada**.
+
+#### H-002 · Alto · La subida de fotos confiaba en el `Content-Type` del cliente
+- **Reproducción:** `POST /api/pedidos/{id}/fotos` con un archivo HTML/EXE declarando
+  `Content-Type: image/png` → el archivo se aceptaba y se guardaba en disco con extensión `.png`.
+- **Causa raíz:** la validación usaba `archivo.ContentType`, un header que envía el cliente y es
+  trivial de falsificar. **Impacto real:** la carpeta de fotos se sincroniza a la nube del negocio
+  (Google Drive), por lo que servía como punto de entrada de archivos arbitrarios. El XSS estaba
+  mitigado por `nosniff` + CSP, pero el file-drop no.
+- **Corrección:** `Services/ImagenValidador.cs` decide el tipo por la **firma binaria real**
+  (JPEG `FF D8 FF`, PNG `89 50 4E 47…`, WEBP `RIFF…WEBP`); el controller guarda el content-type
+  detectado, no el declarado.
+- **Archivos:** `Services/ImagenValidador.cs` (nuevo), `Controllers/PedidoFotosController.cs`
+- **Pruebas:** `tests/ImagenValidadorTests.cs` (7 casos: 3 formatos válidos + HTML, EXE, SVG y
+  archivo corto rechazados).
+- **Verificación en vivo:** PNG real → **200 OK**; HTML disfrazado de `image/png` → **400
+  "El archivo no es una imagen válida"**. Foto de prueba eliminada tras el ensayo.
+
+#### H-003 · Bajo · `UPDATE` de facturación sin filtro de tenant
+- **Causa raíz:** `FacturacionRepository.ActualizarResultadoAsync` hacía `WHERE Id = @Id`. El Id ya
+  venía de una lectura autorizada por sede, así que no era explotable, pero el UPDATE no debía
+  poder cruzar de sede en ningún escenario.
+- **Corrección:** el método recibe `sedeId` y filtra `WHERE Id = @Id AND SedeId = @SedeId`;
+  los 3 llamadores pasan `SedeRequeridaId`. (Era el pendiente #3 de la ronda 1.)
+
+### Controles verificados sin hallazgos en esta ronda
+
+- **Endpoints públicos** (`PagoPublico`, `Repartidor`): acceso por **token GUID** no adivinable
+  (capability URL); todos los `UPDATE` derivan el `PedidoId` del token, nunca del cliente.
+- **`CatalogosController` sin `[Authorize]` propio**: falso positivo — hereda de
+  `TenantAwareControllerBase`, que lleva `[Authorize]` a nivel de clase.
+- **Panel de plataforma** (`NegociosController`, `PlataformaController`):
+  `[Authorize(Roles = "PROPIETARIO")]` a nivel de clase.
+- **Barrido de `UPDATE`/`DELETE` sin scope de tenant** en los 24 repositorios: los 14 casos
+  detectados están justificados (config global singleton, operaciones del PROPIETARIO, máquina de
+  estados de pagos con guarda, refresh token por hash secreto, `UltimoAcceso` del propio usuario).
+- **Login**: rate limiting por política (`login`, `public-read`, `public-write`, `repartidor-gps`)
+  y mensajes genéricos ("Usuario o contraseña incorrectos") → sin enumeración de usuarios.
+- **Headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP estricta.
+- **Almacenamiento de fotos**: nombres generados por el servidor (GUID), guardas de path traversal,
+  carpetas separadas por negocio y pedido.
 
 ## 1. Arquitectura detectada
 

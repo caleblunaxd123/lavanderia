@@ -48,14 +48,15 @@ public class PedidoFotosController : TenantAwareControllerBase
     [RequestSizeLimit(MaxBytes + 1024 * 1024)]
     public async Task<ActionResult<FotoPedidoDto>> Subir(int pedidoId, [FromForm] IFormFile? archivo, [FromForm] string? momento, CancellationToken ct)
     {
-        if (await _pedidos.ObtenerAsync(pedidoId, SedeRequeridaId, ct) is null)
+        var pedido = await _pedidos.ObtenerAsync(pedidoId, SedeRequeridaId, ct);
+        if (pedido is null)
             return NotFound(new { mensaje = "El pedido no existe o no pertenece a tu sede." });
 
         if (archivo is null || archivo.Length == 0)
             return BadRequest(new { mensaje = "No se recibió ninguna imagen." });
         if (archivo.Length > MaxBytes)
             return BadRequest(new { mensaje = "La imagen es demasiado grande (máx. 8 MB)." });
-        if (!TiposPermitidos.TryGetValue(archivo.ContentType, out var extension))
+        if (!TiposPermitidos.ContainsKey(archivo.ContentType))
             return BadRequest(new { mensaje = "Formato no permitido. Sube una imagen JPG, PNG o WEBP." });
 
         if (await _fotos.ContarPorPedidoAsync(pedidoId, SedeRequeridaId, ct) >= MaxPorPedido)
@@ -68,7 +69,13 @@ public class PedidoFotosController : TenantAwareControllerBase
         await archivo.CopyToAsync(ms, ct);
         var datos = ms.ToArray();
 
-        var nombreArchivo = await _almacen.GuardarAsync(NegocioId, pedidoId, datos, extension, ct);
+        // El Content-Type lo declara el cliente: el tipo que vale es el de los bytes reales.
+        var tipoReal = ImagenValidador.Detectar(datos);
+        if (tipoReal is null)
+            return BadRequest(new { mensaje = "El archivo no es una imagen válida (JPG, PNG o WEBP)." });
+        var (contentTypeReal, extension) = tipoReal.Value;
+
+        var nombreArchivo = await _almacen.GuardarAsync(NegocioId, pedidoId, pedido.Numero, datos, extension, ct);
         var foto = new PedidoFoto
         {
             PedidoId = pedidoId,
@@ -76,7 +83,7 @@ public class PedidoFotosController : TenantAwareControllerBase
             NegocioId = NegocioId,
             Momento = momentoNorm,
             NombreArchivo = nombreArchivo,
-            ContentType = archivo.ContentType,
+            ContentType = contentTypeReal,
             TamanoBytes = (int)archivo.Length,
             SubidoPorUsuarioId = UsuarioId
         };

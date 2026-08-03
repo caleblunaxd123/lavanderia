@@ -224,7 +224,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         }
 
         await _facturacion.ActualizarResultadoAsync(
-            id, resultado.Estado, resultado.Codigo, resultado.Descripcion,
+            id, SedeRequeridaId, resultado.Estado, resultado.Codigo, resultado.Descripcion,
             resultado.XmlFirmado, resultado.CdrZip, null, DateTime.Now, ct);
 
         var final = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
@@ -305,7 +305,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         }
 
         await _facturacion.ActualizarResultadoAsync(
-            id, resultado.Estado, resultado.Codigo, resultado.Descripcion,
+            id, SedeRequeridaId, resultado.Estado, resultado.Codigo, resultado.Descripcion,
             resultado.XmlFirmado, resultado.CdrZip, null, DateTime.Now, ct);
 
         var final = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
@@ -319,7 +319,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         var c = await _facturacion.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
         await _facturacion.ActualizarResultadoAsync(
-            id, "ANULADO", c.CodigoRespuestaSunat, "Anulado localmente.",
+            id, SedeRequeridaId, "ANULADO", c.CodigoRespuestaSunat, "Anulado localmente.",
             c.XmlFirmado, c.CdrZip, c.HashCpe, c.FechaEnvio, ct);
         return Ok(new
         {
