@@ -35,6 +35,7 @@
               </td>
               <td class="acciones-row">
                 <button class="btn-icon" (click)="abrirEditar(u)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
+                <button class="btn-icon" (click)="abrirReset(u)" title="Restablecer contraseña"><app-icon name="key" [size]="15"></app-icon></button>
                 <button class="btn-icon" (click)="toggleActivo(u)" [disabled]="u.id === miPropioUsuarioId"
                   [title]="u.id === miPropioUsuarioId ? 'No puedes desactivar tu propio usuario' : (u.activo ? 'Desactivar' : 'Reactivar')">
                   @if (u.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
@@ -64,6 +65,7 @@
           </div>
           <div class="usuario-card__acciones">
             <button class="btn btn--ghost btn--sm" (click)="abrirEditar(u)">Editar</button>
+            <button class="btn btn--ghost btn--sm" (click)="abrirReset(u)">Contraseña</button>
             <button class="btn btn--ghost btn--sm" [disabled]="u.id === miPropioUsuarioId" (click)="toggleActivo(u)">
               {{ u.activo ? 'Desactivar' : 'Reactivar' }}
             </button>
@@ -146,6 +148,60 @@
         </button>
       </div>
     </form>
+  </div>
+}
+
+<!-- Modal Restablecer contraseña -->
+@if (reseteando(); as u) {
+  <div class="modal-backdrop" (click)="cerrarReset()"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>Restablecer contraseña</h3>
+      <button class="modal__close" (click)="cerrarReset()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+
+    @if (passwordAplicada(); as clave) {
+      <div class="modal__body">
+        <p>Listo. Esta es la nueva contraseña de <strong>{{ u.nombreCompleto }}</strong> ({{ u.usuario }}):</p>
+        <div class="clave-nueva">
+          <code>{{ clave }}</code>
+          <button type="button" class="btn btn--ghost btn--sm" (click)="copiarPassword()">
+            <app-icon name="copy" [size]="14"></app-icon> {{ copiada() ? 'Copiada' : 'Copiar' }}
+          </button>
+        </div>
+        <p class="aviso-clave">
+          Anótala o cópiala ahora: por seguridad no se vuelve a mostrar. Entrégasela y pídele que la cambie cuando ingrese.
+        </p>
+        <div class="modal__actions">
+          <button class="btn btn--primario" (click)="cerrarReset()">Entendido</button>
+        </div>
+      </div>
+    } @else {
+      <div class="modal__body">
+        <p>Vas a definir una contraseña nueva para <strong>{{ u.nombreCompleto }}</strong> ({{ u.usuario }}).</p>
+        <p class="aviso-clave">
+          Las contraseñas se guardan cifradas, por eso nadie puede consultar la anterior; lo que se hace es reemplazarla.
+        </p>
+
+        <label>Contraseña nueva</label>
+        <div class="reset-row">
+          <input type="text" [ngModel]="passwordNueva()" (ngModelChange)="passwordNueva.set($event)"
+                 name="passwordNueva" placeholder="Mínimo 8 caracteres, con letras y números" autocomplete="off" />
+          <button type="button" class="btn btn--ghost btn--sm" (click)="generarClaveTemporal()">Generar</button>
+        </div>
+
+        @if (errorReset()) {
+          <div class="modal__error">{{ errorReset() }}</div>
+        }
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" (click)="cerrarReset()">Cancelar</button>
+          <button class="btn btn--primario" [disabled]="guardando()" (click)="restablecerPassword()">
+            {{ guardando() ? 'Guardando…' : 'Restablecer' }}
+          </button>
+        </div>
+      </div>
+    }
   </div>
 }
 

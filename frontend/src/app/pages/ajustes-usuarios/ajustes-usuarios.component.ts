@@ -48,6 +48,14 @@ export class AjustesUsuariosComponent implements OnInit {
   errorForm = signal<string | null>(null);
   guardando = signal(false);
 
+  // --- Restablecer contraseña ---
+  // Las claves se guardan hasheadas (BCrypt): no se pueden consultar, solo reemplazar.
+  readonly reseteando = signal<UsuarioAdmin | null>(null);
+  readonly passwordNueva = signal('');
+  readonly passwordAplicada = signal<string | null>(null);  // se muestra una sola vez
+  readonly errorReset = signal<string | null>(null);
+  readonly copiada = signal(false);
+
   get miPropioUsuarioId(): number | undefined { return this.auth.usuario()?.id; }
 
   ngOnInit() {
@@ -146,6 +154,71 @@ export class AjustesUsuariosComponent implements OnInit {
       },
       error: () => this.toast.error('No se pudo cambiar el estado.')
     });
+  }
+
+  // --- Restablecer contraseña ---
+  abrirReset(u: UsuarioAdmin) {
+    this.reseteando.set(u);
+    this.passwordNueva.set('');
+    this.passwordAplicada.set(null);
+    this.errorReset.set(null);
+    this.copiada.set(false);
+  }
+
+  cerrarReset() { this.reseteando.set(null); }
+
+  /** Clave temporal legible (fácil de dictar) y con la fuerza que exige el backend:
+   *  8+ caracteres, con letras y números. Usa crypto para no ser predecible. */
+  generarClaveTemporal() {
+    const consonantes = 'bcdfgjklmnprstv';
+    const vocales = 'aeiou';
+    const azar = (max: number) => {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      return buf[0] % max;
+    };
+    let palabra = '';
+    for (let i = 0; i < 3; i++) palabra += consonantes[azar(consonantes.length)] + vocales[azar(vocales.length)];
+    const numero = String(100 + azar(900));
+    this.passwordNueva.set(palabra.charAt(0).toUpperCase() + palabra.slice(1) + numero);
+    this.errorReset.set(null);
+  }
+
+  restablecerPassword() {
+    const u = this.reseteando();
+    if (!u) return;
+    const nueva = this.passwordNueva().trim();
+    if (nueva.length < 8 || !/[A-Za-z]/.test(nueva) || !/\d/.test(nueva)) {
+      this.errorReset.set('La contraseña debe tener al menos 8 caracteres e incluir letras y números.');
+      return;
+    }
+    this.guardando.set(true);
+    this.errorReset.set(null);
+    this.svc.actualizar(u.id, { ...u, password: nueva }).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.passwordAplicada.set(nueva);   // se muestra una sola vez para entregarla
+        this.toast.exito(`Contraseña restablecida para ${u.usuario}`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardando.set(false);
+        const msg = err.error?.mensaje ?? 'No se pudo restablecer la contraseña.';
+        this.errorReset.set(msg);
+        this.toast.desdeHttp(err, msg);
+      }
+    });
+  }
+
+  async copiarPassword() {
+    const clave = this.passwordAplicada();
+    if (!clave) return;
+    try {
+      await navigator.clipboard.writeText(clave);
+      this.copiada.set(true);
+      setTimeout(() => this.copiada.set(false), 2000);
+    } catch {
+      this.toast.advertencia('No se pudo copiar. Selecciona la clave y cópiala manualmente.');
+    }
   }
 
   volver() { this.router.navigate(['/ajustes']); }
