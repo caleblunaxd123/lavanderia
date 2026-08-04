@@ -1,6 +1,7 @@
 <div class="page">
   <app-page-header icono="tag" color="rojo" titulo="Promociones"
     [subtitulo]="promociones().length + (promociones().length === 1 ? ' configurada' : ' configuradas')">
+    <button class="btn btn--generar" (click)="abrirGenerador()">✨ Generar código</button>
     <button class="btn btn--primario" (click)="abrirCrear()">+ Nueva promoción</button>
   </app-page-header>
 
@@ -40,12 +41,12 @@
                   {{ p.activa ? 'ACTIVA' : 'INACTIVA' }}
                 </span>
               </td>
-              <td class="acciones-row">
-                <button class="btn-icon" (click)="abrirEditar(p)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
-                <button class="btn-icon" (click)="toggleActiva(p)" [title]="p.activa ? 'Desactivar' : 'Activar'">
-                  @if (p.activa) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+              <td class="acciones-row acciones-texto">
+                <button class="btn btn--sm btn--editar" (click)="abrirEditar(p)" title="Editar"><app-icon name="edit" [size]="14"></app-icon> Editar</button>
+                <button class="btn btn--sm btn--desactivar" (click)="toggleActiva(p)" [title]="p.activa ? 'Desactivar' : 'Activar'">
+                  @if (p.activa) { <app-icon name="disable" [size]="14"></app-icon> Desactivar } @else { <app-icon name="refresh" [size]="14"></app-icon> Reactivar }
                 </button>
-                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(p)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+                <button class="btn btn--sm btn--eliminar" (click)="pedirEliminar(p)" title="Eliminar"><app-icon name="trash" [size]="14"></app-icon> Eliminar</button>
               </td>
             </tr>
           }
@@ -194,6 +195,117 @@
         </button>
       </div>
     </div>
+  </div>
+}
+
+<!-- Modal Generador automático de códigos -->
+@if (generadorAbierto()) {
+  <div class="modal-backdrop" (click)="cerrarGenerador()"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h3>✨ Generar código de descuento</h3>
+      <button class="modal__close" (click)="cerrarGenerador()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+
+    @if (codigoGenerado(); as res) {
+      <!-- Resultado -->
+      <div class="modal__body">
+        <div class="codigo-box">
+          <span class="codigo-box__label">Código generado</span>
+          <strong class="codigo-box__valor">{{ res.promocion.codigo }}</strong>
+          <button class="btn btn--ghost btn--sm" (click)="copiarCodigo()">Copiar</button>
+        </div>
+        <p class="codigo-box__desc">{{ res.promocion.descripcion }} · {{ descuentoTexto(res.promocion) }} · vence {{ vigenciaTexto(res.promocion) }}</p>
+
+        <label>Mensaje para el cliente</label>
+        <textarea class="msg-wsp" rows="6" readonly>{{ res.mensajeWhatsapp }}</textarea>
+        @if (!res.celular) {
+          <p class="hint">Este cliente no tiene celular guardado: se abrirá WhatsApp para que elijas el contacto.</p>
+        }
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="volverAGenerar()">Generar otro</button>
+        <button type="button" class="btn btn--wsp" (click)="enviarWhatsappCodigo()">
+          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar por WhatsApp
+        </button>
+      </div>
+    } @else {
+      <!-- Formulario -->
+      <div class="modal__body">
+        <label>¿Para qué es el código?</label>
+        <div class="origen-grid">
+          @for (o of origenes; track o.valor) {
+            <button type="button" class="origen-card" [class.origen-card--activo]="genOrigen() === o.valor" (click)="setGenOrigen(o.valor)">
+              <span class="origen-card__ico">{{ o.icono }}</span>
+              <span class="origen-card__txt">{{ o.etiqueta }}</span>
+            </button>
+          }
+        </div>
+        <p class="hint">{{ origenActual().ayuda }}</p>
+
+        <!-- Cliente (buscador) -->
+        <label>
+          Cliente
+          @if (origenActual().requiereCliente) { <span class="req">*</span> }
+          @else { <small class="hint">(opcional)</small> }
+        </label>
+        @if (genCliente(); as c) {
+          <div class="cliente-sel">
+            <span><strong>{{ c.nombre }}</strong>@if (c.celular) { · {{ c.celular }} } @if (origenActual().pidePuntos) { · {{ c.puntos }} pts }</span>
+            <button type="button" class="btn btn--ghost btn--sm" (click)="quitarClienteGen()">Cambiar</button>
+          </div>
+        } @else {
+          <input type="text" [(ngModel)]="genBusqueda" (input)="buscarClienteGen(genBusqueda)"
+                 name="genBusqueda" placeholder="Buscar por nombre, celular o DNI…" autocomplete="off" />
+          @if (genResultados().length > 0) {
+            <div class="cliente-lista">
+              @for (c of genResultados(); track c.id) {
+                <button type="button" class="cliente-item" (click)="elegirClienteGen(c)">
+                  <strong>{{ c.nombre }}</strong>
+                  <span>{{ c.celular || 'sin celular' }} @if (origenActual().pidePuntos) { · {{ c.puntos }} pts }</span>
+                </button>
+              }
+            </div>
+          }
+        }
+
+        <!-- Puntos (solo origen PUNTOS) o Descuento % -->
+        @if (origenActual().pidePuntos) {
+          <div class="row-2">
+            <div>
+              <label>Puntos a convertir <span class="req">*</span></label>
+              <input type="number" min="1" [(ngModel)]="genPuntos" name="genPuntos" />
+            </div>
+            <div>
+              <label>Vigencia (días)</label>
+              <input type="number" min="1" max="365" [(ngModel)]="genDias" name="genDias" />
+            </div>
+          </div>
+          <p class="hint">Los puntos se descuentan del saldo del cliente y se convierten en soles según tu configuración de canje.</p>
+        } @else {
+          <div class="row-2">
+            <div>
+              <label>Descuento (%) <span class="req">*</span></label>
+              <input type="number" min="1" max="100" [(ngModel)]="genPct" name="genPct" />
+            </div>
+            <div>
+              <label>Vigencia (días)</label>
+              <input type="number" min="1" max="365" [(ngModel)]="genDias" name="genDias" />
+            </div>
+          </div>
+        }
+
+        @if (genError()) {
+          <div class="modal__error">{{ genError() }}</div>
+        }
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarGenerador()">Cancelar</button>
+        <button type="button" class="btn btn--primario" [disabled]="generando()" (click)="generarCodigo()">
+          {{ generando() ? 'Generando…' : 'Generar código' }}
+        </button>
+      </div>
+    }
   </div>
 }
 

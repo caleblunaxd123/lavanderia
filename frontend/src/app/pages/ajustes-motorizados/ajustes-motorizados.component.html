@@ -29,10 +29,10 @@
                   {{ m.activo ? 'Activo' : 'Inactivo' }}
                 </span>
               </td>
-              <td class="acciones-row">
-                <button class="btn-icon" (click)="abrirEditar(m)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
-                <button class="btn-icon" (click)="toggleActivo(m)" [title]="m.activo ? 'Desactivar' : 'Reactivar'">
-                  @if (m.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+              <td class="acciones-row acciones-texto">
+                <button class="btn btn--sm btn--editar" (click)="abrirEditar(m)" title="Editar"><app-icon name="edit" [size]="14"></app-icon> Editar</button>
+                <button class="btn btn--sm btn--desactivar" (click)="toggleActivo(m)" [title]="m.activo ? 'Desactivar' : 'Reactivar'">
+                  @if (m.activo) { <app-icon name="disable" [size]="14"></app-icon> Desactivar } @else { <app-icon name="refresh" [size]="14"></app-icon> Reactivar }
                 </button>
               </td>
             </tr>
@@ -55,9 +55,9 @@
             <div><span>Celular:</span> {{ m.celular || '—' }}</div>
           </div>
           <div class="area-card__acciones">
-            <button class="btn-icon" (click)="abrirEditar(m)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
-            <button class="btn-icon" (click)="toggleActivo(m)" [title]="m.activo ? 'Desactivar' : 'Reactivar'">
-              @if (m.activo) { <app-icon name="disable" [size]="15"></app-icon> } @else { <app-icon name="refresh" [size]="15"></app-icon> }
+            <button class="btn btn--sm btn--editar" (click)="abrirEditar(m)" title="Editar"><app-icon name="edit" [size]="14"></app-icon> Editar</button>
+            <button class="btn btn--sm btn--desactivar" (click)="toggleActivo(m)" [title]="m.activo ? 'Desactivar' : 'Reactivar'">
+              @if (m.activo) { <app-icon name="disable" [size]="14"></app-icon> Desactivar } @else { <app-icon name="refresh" [size]="14"></app-icon> Reactivar }
             </button>
           </div>
         </div>

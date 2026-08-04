@@ -64,10 +64,10 @@
               <td>{{ c.dni || '—' }}</td>
               <td>{{ c.documentoFiscal || '—' }}</td>
               <td><span class="badge-puntos">{{ c.puntos }} pts</span></td>
-              <td class="acciones-row">
-                <button class="btn-icon" (click)="abrirDetalle(c)" title="Ver detalle"><app-icon name="search" [size]="15"></app-icon></button>
-                <button class="btn-icon btn-icon--edit" (click)="editar(c)" title="Editar"><app-icon name="edit" [size]="15"></app-icon></button>
-                <button class="btn-icon btn-icon--del" (click)="pedirEliminar(c)" title="Eliminar"><app-icon name="trash" [size]="15"></app-icon></button>
+              <td class="acciones-row acciones-texto">
+                <button class="btn btn--sm btn--ver" (click)="abrirDetalle(c)" title="Ver detalle"><app-icon name="search" [size]="14"></app-icon> Ver</button>
+                <button class="btn btn--sm btn--editar" (click)="editar(c)" title="Editar"><app-icon name="edit" [size]="14"></app-icon> Editar</button>
+                <button class="btn btn--sm btn--eliminar" (click)="pedirEliminar(c)" title="Eliminar"><app-icon name="trash" [size]="14"></app-icon> Eliminar</button>
               </td>
             </tr>
           }
@@ -266,7 +266,12 @@
       @if (subTabDetalle() === 'puntos') {
         <div class="detalle-puntos__head">
           <span>Lista de puntos</span>
-          <button type="button" class="btn btn--secundario btn--sm" (click)="abrirModalPunto()">+ Agregar registro</button>
+          <div class="detalle-puntos__acciones">
+            @if ((c.puntos ?? 0) > 0) {
+              <button type="button" class="btn btn--canje btn--sm" (click)="abrirModalCanje()">⭐ Canjear por código</button>
+            }
+            <button type="button" class="btn btn--secundario btn--sm" (click)="abrirModalPunto()">+ Agregar registro</button>
+          </div>
         </div>
 
         @if (cargandoPuntos()) {
@@ -359,6 +364,50 @@
         </button>
       </div>
     </form>
+  </div>
+}
+
+<!-- Modal: canjear puntos por un código de descuento -->
+@if (modalCanjeAbierto()) {
+  <div class="modal-backdrop" (click)="cerrarModalCanje()"></div>
+  <div class="modal modal--sm">
+    <div class="modal__header">
+      <h3>⭐ Canjear puntos por código</h3>
+      <button class="modal__close" (click)="cerrarModalCanje()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+
+    @if (codigoCanje(); as res) {
+      <div class="modal__body">
+        <div class="canje-codigo">
+          <span class="canje-codigo__label">Código generado</span>
+          <strong class="canje-codigo__valor">{{ res.promocion.codigo }}</strong>
+          <button class="btn btn--ghost btn--sm" (click)="copiarCodigoCanje()">Copiar</button>
+        </div>
+        <p class="hint">{{ res.promocion.descripcion }} · vence {{ res.promocion.fechaFin | date:'dd/MM/yy' }}</p>
+        <label>Mensaje para el cliente</label>
+        <textarea rows="5" readonly class="canje-msg">{{ res.mensajeWhatsapp }}</textarea>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalCanje()">Cerrar</button>
+        <button type="button" class="btn btn--wsp" (click)="enviarWhatsappCanje()">
+          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar por WhatsApp
+        </button>
+      </div>
+    } @else {
+      <div class="modal__body">
+        <p class="hint">Convierte los puntos del cliente en un código de descuento de un solo uso. Los puntos se descuentan de su saldo.</p>
+        <label>Puntos a convertir *</label>
+        <input type="number" min="1" [(ngModel)]="canjePuntos" name="canjePuntos" />
+        <label>Vigencia (días)</label>
+        <input type="number" min="1" max="365" [(ngModel)]="canjeDias" name="canjeDias" />
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalCanje()">Cancelar</button>
+        <button type="button" class="btn btn--primario" [disabled]="generandoCanje()" (click)="generarCodigoCanje()">
+          {{ generandoCanje() ? 'Generando…' : 'Generar código' }}
+        </button>
+      </div>
+    }
   </div>
 }
 

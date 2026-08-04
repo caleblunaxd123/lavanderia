@@ -228,12 +228,19 @@
 
   &__acciones {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     padding-top: 8px;
     border-top: 1px dashed var(--gris-borde);
 
-    .btn { flex: 1; }
-    .btn--danger { flex: 0 0 40px; }
+    // Los tres botones llevan etiqueta: se reparten el ancho y bajan de línea
+    // si hace falta, en vez de recortar el texto.
+    .btn {
+      flex: 1 1 auto;
+      min-width: 96px;
+      justify-content: center;
+      white-space: nowrap;
+    }
   }
 }
 
