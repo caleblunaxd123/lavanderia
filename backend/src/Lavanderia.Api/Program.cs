@@ -108,6 +108,8 @@ builder.Services.AddTransient<IRolPersonalRepository, RolPersonalRepository>();
 builder.Services.AddTransient<IInsumoRepository, InsumoRepository>();
 builder.Services.AddTransient<INegocioRepository, NegocioRepository>();
 builder.Services.AddTransient<ISedeRepository, SedeRepository>();
+builder.Services.AddTransient<IPagoSuscripcionRepository, PagoSuscripcionRepository>();
+builder.Services.AddTransient<IConfiguracionPlataformaRepository, ConfiguracionPlataformaRepository>();
 builder.Services.AddTransient<IFacturacionRepository, FacturacionRepository>();
 builder.Services.AddTransient<IPagosRepository, PagosRepository>();
 builder.Services.AddTransient<IRefreshTokenRepository, RefreshTokenRepository>();
@@ -384,8 +386,17 @@ app.MapGet("/health/ready", Readiness).AllowAnonymous();
 app.MapGet("/health", Readiness).AllowAnonymous();
 app.MapControllers();
 
-// Cualquier ruta que no sea de la API ni un archivo estático la resuelve Angular
-// (rutas del cliente: /{slug}/inicio, /seguimiento/:token, /repartidor/:token, etc.).
+// Un endpoint de API que no existe debe responder 404 JSON, no el index.html: si cae al
+// fallback de Angular, el cliente recibe 200 + HTML donde espera datos y el error aparece
+// como un fallo de parseo incomprensible (además enmascara despliegues incompletos).
+app.MapFallback("/api/{**resto}", (HttpContext ctx) =>
+{
+    ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+    return Results.Json(new { mensaje = "El recurso solicitado no existe." }, statusCode: StatusCodes.Status404NotFound);
+});
+
+// El resto (rutas del cliente: /{slug}/inicio, /seguimiento/:token, /repartidor/:token…)
+// lo resuelve Angular.
 app.MapFallbackToFile("index.html");
 
 // Seed inicial (usuario admin) — no bloquea el arranque si SQL no está disponible aún.

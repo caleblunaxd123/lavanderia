@@ -19,6 +19,7 @@ usando `-p:BaseOutputPath` a un directorio temporal). Tras las correcciones: **6
 | H-001 | Medio (UX/soporte) | Usuarios | ✅ corregido y verificado en vivo |
 | H-002 | **Alto (seguridad)** | Pedidos · fotos | ✅ corregido, con tests y verificado en vivo |
 | H-003 | Bajo (defensa en profundidad) | Facturación electrónica | ✅ corregido |
+| H-004 | Medio | API (routing) | ✅ corregido y verificado |
 
 #### H-001 · Medio · No había forma descubrible de recuperar la clave de un trabajador
 - **Reproducción:** el admin crea un usuario, el trabajador olvida su contraseña. La única vía era
@@ -55,6 +56,37 @@ usando `-p:BaseOutputPath` a un directorio temporal). Tras las correcciones: **6
   poder cruzar de sede en ningún escenario.
 - **Corrección:** el método recibe `sedeId` y filtra `WHERE Id = @Id AND SedeId = @SedeId`;
   los 3 llamadores pasan `SedeRequeridaId`. (Era el pendiente #3 de la ronda 1.)
+
+#### H-004 · Medio · Un endpoint de API inexistente devolvía 200 + HTML
+- **Reproducción:** `GET /api/loquesea` → **200** con `text/html` (el `index.html` de Angular),
+  en lugar de 404.
+- **Causa raíz:** `app.MapFallbackToFile("index.html")` capturaba también las rutas `/api/*` que no
+  matcheaban ningún controller (el comentario del código afirmaba lo contrario).
+- **Impacto:** el cliente recibe 200 y HTML donde espera JSON; el fallo aparece como un error de
+  parseo incomprensible en vez de un 404 manejable, y **enmascara despliegues incompletos**
+  (ocurrió realmente durante esta sesión al diagnosticar un endpoint nuevo contra un backend viejo).
+- **Corrección:** `app.MapFallback("/api/{**resto}", …)` responde **404 JSON** antes del fallback
+  de Angular.
+- **Archivos:** `Program.cs`
+- **Verificación:** `/api/ruta-inexistente` → **404 application/json**; `/api/pedidos` sin token →
+  **401** (sin regresión); `/` y `/lavixa/inicio` → 200 `text/html` (SPA intacto).
+
+### Flujo de negocio probado end-to-end (pedido de auditoría #18)
+
+Registrar → 6 áreas de producción → LISTO → cobro → ENTREGADO, con casos negativos:
+
+| Caso | Esperado | Resultado |
+|---|---|---|
+| Crear pedido | 201 Created | ✅ 201, `PENDIENTE`, área Recepción |
+| Avanzar 6 áreas | 204 + estados coherentes | ✅ Recepción→Lavado→Secado→Doblado→Control→Embolsado→`LISTO` |
+| Pago mayor al saldo (S/999 sobre S/20) | rechazo | ✅ 400 "El monto excede el saldo pendiente" |
+| Pago negativo (−50) | rechazo | ✅ 400 (validación del DTO) |
+| Pago exacto (S/20) | 204 + `PAGADO` | ✅ saldo 0 |
+| Entregar | 204 + `ENTREGADO` | ✅ |
+| Avanzar un pedido ya entregado | rechazo | ✅ 400 "estado final, no puede reiniciar el flujo" |
+| Anular siendo TRABAJADOR | 403 | ✅ 403 (operación reservada a ADMIN) |
+| Anular un pedido entregado (ADMIN) | rechazo | ✅ 400 "No se puede anular un pedido ya entregado" |
+| Pedido inexistente | 404 | ✅ 404 |
 
 ### Controles verificados sin hallazgos en esta ronda
 
@@ -161,6 +193,28 @@ Escaneo estático orientado a OWASP sobre los 22 repositorios:
 
 ## 8. Siguiente punto de continuación
 
-1. Smoke test en el demo público de: inventario (campo presentación + 3 clases), registrar (botón arriba + fotos + cantidad manual), anti-duplicados en vivo.
-2. Ejecutar suite de tests cuando se libere el lock (o vía CI).
-3. (Opcional) filtro `NegocioId` defensivo en facturación.
+**Ronda 1 — cerrados en la ronda 2:** ✅ suite de tests ejecutada (67/67) · ✅ filtro defensivo en
+facturación (H-003) · ✅ smoke test de registrar/fotos en vivo.
+
+**Pendiente de la ronda 2 (siguiente sesión), en este orden:**
+
+1. **Reportes y exportaciones**: verificar los 13 reportes con datos reales (cifras vs. BD),
+   export CSV/Excel (encoding, separador, tenant), y las gráficas de barras en cada ventana.
+   Falta además la gráfica de "Vista Gerencial" (única ventana de Reportes sin barra propia).
+2. **Promociones y catálogos de Ajustes**: protocolo CRUD completo con casos borde
+   (duplicados con tildes/espacios, longitudes máximas, transiciones de estado).
+3. **Panel de Plataforma (PROPIETARIO)**: alta de empresa, suscripción, recibos. Verificar que la
+   eliminación de `layout/plataforma-header` (cambio sin commitear de otra sesión) no dejó
+   referencias rotas.
+4. **Repartidor y seguimiento público**: flujo GPS con token, expiración del token, pago en línea.
+5. **UX menor detectada**: el mensaje de validación de importes llega en inglés desde
+   DataAnnotations ("The field Monto must be between 0.01 and 100000"); conviene traducirlo.
+
+### Datos de prueba que quedaron en la demo (informado al usuario)
+
+- Pedido **#18 "QA Auditoria Flujo"** (Sede Principal, S/20, ENTREGADO y PAGADO). **No se pudo
+  eliminar**: la regla de negocio impide anular pedidos ya entregados, y no se hacen borrados
+  directos en la BD del cliente.
+- Pedidos **#1 (Ana Torres Prueba)** y **#2 (Carlos Ruiz Prueba)** en Sede Los Olivos, más un gasto
+  de S/5 "Detergente prueba QA", de la sesión de pruebas previa.
+- La contraseña del usuario `jtrabajador` fue restablecida durante la prueba de H-001.
