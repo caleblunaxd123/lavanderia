@@ -16,6 +16,64 @@
     </div>
   </div>
 
+  <!-- Cómo se verá el sistema con estos colores, antes de guardar -->
+  <div class="card simulacion">
+    <h3>Así se verá tu sistema</h3>
+    <div class="simulacion__pantallas">
+
+      <!-- Menú lateral -->
+      <div class="sim">
+        <span class="sim__rotulo">Menú lateral</span>
+        <div class="sim__marco">
+          <div class="sim__sidebar" [style.background]="form().colorPrimario">
+            <div class="sim__logo">
+              @if (form().logoUrl) {
+                <img [src]="form().logoUrl" alt="" />
+              } @else {
+                <span class="sim__logo-fallback">💧</span>
+              }
+            </div>
+            <span class="sim__item sim__item--activo" [style.background]="form().colorSecundario">Inicio</span>
+            <span class="sim__item">Pedidos</span>
+            <span class="sim__item">Registrar</span>
+            <span class="sim__item">Clientes</span>
+          </div>
+          <div class="sim__cuerpo">
+            <span class="sim__titulo" [style.color]="form().colorPrimario">Pedidos de hoy</span>
+            <span class="sim__linea"></span>
+            <span class="sim__linea sim__linea--corta"></span>
+            <span class="sim__btn" [style.background]="form().colorPrimario">+ Nuevo pedido</span>
+            <span class="sim__btn sim__btn--acento" [style.background]="form().colorAcento">Cobrar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pantalla de ingreso -->
+      <div class="sim">
+        <span class="sim__rotulo">Pantalla de ingreso</span>
+        <div class="sim__marco sim__marco--login">
+          <div class="sim__login-panel" [style.background]="form().colorPrimario">
+            @if (form().logoUrl) {
+              <img [src]="form().logoUrl" alt="" />
+            } @else {
+              <strong>{{ form().nombreNegocio || 'Tu lavandería' }}</strong>
+            }
+          </div>
+          <div class="sim__login-form">
+            <span class="sim__campo"></span>
+            <span class="sim__campo"></span>
+            <span class="sim__btn" [style.background]="form().colorPrimario">Ingresar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="contraste" [class.contraste--mal]="!contrasteOk()">
+      <app-icon [name]="contrasteOk() ? 'check' : 'warning'" [size]="15"></app-icon>
+      {{ contrasteTexto() }}
+    </p>
+  </div>
+
   <div class="secciones">
     <div class="card seccion">
       <h3>Identidad</h3>

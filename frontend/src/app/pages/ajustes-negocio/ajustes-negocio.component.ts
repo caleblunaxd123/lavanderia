@@ -82,6 +82,34 @@ export class AjustesNegocioComponent implements OnInit {
     'background': `linear-gradient(90deg, ${this.form().colorPrimario} 0%, ${this.form().colorSecundario} 100%)`,
   }));
 
+  // --- Contraste ---
+  // El menú lateral y los botones pintan texto blanco sobre el color primario. Si el color
+  // elegido es muy claro, ese texto deja de leerse: se avisa antes de guardar.
+  // Fórmula de contraste de WCAG 2.1; 4.5:1 es el mínimo para texto normal.
+  private static luminancia(hex: string): number {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return 0;
+    const canal = (v: number) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    };
+    const n = parseInt(m[1], 16);
+    return 0.2126 * canal((n >> 16) & 255) + 0.7152 * canal((n >> 8) & 255) + 0.0722 * canal(n & 255);
+  }
+
+  /** Contraste del color primario contra el texto blanco del menú. */
+  readonly contraste = computed(() => {
+    const l = AjustesNegocioComponent.luminancia(this.form().colorPrimario);
+    return (1.05) / (l + 0.05);   // (1.0 + 0.05) / (L + 0.05), el blanco es el más claro
+  });
+
+  readonly contrasteOk = computed(() => this.contraste() >= 4.5);
+  readonly contrasteTexto = computed(() =>
+    this.contrasteOk()
+      ? `El texto blanco se lee bien sobre este color (contraste ${this.contraste().toFixed(1)}:1).`
+      : `Este color es demasiado claro: el texto blanco del menú casi no se leerá ` +
+        `(contraste ${this.contraste().toFixed(1)}:1, se recomienda 4.5:1 o más). Elige un tono más oscuro.`);
+
   ngOnInit() {
     // Aseguramos que traigamos la ultima config del backend
     this.svc.cargar().subscribe({
