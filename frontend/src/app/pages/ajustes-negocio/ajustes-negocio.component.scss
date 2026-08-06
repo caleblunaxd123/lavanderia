@@ -242,3 +242,59 @@
     .btn { width: 100%; }
   }
 }
+
+// ---------- Logo: subida desde el equipo ----------
+.logo-zona {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 2px dashed var(--gris-borde, #e2e8f0);
+  border-radius: 10px;
+  background: #f8fafc;
+  transition: border-color .15s, background .15s;
+
+  &--arrastrando {
+    border-color: var(--azul-oscuro, #0b57d0);
+    background: #eff6ff;
+  }
+
+  &__preview {
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid var(--gris-borde, #e2e8f0);
+    flex-shrink: 0;
+  }
+
+  &__vacio {
+    width: 84px;
+    height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid var(--gris-borde, #e2e8f0);
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+
+  &__acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    .hint { flex-basis: 100%; margin: 0; }
+  }
+}
+
+.hint--error { color: #b91c1c; font-weight: 600; }
+
+@media (max-width: 560px) {
+  .logo-zona { flex-direction: column; align-items: flex-start; }
+}

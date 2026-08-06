@@ -8,9 +8,9 @@ const FALLBACK: ConfiguracionNegocio = {
   id: 0,
   nombreNegocio: 'Mi Lavandería',
   logoUrl: null,
-  colorPrimario: '#0b57d0',
-  colorSecundario: '#29b6f6',
-  colorAcento: '#f5a623',
+  colorPrimario: '#053465',   // LaviSystem navy (default de producto)
+  colorSecundario: '#06B0BD',  // LaviSystem cian
+  colorAcento: '#046086',      // LaviSystem azul medio
   igv: 18,
   metaMensual: 0,
   solesPorPunto: 1,
@@ -55,6 +55,13 @@ export class ConfiguracionService {
     this.configuracion.set(FALLBACK);
     this.aplicarTema(FALLBACK);
     return throwError(() => err);
+  }
+
+  /** Sube el logo desde el equipo del usuario y devuelve la ruta con la que quedó guardado. */
+  subirLogo(archivo: File) {
+    const fd = new FormData();
+    fd.append('archivo', archivo);
+    return this.http.post<{ logoUrl: string }>(`${environment.apiUrl}/configuracion/logo`, fd);
   }
 
   actualizar(c: ConfiguracionNegocio) {

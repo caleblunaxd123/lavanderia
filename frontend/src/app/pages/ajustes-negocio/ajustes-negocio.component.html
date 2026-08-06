@@ -25,11 +25,34 @@
              (ngModelChange)="actualizarCampo('nombreNegocio', $event)"
              placeholder="Mi Lavandería" />
 
-      <label>URL del logo</label>
-      <input type="url" [ngModel]="form().logoUrl"
-             (ngModelChange)="actualizarCampo('logoUrl', $event)"
-             placeholder="https://…/logo.png" />
-      <p class="hint">Sube tu logo a Imgur, Cloudinary o similar y pega el link.</p>
+      <label>Logo del negocio</label>
+      <div class="logo-zona" [class.logo-zona--arrastrando]="arrastrando()"
+           (dragover)="onDragOver($event)" (dragleave)="arrastrando.set(false)" (drop)="onDrop($event)">
+        @if (form().logoUrl) {
+          <img class="logo-zona__preview" [src]="form().logoUrl" [alt]="form().nombreNegocio" />
+        } @else {
+          <div class="logo-zona__vacio"><app-icon name="camera" [size]="26"></app-icon></div>
+        }
+
+        <div class="logo-zona__acciones">
+          <button type="button" class="btn btn--secundario btn--sm" [disabled]="subiendoLogo()" (click)="archivoLogo.click()">
+            <app-icon name="clipboard" [size]="14"></app-icon>
+            {{ subiendoLogo() ? 'Subiendo…' : (form().logoUrl ? 'Cambiar logo' : 'Elegir imagen') }}
+          </button>
+          @if (form().logoUrl) {
+            <button type="button" class="btn btn--sm btn--eliminar" [disabled]="subiendoLogo()" (click)="quitarLogo()">
+              <app-icon name="trash" [size]="14"></app-icon> Quitar
+            </button>
+          }
+          <p class="hint">Elige una imagen de tu computadora o arrástrala aquí. JPG, PNG o WEBP, hasta 2 MB.</p>
+        </div>
+
+        <input #archivoLogo type="file" accept="image/png,image/jpeg,image/webp" hidden
+               (change)="onArchivoLogo($event)" />
+      </div>
+      @if (errorLogo()) {
+        <p class="hint hint--error">{{ errorLogo() }}</p>
+      }
 
       <div class="colores">
         <div class="color-picker">

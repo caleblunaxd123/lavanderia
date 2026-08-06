@@ -10,15 +10,72 @@ namespace Lavanderia.Api.Controllers;
 [Microsoft.AspNetCore.Authorization.Authorize(Policy = "Modulo:AJUSTES")]
 public class ConfiguracionController : TenantAwareControllerBase
 {
+    private const int LogoMaxBytes = 2 * 1024 * 1024;   // 2 MB: un logo no necesita más
+
     private readonly IConfiguracionNegocioRepository _repo;
     private readonly INegocioRepository _negocios;
     private readonly IServicioRepository _servicios;
+    private readonly Services.IAlmacenamientoFotos _almacen;
 
-    public ConfiguracionController(IConfiguracionNegocioRepository repo, INegocioRepository negocios, IServicioRepository servicios)
+    public ConfiguracionController(IConfiguracionNegocioRepository repo, INegocioRepository negocios,
+        IServicioRepository servicios, Services.IAlmacenamientoFotos almacen)
     {
         _repo = repo;
         _negocios = negocios;
         _servicios = servicios;
+        _almacen = almacen;
+    }
+
+    /// <summary>
+    /// Sube el logo del negocio desde el equipo del usuario. Devuelve la URL con la que
+    /// queda guardado (se envía luego en LogoUrl al guardar la configuración).
+    /// </summary>
+    [HttpPost("logo")]
+    [Authorize(Roles = "ADMIN")]
+    [RequestSizeLimit(LogoMaxBytes + 512 * 1024)]
+    public async Task<IActionResult> SubirLogo(IFormFile? archivo, CancellationToken ct)
+    {
+        if (archivo is null || archivo.Length == 0)
+            return BadRequest(new { mensaje = "No se recibió ninguna imagen." });
+        if (archivo.Length > LogoMaxBytes)
+            return BadRequest(new { mensaje = "La imagen es demasiado grande (máx. 2 MB)." });
+
+        using var ms = new MemoryStream();
+        await archivo.CopyToAsync(ms, ct);
+        var datos = ms.ToArray();
+
+        // El tipo se decide por los bytes reales, no por el Content-Type que declara el cliente.
+        var tipo = Services.ImagenValidador.Detectar(datos);
+        if (tipo is null)
+            return BadRequest(new { mensaje = "El archivo no es una imagen válida (JPG, PNG o WEBP)." });
+
+        var nombre = await _almacen.GuardarLogoAsync(NegocioId, datos, tipo.Value.Extension, ct);
+        return Ok(new { logoUrl = $"/api/configuracion/logo/{nombre}" });
+    }
+
+    /// <summary>
+    /// Sirve el logo. Público: el login lo muestra antes de que el usuario se autentique.
+    /// El nombre de archivo lleva el negocio, así que no se puede pedir el de otro tenant.
+    /// </summary>
+    [HttpGet("logo/{nombre}")]
+    [AllowAnonymous]
+    public IActionResult Logo(string nombre)
+    {
+        var guion = nombre.IndexOf('-', "negocio-".Length);
+        if (!nombre.StartsWith("negocio-", StringComparison.Ordinal) || guion < 0
+            || !int.TryParse(nombre["negocio-".Length..guion], out var negocioId))
+            return NotFound();
+
+        var stream = _almacen.AbrirLogo(negocioId, nombre);
+        if (stream is null) return NotFound();
+
+        var contentType = Path.GetExtension(nombre).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "image/jpeg"
+        };
+        return File(stream, contentType);
     }
 
     /// <summary>

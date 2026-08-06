@@ -61,7 +61,9 @@ public class ConfiguracionNegocioDto
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)]
     public string NombreNegocio { get; set; } = "";
-    [Url] public string? LogoUrl { get; set; }
+    // Acepta una URL absoluta (logo alojado fuera) o la ruta relativa que devuelve
+    // POST /api/configuracion/logo cuando el usuario lo sube desde su equipo.
+    [StringLength(500)] public string? LogoUrl { get; set; }
     public string ColorPrimario { get; set; } = "#0b57d0";
     public string ColorSecundario { get; set; } = "#29b6f6";
     public string ColorAcento { get; set; } = "#f5a623";
@@ -164,6 +166,8 @@ public class CrearPedidoRequest
     [Required, MinLength(1)] public List<PedidoItemDto> Items { get; set; } = new();
     [Range(0, 100)] public decimal DescuentoPct { get; set; }
     [Range(0, 100000)] public int? PuntosACanjear { get; set; }
+    /// <summary>Código de promoción aplicado (para marcar su consumo si es de un solo uso).</summary>
+    [StringLength(30)] public string? CodigoPromocion { get; set; }
     public bool EsUrgente { get; set; }
     [Range(0, 100)] public decimal RecargoUrgentePct { get; set; } = 20m;
     // Tarifa de domicilio acordada para este pedido. Si no llega, se usa la tarifa
@@ -259,6 +263,36 @@ public class DashboardDto
     public int TotalPedidosAbandonados { get; set; }
     public List<PedidoAbandonadoDto> PedidosAbandonados { get; set; } = new();
     public DateTime ActualizadoEn { get; set; }
+
+    // --- Bloques estilo panel (dashboard visual): comparativos, actividad y distribución ---
+    public int OrdenesHoy { get; set; }
+    public int OrdenesAyer { get; set; }
+    public decimal VentasAyer { get; set; }
+    public int TotalClientes { get; set; }
+    public int ClientesNuevosMes { get; set; }
+    public int ClientesNuevosMesAnterior { get; set; }
+    /// <summary>Ventas por día de la semana actual (lunes→domingo), rellenas con 0.</summary>
+    public List<PuntoTendenciaDto> VentasSemana { get; set; } = new();
+    /// <summary>Últimas órdenes ingresadas (para la tabla de actividad reciente).</summary>
+    public List<OrdenRecienteDto> OrdenesRecientes { get; set; } = new();
+    /// <summary>Servicios más solicitados del mes (para la dona de distribución).</summary>
+    public List<TopServicioGerencialDto> ServiciosMasSolicitados { get; set; } = new();
+}
+
+public record OrdenRecienteDto(int Numero, string ClienteNombre, string ServicioPrincipal, string EstadoProceso, decimal Total);
+
+/// <summary>Piezas extra del dashboard que no salían de la vista gerencial (comparativos día/mes,
+/// clientes, serie semanal y actividad reciente). Se calculan en una sola pasada al repositorio.</summary>
+public class DashboardExtrasDto
+{
+    public int OrdenesHoy { get; set; }
+    public int OrdenesAyer { get; set; }
+    public decimal VentasAyer { get; set; }
+    public int TotalClientes { get; set; }
+    public int ClientesNuevosMes { get; set; }
+    public int ClientesNuevosMesAnterior { get; set; }
+    public List<PuntoTendenciaDto> VentasSemana { get; set; } = new();
+    public List<OrdenRecienteDto> OrdenesRecientes { get; set; } = new();
 }
 
 public class PedidoContadoresDto
@@ -303,6 +337,7 @@ public class ServicioEditableDto
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
     [Range(0.01, 10000)] public decimal Precio { get; set; }
+    [Range(0, 10000)] public decimal Costo { get; set; }
     [Required, StringLength(30)] public string Unidad { get; set; } = "";
     public int? CategoriaId { get; set; }
     public string? CategoriaNombre { get; set; }
@@ -536,7 +571,31 @@ public class VistaGerencialDto
     public int ComprobantesRechazados { get; set; }
     public int InsumosBajoStock { get; set; }
     public decimal CajaEsperadaHoy { get; set; }
+
+    // --- Bloques pensados para el gerente: tendencia, comparativos y composición ---
+    /// <summary>Ventas por día de los últimos 14 días (relleno con 0 en días sin ventas).</summary>
+    public List<PuntoTendenciaDto> VentasUltimos14Dias { get; set; } = new();
+    /// <summary>Ventas del mes anterior completo, para comparar contra VentasMes.</summary>
+    public decimal VentasMesAnterior { get; set; }
+    /// <summary>Ventas acumuladas del mes anterior hasta el MISMO día (comparación justa mes-a-mes).</summary>
+    public decimal VentasMesAnteriorAlDia { get; set; }
+    /// <summary>Cantidad de pedidos ingresados en el mes (para el ticket promedio).</summary>
+    public int PedidosMesCount { get; set; }
+    /// <summary>Ticket promedio del mes = VentasMes / PedidosMesCount.</summary>
+    public decimal TicketPromedioMes { get; set; }
+    // Composición de ingresos cobrados en el mes por medio de pago
+    public decimal IngresosEfectivoMes { get; set; }
+    public decimal IngresosDigitalMes { get; set; }
+    public decimal IngresosTarjetaMes { get; set; }
+    // Embudo de pedidos por estado (activos ahora)
+    public int PedidosPendientes { get; set; }
+    public int PedidosEnProceso { get; set; }
+    /// <summary>Top servicios por facturación del mes (máx. 5).</summary>
+    public List<TopServicioGerencialDto> TopServiciosMes { get; set; } = new();
 }
+
+public record PuntoTendenciaDto(string Fecha, decimal Total);
+public record TopServicioGerencialDto(string Nombre, decimal Cantidad, decimal Total);
 
 public record ConsolidadoSedeDto(int SedeId, string SedeNombre, decimal VentasHoy, decimal VentasMes,
     decimal SaldoPorCobrar, int PedidosActivos, int PedidosListos);
@@ -568,6 +627,35 @@ public class PromocionDto
     public DateOnly? FechaFin { get; set; }
     public bool Activa { get; set; } = true;
     [StringLength(30)] public string? Codigo { get; set; }
+    // Códigos generados (solo lectura desde el listado)
+    public int? ClienteId { get; set; }
+    public string? ClienteNombre { get; set; }
+    public string? Origen { get; set; }
+    public int? MaxUsos { get; set; }
+    public int Usos { get; set; }
+}
+
+/// <summary>Petición del generador automático de códigos de descuento.</summary>
+public class GenerarCodigoRequest
+{
+    /// <summary>NUEVO | CUMPLE | REFERIDO | PUNTOS</summary>
+    [Required] public string Origen { get; set; } = "";
+    /// <summary>Cliente al que pertenece el código. Obligatorio para CUMPLE y PUNTOS.</summary>
+    public int? ClienteId { get; set; }
+    /// <summary>Descuento en % (para NUEVO/CUMPLE/REFERIDO). Se ignora en PUNTOS (se calcula del saldo de puntos).</summary>
+    [Range(0, 100)] public decimal? DescuentoPct { get; set; }
+    /// <summary>Puntos a convertir en descuento (solo PUNTOS). Se descuentan del saldo del cliente.</summary>
+    [Range(1, 1000000)] public int? PuntosACanjear { get; set; }
+    /// <summary>Días de vigencia del código desde hoy. Por defecto según el origen.</summary>
+    [Range(1, 365)] public int? DiasVigencia { get; set; }
+}
+
+/// <summary>Respuesta del generador: el código creado + un mensaje listo para WhatsApp.</summary>
+public class CodigoGeneradoDto
+{
+    public PromocionDto Promocion { get; set; } = new();
+    public string MensajeWhatsapp { get; set; } = "";
+    public string? Celular { get; set; }
 }
 
 public record CambiarEstadoPromocionRequest(bool Activa);
@@ -726,6 +814,19 @@ public class ComprobanteDto
     public DateTime FechaEmision { get; set; }
 }
 
+/// <summary>KPI mensual de comprobantes: boletas y facturas emitidas por mes (conteo y monto).</summary>
+public class KpiComprobantesMesDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public int BoletasCantidad { get; set; }
+    public decimal BoletasMonto { get; set; }
+    public int FacturasCantidad { get; set; }
+    public decimal FacturasMonto { get; set; }
+    public int TotalCantidad => BoletasCantidad + FacturasCantidad;
+    public decimal TotalMonto => BoletasMonto + FacturasMonto;
+}
+
 // ---------- Panel de propietario de plataforma (alta de negocios/tenants) ----------
 
 public record NegocioResumenDto(
@@ -737,7 +838,8 @@ public record NegocioResumenDto(
 /// <summary>KPIs del negocio-de-negocios para el tablero del propietario.</summary>
 public record PlataformaResumenDto(
     int TotalEmpresas, int EmpresasActivas, int EmpresasSuspendidas, int EmpresasNuevasMes,
-    decimal IngresoMensualRecurrente, int PedidosMesTotal, int EmpresasPorVencer, int EmpresasVencidas);
+    decimal IngresoMensualRecurrente, int PedidosMesTotal, int EmpresasPorVencer, int EmpresasVencidas,
+    decimal RecaudadoMes);
 
 public record SedeResumenDto(int Id, string Nombre, string? Direccion, bool Activo);
 
@@ -806,6 +908,30 @@ public class ResetPasswordAdminRequest
 }
 
 public record CambiarEstadoNegocioRequest(bool Activo);
+
+// ---------- Cobranza del propietario (pagos de suscripción + configuración de cobro) ----------
+
+public record PagoSuscripcionDto(
+    int Id, DateOnly Fecha, decimal Monto, string Metodo,
+    DateOnly? PeriodoDesde, DateOnly? PeriodoHasta, string? Nota, DateTime FechaCreacion);
+
+public class RegistrarPagoSuscripcionRequest
+{
+    [Range(0.01, 1000000)] public decimal Monto { get; set; }
+    [Required] public string Metodo { get; set; } = "YAPE";
+    /// <summary>Meses que cubre el pago (avanza el próximo pago esa cantidad de meses).</summary>
+    [Range(1, 24)] public int Meses { get; set; } = 1;
+    [StringLength(300)] public string? Nota { get; set; }
+}
+
+public class ConfiguracionPlataformaDto
+{
+    [Required, StringLength(100, MinimumLength = 2)] public string NombrePlataforma { get; set; } = "LaviSystem";
+    [StringLength(100)] public string? YapeNombre { get; set; }
+    [StringLength(20)] public string? YapeNumero { get; set; }
+    [StringLength(100)] public string? ContactoSoporte { get; set; }
+    [Range(0, 60)] public int DiasAvisoCobro { get; set; } = 3;
+}
 
 /// <summary>Aviso de suscripción que ve la propia empresa en su dashboard.</summary>
 public record MiSuscripcionDto(bool Mostrar, string Tipo, string Mensaje,
