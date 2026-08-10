@@ -157,7 +157,20 @@
             }
           </select>
           <button class="btn btn--secundario" (click)="agregarItem()" [disabled]="!servicioSeleccionadoId">Agregar</button>
+          <button type="button" class="btn btn--ghost btn-nuevo-servicio" (click)="abrirNuevoServicio()"
+            title="Crear un producto que no está en la lista">
+            <app-icon name="plus" [size]="14"></app-icon>Nuevo
+          </button>
         </div>
+        @if (catalogo().length === 0) {
+          <div class="aviso-catalogo-vacio">
+            <app-icon name="tag" [size]="15"></app-icon>
+            <span>Aún no tienes servicios en tu catálogo. Créalos al instante con <strong>“+ Nuevo”</strong>, o
+              <button type="button" class="link-inline" (click)="irAServicios()">configúralos en Ajustes → Servicios y precios</button>.</span>
+          </div>
+        } @else {
+          <p class="hint hint--nuevo">¿Falta un producto en la lista? Créalo al instante con <strong>“Nuevo”</strong> sin salir de aquí.</p>
+        }
 
         <table class="tabla-items">
           <thead>
@@ -167,14 +180,45 @@
             @for (it of items(); track it.servicioId) {
               <tr [class.is-new]="itemAnimadoId() === it.servicioId">
                 <td>
-                  <input type="number" step="0.01" min="0.01" [ngModel]="it.cantidad"
-                    (ngModelChange)="cambiarCantidad(it.servicioId, $event)" class="input-cantidad" />
+                  @if (esItemM2(it)) {
+                    <span class="cant-m2" title="Área calculada">{{ it.cantidad.toFixed(2) }} m²</span>
+                  } @else {
+                    <input type="number" step="0.01" min="0.01" [ngModel]="it.cantidad"
+                      (ngModelChange)="cambiarCantidad(it.servicioId, $event)" class="input-cantidad" />
+                  }
                 </td>
                 <td>{{ it.nombre }} <small>({{ it.unidad }})</small></td>
                 <td>S/ {{ it.precio.toFixed(2) }}</td>
                 <td>S/ {{ (it.precio * it.cantidad).toFixed(2) }}</td>
                 <td><button class="btn-quitar" (click)="quitarItem(it.servicioId)"><app-icon name="close" [size]="11"></app-icon></button></td>
               </tr>
+
+              @if (esItemM2(it)) {
+                <tr class="fila-medidas">
+                  <td></td>
+                  <td colspan="4">
+                    <div class="medidas">
+                      <span class="medidas__lbl"><app-icon name="tag" [size]="13"></app-icon> Medidas de la alfombra</span>
+                      <label>Ancho
+                        <input type="number" step="0.01" min="0" inputmode="decimal" [ngModel]="it.ancho"
+                          (ngModelChange)="cambiarMedida(it.servicioId, 'ancho', $event)" /> m
+                      </label>
+                      <span class="medidas__x">×</span>
+                      <label>Largo
+                        <input type="number" step="0.01" min="0" inputmode="decimal" [ngModel]="it.largo"
+                          (ngModelChange)="cambiarMedida(it.servicioId, 'largo', $event)" /> m
+                      </label>
+                      <span class="medidas__x">×</span>
+                      <label>Cantidad
+                        <input type="number" step="1" min="1" inputmode="numeric" [ngModel]="it.piezas"
+                          (ngModelChange)="cambiarMedida(it.servicioId, 'piezas', $event)" /> alfombra(s)
+                      </label>
+                      <strong class="medidas__area">= {{ it.cantidad.toFixed(2) }} m² · S/ {{ (it.precio * it.cantidad).toFixed(2) }}</strong>
+                    </div>
+                  </td>
+                </tr>
+              }
+
               <tr class="fila-nota">
                 <td></td>
                 <td colspan="4">
@@ -314,10 +358,12 @@
 
           <div class="presets">
             <button type="button" class="preset" (click)="presetEntrega(2)">En 2h</button>
-            <button type="button" class="preset" (click)="presetEntrega(4)">En 4h</button>
+            <button type="button" class="preset" (click)="presetEntrega(3)">En 3h</button>
+            <button type="button" class="preset" (click)="presetEntrega(5)">En 5h</button>
+            <button type="button" class="preset" (click)="presetEntrega(8)">En 8h</button>
             <button type="button" class="preset" (click)="presetEntrega(24)">En 24h</button>
-            <button type="button" class="preset" (click)="presetMananaHora(10)">Mañana 10am</button>
-            <button type="button" class="preset" (click)="presetMananaHora(18)">Mañana 6pm</button>
+            <button type="button" class="preset" (click)="presetEntrega(36)">En 36h</button>
+            <button type="button" class="preset" (click)="presetEntrega(48)">En 48h</button>
           </div>
 
           <p class="hint"><app-icon name="calendar" [size]="13"></app-icon> <strong>{{ fechaEntregaEstimada() | date:'EEEE d MMM, h:mm a' }}</strong></p>
@@ -425,5 +471,51 @@
         </button>
       </div>
     }
+  }
+
+  <!-- Modal: crear un producto/servicio que falta en la lista, sin salir del registro -->
+  @if (modalNuevoServicio()) {
+    <div class="modal-backdrop" (click)="cerrarNuevoServicio()"></div>
+    <div class="modal modal--nuevo-servicio" role="dialog" aria-modal="true" aria-labelledby="nuevo-serv-title">
+      <div class="modal__header">
+        <h3 id="nuevo-serv-title">Nuevo producto o servicio</h3>
+        <button type="button" class="modal__close" (click)="cerrarNuevoServicio()" aria-label="Cerrar"><app-icon name="close" [size]="16"></app-icon></button>
+      </div>
+      <form (submit)="guardarNuevoServicio(); $event.preventDefault()">
+        <div class="modal__body">
+          <label for="ns-nombre">Nombre *</label>
+          <input id="ns-nombre" type="text" [(ngModel)]="formNuevoServicio.nombre" name="nsNombre"
+            maxlength="120" required autocomplete="off" placeholder="Ej: Lavado de edredón king" />
+
+          <div class="ns-row">
+            <div>
+              <label for="ns-precio">Precio *</label>
+              <div class="money-input"><span>S/</span>
+                <input id="ns-precio" type="number" inputmode="decimal" step="0.01" min="0.01" max="10000"
+                  required [(ngModel)]="formNuevoServicio.precio" name="nsPrecio" placeholder="0.00" />
+              </div>
+            </div>
+            <div>
+              <label for="ns-unidad">Unidad *</label>
+              <select id="ns-unidad" [(ngModel)]="formNuevoServicio.unidad" name="nsUnidad" required>
+                @for (u of unidadesServicio; track u) { <option [value]="u">{{ u }}</option> }
+              </select>
+            </div>
+          </div>
+
+          <p class="hint">Se guarda en tu catálogo para próximos pedidos. Luego puedes asignarle categoría en Ajustes → Servicios y precios.</p>
+
+          @if (errorNuevoServicio()) {
+            <div class="modal__error" role="alert">{{ errorNuevoServicio() }}</div>
+          }
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" (click)="cerrarNuevoServicio()">Cancelar</button>
+          <button type="submit" class="btn btn--primario" [disabled]="guardandoNuevoServicio()">
+            {{ guardandoNuevoServicio() ? 'Creando…' : 'Crear y agregar' }}
+          </button>
+        </div>
+      </form>
+    </div>
   }
 </div>

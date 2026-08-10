@@ -6,6 +6,7 @@ export interface ServicioEditable {
   id: number;
   nombre: string;
   precio: number;
+  costo: number;
   unidad: string;
   categoriaId: number | null;
   categoriaNombre?: string | null;

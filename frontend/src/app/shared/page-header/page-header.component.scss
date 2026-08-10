@@ -18,7 +18,7 @@
 
   &:hover {
     background: #eff6ff;
-    color: var(--azul-oscuro, #0b57d0);
+    color: var(--azul-oscuro, #053465);
     border-color: #bfdbfe;
   }
 
@@ -33,14 +33,14 @@
 .ph__volver {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 7px 15px 7px 7px;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 8px 18px 8px 8px;
   background: #eef4ff;
   border: 1px solid #cfe0fb;
   border-radius: 999px;
-  color: #0b57d0;
-  font-size: 13px;
+  color: #053465;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: background .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
@@ -49,10 +49,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: #0b57d0;
+    background: #053465;
     color: #fff;
     transition: transform .15s ease;
   }
@@ -66,7 +66,7 @@
   &:active { transform: translateY(1px); }
   &:focus-visible {
     outline: none;
-    border-color: #0b57d0;
+    border-color: #053465;
     box-shadow: 0 0 0 3px rgba(11, 87, 208, .22);
   }
 }
@@ -78,7 +78,7 @@
   min-height: 78px;
   background: var(--surface, #f8fbff);
   border: 1px solid var(--surface-border, #dbe7f7);
-  border-left: 4px solid var(--acento, #0b57d0);
+  border-left: 4px solid var(--acento, #053465);
   border-radius: 12px;
   padding: 16px 20px;
   box-shadow: 0 4px 14px rgba(15, 23, 42, .055);
@@ -89,7 +89,7 @@
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
     background: var(--chip-bg, #e8f1ff);
-    color: var(--acento, #0b57d0);
+    color: var(--acento, #053465);
     border: 1px solid var(--chip-border, #cfe0fb);
   }
 
@@ -119,7 +119,7 @@
 }
 
 /* Cada módulo conserva su identidad sin perder la misma estructura visual. */
-.ph[data-color="azul"]    { --acento:#0b57d0; --chip-bg:#e8f1ff; --chip-border:#cfe0fb; --titulo:#0c447c; --surface:#f8fbff; --surface-border:#dbe7f7; }
+.ph[data-color="azul"]    { --acento:#053465; --chip-bg:#e8f1ff; --chip-border:#cfe0fb; --titulo:#0c447c; --surface:#f8fbff; --surface-border:#dbe7f7; }
 .ph[data-color="verde"]   { --acento:#147a45; --chip-bg:#e6f9ee; --chip-border:#c9ead7; --titulo:#0f6e56; --surface:#f7fcf9; --surface-border:#d9eee2; }
 .ph[data-color="naranja"] { --acento:#b7791f; --chip-bg:#fff4e0; --chip-border:#f5dfb7; --titulo:#854f0b; --surface:#fffaf2; --surface-border:#f4e5ca; }
 .ph[data-color="cian"]    { --acento:#0891b2; --chip-bg:#e0f7fb; --chip-border:#c4eaf1; --titulo:#0e5b6e; --surface:#f5fcfd; --surface-border:#d6eef2; }

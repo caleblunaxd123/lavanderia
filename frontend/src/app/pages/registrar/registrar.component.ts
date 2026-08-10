@@ -12,6 +12,7 @@ import { ConfiguracionService } from '../../core/services/configuracion.service'
 import { FotosPedidoService } from '../../core/services/fotos-pedido.service';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { PromocionValida } from '../../core/services/promociones.service';
+import { ServiciosAdminService } from '../../core/services/servicios-admin.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { esCelularObligatorioValido } from '../../core/util/telefono';
@@ -27,6 +28,16 @@ interface ItemAgregado {
   unidad: string;
   cantidad: number;
   descripcion: string;
+  // Solo para servicios cobrados por m² (alfombras): dimensiones para calcular el área.
+  // La `cantidad` de estos ítems ES el área en m² (ancho × largo × piezas).
+  ancho?: number;
+  largo?: number;
+  piezas?: number;
+}
+
+/** ¿La unidad del servicio se cobra por metro cuadrado? (m2, m², mt2…). */
+export function esUnidadM2(unidad: string | null | undefined): boolean {
+  return (unidad ?? '').trim().toLowerCase().replace('²', '2').replace(/\s+/g, '') === 'm2';
 }
 
 @Component({
@@ -44,6 +55,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
   private readonly whatsapp = inject(WhatsappService);
   private readonly config = inject(ConfiguracionService);
   private readonly fotosSvc = inject(FotosPedidoService);
+  private readonly serviciosAdmin = inject(ServiciosAdminService);
 
   // ---------- Botón Registrar arriba/abajo dinámico ----------
   // La barra de arriba está en el flujo normal; cuando el trabajador hace scroll y deja de
@@ -98,8 +110,17 @@ export class RegistrarComponent implements OnInit, OnDestroy {
   servicioSeleccionadoId: number | '' = '';
   items = signal<ItemAgregado[]>([]);
 
+  // ---------- Crear al vuelo un producto/servicio que falta en la lista ----------
+  // Evita cortar el registro para ir a Ajustes: se crea aquí mismo, se guarda en el
+  // catálogo y se agrega de una vez al pedido.
+  readonly modalNuevoServicio = signal(false);
+  readonly guardandoNuevoServicio = signal(false);
+  readonly errorNuevoServicio = signal<string | null>(null);
+  readonly unidadesServicio = ['kg', 'prenda', 'pieza', 'und', 'servicio', 'm2'];
+  formNuevoServicio: { nombre: string; precio: number | null; unidad: string } = { nombre: '', precio: null, unidad: 'prenda' };
+
   areaInicialId: number | null = null;
-  fechaEntregaValor = signal<string>(this.formatoLocal(new Date(Date.now() + 2.5 * 60 * 60 * 1000)));
+  fechaEntregaValor = signal<string>(this.formatoLocal(this.fechaRecojoPorDefecto()));
   fechaEntregaEstimada = computed(() => new Date(this.fechaEntregaValor()));
 
   aplicaDescuento = signal(false);
@@ -184,6 +205,11 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     }
   }
 
+  @HostListener('document:keydown.escape')
+  cerrarModalesConEscape(): void {
+    if (this.modalNuevoServicio()) this.cerrarNuevoServicio();
+  }
+
   ngOnInit() {
     this.whatsapp.cargar();
     this.config.cargar().subscribe({ error: () => {} }); // asegura valorPuntoCanje / maxDescuentoPct frescos
@@ -211,15 +237,20 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  presetEntrega(horas: number) {
-    this.fechaEntregaValor.set(this.formatoLocal(new Date(Date.now() + horas * 60 * 60 * 1000)));
+  /**
+   * Fecha/hora sugerida de recojo o entrega: hoy a las 18:30 (cierre típico de la lavandería).
+   * Si ya pasaron las 18:30, sugiere el mismo horario del día siguiente para no proponer un pasado.
+   */
+  private fechaRecojoPorDefecto(): Date {
+    const d = new Date();
+    d.setHours(18, 30, 0, 0);
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    return d;
   }
 
-  presetMananaHora(hora: number) {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(hora, 0, 0, 0);
-    this.fechaEntregaValor.set(this.formatoLocal(d));
+  /** Fija la fecha de recojo sumando N horas a la hora de recepción (ahora). */
+  presetEntrega(horas: number) {
+    this.fechaEntregaValor.set(this.formatoLocal(new Date(Date.now() + horas * 60 * 60 * 1000)));
   }
 
   onBuscarClienteInput(texto: string) {
@@ -364,9 +395,18 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     if (!servicio) return;
 
     const existente = this.items().find(i => i.servicioId === servicio.id);
+    const esM2 = esUnidadM2(servicio.unidad);
     if (existente) {
+      // m²: "agregar" otra vez suma una pieza más del mismo tamaño y recalcula el área.
       this.items.update(list =>
-        list.map(i => i.servicioId === servicio.id ? { ...i, cantidad: i.cantidad + 1 } : i)
+        list.map(i => {
+          if (i.servicioId !== servicio.id) return i;
+          if (esUnidadM2(i.unidad)) {
+            const piezas = (i.piezas ?? 1) + 1;
+            return { ...i, piezas, cantidad: this.areaM2(i.ancho, i.largo, piezas) };
+          }
+          return { ...i, cantidad: i.cantidad + 1 };
+        })
       );
     } else {
       this.items.update(list => [...list, {
@@ -374,8 +414,10 @@ export class RegistrarComponent implements OnInit, OnDestroy {
         nombre: servicio.nombre,
         precio: servicio.precio,
         unidad: servicio.unidad,
+        // m²: arranca en 1.00 × 1.00 = 1 m²; el operario ajusta las medidas reales.
         cantidad: 1,
-        descripcion: ''
+        descripcion: '',
+        ...(esM2 ? { ancho: 1, largo: 1, piezas: 1 } : {})
       }]);
     }
     clearTimeout(this.itemAnimadoTimer);
@@ -386,12 +428,78 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     this.servicioSeleccionadoId = '';
   }
 
+  abrirNuevoServicio() {
+    this.formNuevoServicio = { nombre: '', precio: null, unidad: 'prenda' };
+    this.errorNuevoServicio.set(null);
+    this.modalNuevoServicio.set(true);
+  }
+
+  cerrarNuevoServicio() {
+    if (this.guardandoNuevoServicio()) return;
+    this.modalNuevoServicio.set(false);
+  }
+
+  guardarNuevoServicio() {
+    if (this.guardandoNuevoServicio()) return;
+    const nombre = this.formNuevoServicio.nombre.trim();
+    const unidad = this.formNuevoServicio.unidad.trim();
+    const precio = Number(this.formNuevoServicio.precio ?? 0);
+
+    if (nombre.length < 2 || nombre.length > 120) {
+      this.errorNuevoServicio.set('El nombre debe tener entre 2 y 120 caracteres.');
+      return;
+    }
+    if (!unidad) {
+      this.errorNuevoServicio.set('Selecciona la unidad de cobro.');
+      return;
+    }
+    if (!Number.isFinite(precio) || precio <= 0 || precio > 10_000) {
+      this.errorNuevoServicio.set('Ingresa un precio mayor a S/ 0.00 y hasta S/ 10,000.00.');
+      return;
+    }
+
+    // Si ya existía en el catálogo (mismo nombre, sin importar tildes/mayúsculas) no lo
+    // duplicamos: lo seleccionamos y lo agregamos al pedido.
+    const yaExiste = this.catalogo().find(s => this.normalizarTexto(s.nombre) === this.normalizarTexto(nombre));
+    if (yaExiste) {
+      this.servicioSeleccionadoId = yaExiste.id;
+      this.agregarItem();
+      this.modalNuevoServicio.set(false);
+      this.toast.info(`"${yaExiste.nombre}" ya estaba en el catálogo; lo agregamos al pedido.`);
+      return;
+    }
+
+    this.guardandoNuevoServicio.set(true);
+    this.errorNuevoServicio.set(null);
+    this.serviciosAdmin.crear({ nombre, precio: Math.round(precio * 100) / 100, unidad, categoriaId: null, activo: true }).subscribe({
+      next: creado => {
+        this.guardandoNuevoServicio.set(false);
+        this.modalNuevoServicio.set(false);
+        this.catalogo.update(list => [...list, {
+          id: creado.id, nombre: creado.nombre, precio: creado.precio,
+          unidad: creado.unidad, categoriaId: creado.categoriaId ?? null
+        }]);
+        this.servicioSeleccionadoId = creado.id;
+        this.agregarItem();
+        this.toast.exito(`Producto "${creado.nombre}" creado y agregado al pedido`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardandoNuevoServicio.set(false);
+        this.errorNuevoServicio.set(err.error?.mensaje ?? 'No se pudo crear el producto.');
+      }
+    });
+  }
+
+  private normalizarTexto(valor: string): string {
+    return valor.normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase();
+  }
+
   validarPromo() {
     const codigo = this.codigoPromo.trim();
     if (!codigo) return;
     this.validandoPromo.set(true);
     this.errorPromo.set(null);
-    this.pedidosSvc.validarCodigoPromocion(codigo).subscribe({
+    this.pedidosSvc.validarCodigoPromocion(codigo, this.clienteExistente?.id).subscribe({
       next: promo => {
         this.validandoPromo.set(false);
 
@@ -445,6 +553,39 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     );
   }
 
+  // ---------- Servicios por m² (alfombras) ----------
+  /** Área en m² = ancho × largo × piezas, redondeada a 2 decimales (mínimo 0). */
+  private areaM2(ancho?: number, largo?: number, piezas?: number): number {
+    const a = Math.max(0, Number(ancho) || 0);
+    const l = Math.max(0, Number(largo) || 0);
+    const n = Math.max(1, Math.floor(Number(piezas) || 1));
+    return Math.round(a * l * n * 100) / 100;
+  }
+
+  esItemM2(it: ItemAgregado): boolean {
+    return esUnidadM2(it.unidad);
+  }
+
+  /** Actualiza una medida (ancho/largo/piezas) de un ítem m² y recalcula su área (cantidad). */
+  cambiarMedida(id: number, campo: 'ancho' | 'largo' | 'piezas', valor: number) {
+    const v = Math.max(0, Number(valor) || 0);
+    this.items.update(list =>
+      list.map(i => {
+        if (i.servicioId !== id) return i;
+        const it = { ...i, [campo]: campo === 'piezas' ? Math.max(1, Math.floor(v)) : v };
+        return { ...it, cantidad: this.areaM2(it.ancho, it.largo, it.piezas) };
+      })
+    );
+  }
+
+  /** Texto legible de las medidas para el ticket/detalle, ej. "1.20 × 2.00 m · 2 alfombras". */
+  medidaTexto(it: ItemAgregado): string {
+    const a = (it.ancho ?? 0).toFixed(2);
+    const l = (it.largo ?? 0).toFixed(2);
+    const n = it.piezas ?? 1;
+    return `${a} × ${l} m` + (n > 1 ? ` · ${n} alfombras` : '');
+  }
+
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
       && esCelularObligatorioValido(this.celular)
@@ -455,6 +596,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
         && this.ubicacionEntregaConfirmada
       ))
       && this.tieneServicioLavanderia()
+      && !this.items().some(i => this.esItemM2(i) && i.cantidad <= 0)
       && this.totalFinal() > 0
       && !this.registrando();
   }
@@ -469,6 +611,8 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     if (this.modalidad === 'Delivery' && (this.latitudEntrega === null || this.longitudEntrega === null)) return 'Busca la dirección o marca el punto exacto en el mapa.';
     if (this.modalidad === 'Delivery' && !this.ubicacionEntregaConfirmada) return 'Confirma que la dirección coincida con el punto del mapa.';
     if (!this.tieneServicioLavanderia()) return 'Agrega al menos un servicio de lavandería; la tarifa de delivery no cuenta como servicio.';
+    const m2SinMedida = this.items().find(i => this.esItemM2(i) && i.cantidad <= 0);
+    if (m2SinMedida) return `Indica el ancho y el largo de "${m2SinMedida.nombre}" (el área debe ser mayor a cero).`;
     if (this.totalFinal() <= 0) return 'El total del pedido debe ser mayor a cero.';
     return null;
   }
@@ -493,14 +637,23 @@ export class RegistrarComponent implements OnInit, OnDestroy {
       referenciaEntrega: this.modalidad === 'Delivery' ? (this.referenciaEntrega.trim() || null) : null,
       latitudEntrega: this.modalidad === 'Delivery' ? this.latitudEntrega : null,
       longitudEntrega: this.modalidad === 'Delivery' ? this.longitudEntrega : null,
-      items: this.items().map(i => ({
-        servicioId: i.servicioId,
-        cantidad: i.cantidad,
-        precioUnit: i.precio,
-        total: i.precio * i.cantidad,
-        descripcion: i.descripcion.trim() || null
-      })),
+      items: this.items().map(i => {
+        // Para alfombras (m²) se antepone la medida a la observación, así queda registrada
+        // en el ticket y el detalle (ej. "1.20 × 2.00 m · 2 alfombras · mancha en la esquina").
+        const nota = i.descripcion.trim();
+        const descripcion = this.esItemM2(i)
+          ? [this.medidaTexto(i), nota].filter(Boolean).join(' · ')
+          : (nota || null);
+        return {
+          servicioId: i.servicioId,
+          cantidad: i.cantidad,
+          precioUnit: i.precio,
+          total: i.precio * i.cantidad,
+          descripcion: descripcion || null
+        };
+      }),
       descuentoPct: this.aplicaDescuento() ? this.descuentoPorcentaje() : 0,
+      codigoPromocion: this.promoAplicada() ? this.codigoPromo.trim().toUpperCase() : null,
       puntosACanjear: this.puntosACanjear() > 0 ? this.puntosACanjear() : null,
       esUrgente: this.esUrgente(),
       recargoUrgentePct: this.recargoUrgentePorcentaje(),
@@ -597,6 +750,10 @@ export class RegistrarComponent implements OnInit, OnDestroy {
 
   irAPedidos() {
     this.router.navigate(['/pedidos']);
+  }
+
+  irAServicios() {
+    this.router.navigate(['/ajustes/servicios']);
   }
 
   imprimirTicket() {

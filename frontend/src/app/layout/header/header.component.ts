@@ -133,9 +133,9 @@ export class HeaderComponent implements OnInit {
   }
 
   private readonly primaryLinksBase: NavLink[] = [
-    { label: 'Inicio', path: '/inicio', modulo: 'INICIO', icono: 'home' },
+    { label: 'Dashboard', path: '/inicio', modulo: 'INICIO', icono: 'home' },
     {
-      label: 'Pedidos', path: '/pedidos', modulo: 'PEDIDOS', icono: 'clipboard',
+      label: 'Lista de Pedidos', path: '/pedidos', modulo: 'PEDIDOS', icono: 'clipboard',
       children: [
         { label: 'Ver pedidos', path: '/pedidos' },
         { label: 'Registro antiguos', path: '/registro-antiguo', modulo: 'REGISTRAR' },

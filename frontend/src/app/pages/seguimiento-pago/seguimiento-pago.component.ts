@@ -122,7 +122,7 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   }
 
   private aplicarTema(d: SeguimientoPedido) {
-    document.documentElement.style.setProperty('--color-primario-cliente', d.colorPrimario || '#0b57d0');
+    document.documentElement.style.setProperty('--color-primario-cliente', d.colorPrimario || '#053465');
     document.title = `${d.nombreNegocio} · Pedido #${d.numeroPedido}`;
   }
 

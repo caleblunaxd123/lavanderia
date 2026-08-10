@@ -44,7 +44,7 @@
     font-weight: 800;
     letter-spacing: .05em;
     text-transform: uppercase;
-    color: var(--azul-oscuro, #0b57d0);
+    color: var(--azul-oscuro, #053465);
   }
   &__cerrar {
     background: #f1f5f9;
@@ -72,7 +72,7 @@
       background: #cbd5e1;
       cursor: pointer;
       transition: background .15s, transform .15s;
-      &.is-activo { background: var(--azul-oscuro, #0b57d0); transform: scale(1.35); }
+      &.is-activo { background: var(--azul-oscuro, #053465); transform: scale(1.35); }
     }
   }
 
@@ -92,7 +92,7 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  &--primario { background: var(--azul-oscuro, #0b57d0); color: #fff; }
+  &--primario { background: var(--azul-oscuro, #053465); color: #fff; }
   &--ghost { background: transparent; color: #64748b; &:hover { color: #334155; } }
 }
 

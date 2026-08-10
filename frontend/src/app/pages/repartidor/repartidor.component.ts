@@ -69,7 +69,7 @@ export class RepartidorComponent implements OnInit, OnDestroy {
         this.data.set(d);
         this.estadoRuta.set(d.estadoRuta);
         this.cargando.set(false);
-        document.documentElement.style.setProperty('--marca', d.colorPrimario || '#0b57d0');
+        document.documentElement.style.setProperty('--marca', d.colorPrimario || '#053465');
         document.title = `Reparto · Pedido #${d.numeroPedido}`;
         // Si el reparto ya estaba en curso (recargó la pantalla), retoma el envío de GPS.
         if (this.enRuta()) this.iniciarGps();

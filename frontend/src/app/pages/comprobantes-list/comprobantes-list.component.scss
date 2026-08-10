@@ -139,7 +139,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    background: linear-gradient(90deg, var(--azul-oscuro), var(--azul-claro));
+    background: var(--azul-oscuro);
 
     h3 { margin: 0; font-size: 16px; color: #fff; }
   }
@@ -173,4 +173,64 @@
 
 @media (max-width: 720px) {
   .page { padding: 14px; }
+}
+
+// ---------- KPI mensual de boletas/facturas ----------
+.kpi-comprobantes {
+  padding: 16px 18px;
+  margin-bottom: 16px;
+
+  &__head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 12px;
+    h3 { margin: 0; font-size: 15px; color: var(--azul-oscuro, #053465); }
+    .hint { font-size: 12px; color: #94a3b8; }
+  }
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.kpi-box {
+  border: 1px solid var(--gris-borde, #e2e8f0);
+  border-left-width: 4px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+
+  &__label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+  &__num { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; color: #1e293b; }
+  &__monto { font-size: 13px; font-weight: 700; color: #475569; }
+
+  &--boleta  { border-left-color: #06B0BD; background: #ecfeff; }
+  &--factura { border-left-color: #053465; background: #eef2fb; }
+  &--total   { border-left-color: #147a45; background: #f0fdf4; }
+}
+
+.kpi-trend {
+  &__title { display: block; font-size: 11.5px; color: #64748b; margin-bottom: 8px; }
+  &__bars { display: flex; align-items: flex-end; gap: 10px; height: 96px; }
+  &__col {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%;
+  }
+  &__val { font-size: 11px; font-weight: 700; color: #334155; }
+  &__track {
+    flex: 1; width: 100%; max-width: 46px; display: flex; align-items: flex-end;
+    background: #f1f5f9; border-radius: 6px 6px 0 0; overflow: hidden;
+  }
+  &__bar {
+    width: 100%; min-height: 3px;
+    background: #046086;
+    border-radius: 6px 6px 0 0;
+    transition: height .3s ease;
+  }
+  &__lbl { font-size: 11px; color: #64748b; text-transform: capitalize; }
+}
+
+@media (max-width: 620px) {
+  .kpi-grid { grid-template-columns: 1fr; }
 }

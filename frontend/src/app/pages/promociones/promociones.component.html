@@ -119,6 +119,14 @@
         <input type="text" [(ngModel)]="form.codigo" name="codigo" placeholder="Ej: VERANO10" style="text-transform: uppercase;" />
         <p class="hint">Si lo defines, el cliente puede indicar este código al registrar su pedido para que se aplique automáticamente.</p>
 
+        <label class="checkbox-row">
+          <input type="checkbox" name="unSoloUso"
+                 [ngModel]="form.maxUsos === 1"
+                 (ngModelChange)="form.maxUsos = $event ? 1 : null" />
+          Un solo uso <small class="hint">(se desactiva sola al aplicarse)</small>
+        </label>
+        <p class="hint">Ideal para regalos personales (cumpleaños, bienvenida): al usarse una vez, la promoción se desactiva automáticamente. Requiere un código de cupón. Desmárcalo para descuentos que se puedan usar varias veces.</p>
+
         <div class="row-2">
           <div>
             <label>Descuento (%)</label>

@@ -1,4 +1,5 @@
 using Lavanderia.Api.Dtos;
+using Lavanderia.Api.Infrastructure;
 using Lavanderia.Api.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ public class ReportesController : TenantAwareControllerBase
 {
     private readonly IReporteRepository _repo;
     private readonly IGerencialRepository _gerencial;
-    public ReportesController(IReporteRepository repo, IGerencialRepository gerencial)
+    private readonly IConfiguracionNegocioRepository _config;
+    public ReportesController(IReporteRepository repo, IGerencialRepository gerencial, IConfiguracionNegocioRepository config)
     {
         _repo = repo;
         _gerencial = gerencial;
+        _config = config;
     }
 
     [HttpGet("sla")]
@@ -145,26 +148,26 @@ public class ReportesController : TenantAwareControllerBase
         var rep = await ObtenerPorKeyAsync(key, d, h, ct);
         if (rep is null) return NotFound(new { mensaje = "Reporte desconocido." });
 
-        using var wb = new ClosedXML.Excel.XLWorkbook();
-        var ws = wb.Worksheets.Add("Reporte");
-        // Encabezados (omitimos la columna interna _id).
-        var cols = rep.Columnas;
-        for (int c = 0; c < cols.Count; c++)
-        {
-            var cell = ws.Cell(1, c + 1);
-            cell.Value = cols[c];
-            cell.Style.Font.Bold = true;
-            cell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#1e40af");
-            cell.Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
-        }
-        for (int f = 0; f < rep.Filas.Count; f++)
-            for (int c = 0; c < cols.Count; c++)
-                ws.Cell(f + 2, c + 1).Value = rep.Filas[f].TryGetValue(cols[c], out var v) ? v : "";
-        ws.Columns().AdjustToContents();
+        var cfg = await _config.ObtenerAsync(NegocioId, ct);
+        var negocioNombre = string.IsNullOrWhiteSpace(cfg?.NombreNegocio) ? "Reporte" : cfg!.NombreNegocio;
+        var titulo = TituloReporte(key);
+        var subtitulo = $"Período: {d:dd/MM/yyyy} al {h:dd/MM/yyyy}   ·   Generado el {DateTime.Now:dd/MM/yyyy HH:mm}";
 
-        using var ms = new MemoryStream();
-        wb.SaveAs(ms);
-        var nombre = $"reporte-{key}-{d:yyyyMMdd}-{h:yyyyMMdd}.xlsx";
-        return File(ms.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombre);
+        var bytes = ExcelReporte.Construir(negocioNombre, titulo, subtitulo, rep.Columnas, rep.Filas);
+        var nombre = $"{titulo.Replace(' ', '-').ToLowerInvariant()}-{d:yyyyMMdd}-{h:yyyyMMdd}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombre);
     }
+
+    private static string TituloReporte(string key) => key.ToLowerInvariant() switch
+    {
+        "general" => "Reporte General",
+        "servicios" => "Reporte de Servicios",
+        "gastos" => "Reporte de Gastos",
+        "ordenes-pendientes" => "Órdenes Pendientes",
+        "clientes" => "Reporte de Clientes",
+        "pagos" => "Reporte de Pagos",
+        "cuadres-caja" => "Cuadres de Caja",
+        "cuadres-diarios" => "Cuadres Diarios",
+        _ => "Reporte " + (key.Length > 0 ? char.ToUpper(key[0]) + key[1..].Replace('-', ' ') : "")
+    };
 }

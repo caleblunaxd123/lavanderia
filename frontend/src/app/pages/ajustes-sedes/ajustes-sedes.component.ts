@@ -122,7 +122,8 @@ export class AjustesSedesComponent implements OnInit {
         this.toast.info(activo ? 'Sede reactivada' : 'Sede desactivada');
         this.cargar();
       },
-      error: () => this.toast.error('No se pudo cambiar el estado.')
+      // Muestra la razón del backend (ej. "no puedes desactivar la única sede activa").
+      error: (err: HttpErrorResponse) => this.toast.error(err.error?.mensaje ?? 'No se pudo cambiar el estado.')
     });
   }
 

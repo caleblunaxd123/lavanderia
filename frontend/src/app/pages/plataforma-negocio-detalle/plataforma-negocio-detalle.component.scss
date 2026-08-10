@@ -1,18 +1,39 @@
 .page { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
 
 .volver {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  margin-bottom: 12px;
-  &:hover { color: #1e293b; }
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 8px 18px 8px 8px;
+  background: #eef4ff;
+  border: 1px solid #cfe0fb;
+  border-radius: 999px;
+  color: #053465;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+
+  &__flecha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #053465;
+    color: #fff;
+    transition: transform .15s ease;
+  }
+
+  &:hover {
+    background: #dfeafe;
+    border-color: #b6ccf5;
+    box-shadow: 0 3px 12px rgba(11, 87, 208, .18);
+    .volver__flecha { transform: translateX(-2px); }
+  }
+  &:active { transform: translateY(1px); }
 }
 
 .estado { padding: 40px; text-align: center; color: #64748b; }
@@ -30,12 +51,14 @@
 
   h2 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   p  { margin: 4px 0 0; }
+
+  &__acciones { display: flex; gap: 10px; flex-wrap: wrap; }
 }
 
 .link {
   background: transparent;
   border: none;
-  color: var(--azul-oscuro, #0b57d0);
+  color: var(--azul-oscuro, #053465);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -63,6 +86,13 @@
   &--danger { background: #dc2626; color: #fff; }
   &--verde { background: #16a34a; color: #fff; &:disabled { opacity: .55; } }
   &--full { width: 100%; margin-top: 12px; }
+  &--wsp { background: #25d366; color: #fff; }
+  // Botón de soporte "Resetear clave" en cada usuario: claro, compacto, con texto.
+  &--reset {
+    background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;
+    padding: 7px 12px; font-size: 12.5px; white-space: nowrap;
+    &:hover { background: #dbeafe; border-color: #93c5fd; }
+  }
 }
 
 // ---------- Stats ----------
@@ -175,6 +205,19 @@
   }
 
   .acceso { font-size: 11.5px; color: #94a3b8; white-space: nowrap; }
+
+  // Lista de usuarios con acción de soporte a la derecha.
+  &--usuarios li { align-items: center; }
+  .usuario-info {
+    display: flex; flex-direction: column; gap: 1px; min-width: 0;
+    .acceso { display: block; }
+  }
+}
+
+.hint--soporte {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 2px 0 10px;
 }
 
 // ---------- Banner de credenciales ----------
@@ -206,7 +249,7 @@
 
   &__header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 20px; background: linear-gradient(90deg, #1e293b, #334155);
+    padding: 16px 20px; background: #053465;
     h3 { margin: 0; font-size: 16px; color: #fff; }
   }
   &__close {
@@ -223,6 +266,54 @@
 
   .hint { font-size: 12.5px; color: #64748b; margin: 0 0 6px; }
   .pass-row { display: flex; gap: 8px; input { flex: 1; } }
+}
+
+// ---------- Cobranza ----------
+.cobro-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  .btn { flex: 1; min-width: 140px; justify-content: center; }
+}
+
+.seccion--ancha { grid-column: 1 / -1; }
+
+.pagos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--gris-borde, #e2e8f0);
+    &:last-child { border-bottom: none; }
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    strong { font-size: 14px; }
+    small { color: #64748b; font-size: 11.5px; }
+    .periodo { color: #0f766e; }
+    .nota { color: #94a3b8; }
+  }
+}
+
+// Los select del modal deben verse igual que los input.
+.modal__body select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--gris-borde, #cbd5e1);
+  border-radius: 8px;
+  font-size: 13.5px;
+  background: #fff;
+  &:focus { outline: none; border-color: #1e293b; }
 }
 
 // ---------- Responsive ----------

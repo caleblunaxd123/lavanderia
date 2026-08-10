@@ -31,13 +31,19 @@
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 
   &--primario { background: var(--naranja); color: #fff; }
+  &--wsp { background: #25d366; color: #fff; }
+  &--mail { background: #2563eb; color: #fff; }
   &--ghost {
     background: transparent;
     color: #fff;
     border: 1px solid rgba(255,255,255,.35);
   }
+  &:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 .msg {

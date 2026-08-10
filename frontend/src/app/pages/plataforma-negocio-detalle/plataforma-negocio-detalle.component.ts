@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NegocioDetalle } from '../../core/models/models';
+import { ConfiguracionPlataforma, NegocioDetalle, PagoSuscripcion } from '../../core/models/models';
 import { NegociosPlataformaService } from '../../core/services/negocios-plataforma.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -35,13 +35,21 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
   readonly planes = ['BASICO', 'PRO', 'PREMIUM'];
   readonly estados = ['PRUEBA', 'ACTIVA', 'VENCIDA', 'SUSPENDIDA'];
 
-  // Reset password
+  // Reset password (soporte): puede apuntar al admin (por defecto) o a un usuario específico.
   readonly mostrarReset = signal(false);
+  readonly resetUsuario = signal<{ id: number; nombre: string; usuario: string } | null>(null);
   passwordNueva = '';
   readonly credencialesReset = signal<{ usuario: string; password: string } | null>(null);
 
   // Suspender
   readonly confirmarEstado = signal(false);
+
+  // Cobranza
+  readonly pagos = signal<PagoSuscripcion[]>([]);
+  readonly config = signal<ConfiguracionPlataforma | null>(null);
+  readonly mostrarPago = signal(false);
+  formPago = { monto: 0, metodo: 'YAPE', meses: 1, nota: '' };
+  readonly metodosPago = ['YAPE', 'PLIN', 'TRANSFERENCIA', 'EFECTIVO', 'OTRO'];
 
   readonly urlAcceso = computed(() => {
     const n = this.negocio();
@@ -51,6 +59,8 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
   ngOnInit() {
     this.id = Number(this.route.snapshot.paramMap.get('id'));
     this.cargar();
+    this.cargarCobranza();
+    this.svc.configuracionPlataforma().subscribe({ next: c => this.config.set(c), error: () => {} });
   }
 
   cargar() {
@@ -59,6 +69,10 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
       next: n => { this.negocio.set(n); this.cargando.set(false); },
       error: () => { this.cargando.set(false); this.toast.error('No se pudo cargar la empresa.'); }
     });
+  }
+
+  cargarCobranza() {
+    this.svc.historialPagos(this.id).subscribe({ next: p => this.pagos.set(p), error: () => {} });
   }
 
   volver() { this.router.navigate(['/plataforma']); }
@@ -117,21 +131,74 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
     });
   }
 
-  /** Registrar el pago del mes: renueva el próximo pago +30 días y deja la suscripción activa. */
-  registrarPago() {
+  // ---------- Cobranza: registrar pago ----------
+  abrirPago() {
     const n = this.negocio(); if (!n) return;
-    const base = n.proximoPago && new Date(n.proximoPago) > new Date() ? new Date(n.proximoPago) : new Date();
-    base.setDate(base.getDate() + 30);
+    this.formPago = { monto: n.montoMensual || 0, metodo: 'YAPE', meses: 1, nota: '' };
+    this.mostrarPago.set(true);
+  }
+
+  cerrarPago() { if (!this.guardando()) this.mostrarPago.set(false); }
+
+  /** Registra el pago: lo deja en el historial y avanza el próximo pago los meses cubiertos. */
+  confirmarPago() {
+    if (this.guardando()) return;
+    const monto = Number(this.formPago.monto) || 0;
+    if (monto <= 0) { this.toast.error('El monto debe ser mayor a S/ 0.'); return; }
+    const meses = Math.max(1, Math.min(24, Math.floor(Number(this.formPago.meses) || 1)));
     this.guardando.set(true);
-    this.svc.cambiarSuscripcion(this.id, {
-      planSuscripcion: n.planSuscripcion,
-      estadoSuscripcion: 'ACTIVA',
-      montoMensual: n.montoMensual,
-      proximoPago: base.toISOString().substring(0, 10)
+    this.svc.registrarPago(this.id, {
+      monto, metodo: this.formPago.metodo, meses, nota: this.formPago.nota.trim() || null
     }).subscribe({
-      next: () => { this.guardando.set(false); this.toast.exito('Pago registrado. Próximo pago +30 días.'); this.cargar(); },
-      error: () => { this.guardando.set(false); this.toast.error('No se pudo registrar el pago.'); }
+      next: pago => {
+        this.guardando.set(false);
+        this.mostrarPago.set(false);
+        this.toast.exito(`Pago de S/ ${monto.toFixed(2)} registrado. Próximo pago +${meses} mes(es).`);
+        this.cargar();
+        this.cargarCobranza();
+        this.abrirRecibo(pago.id);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardando.set(false);
+        this.toast.error(err.error?.mensaje ?? 'No se pudo registrar el pago.');
+      }
     });
+  }
+
+  abrirRecibo(pagoId: number) {
+    window.open(`/recibo-suscripcion/${this.id}/${pagoId}`, '_blank');
+  }
+
+  /** Abre WhatsApp con un recordatorio de cobro ya redactado para el titular de la empresa. */
+  recordarCobro() {
+    const n = this.negocio(); if (!n?.titularCelular) return;
+    const digitos = n.titularCelular.replace(/\D/g, '');
+    const numero = digitos.length === 9 ? '51' + digitos : digitos;
+    const cfg = this.config();
+    const plataforma = cfg?.nombrePlataforma || 'LaviSystem';
+    const vence = n.proximoPago ? new Date(n.proximoPago).toLocaleDateString('es-PE') : '';
+    const saludo = n.titularNombre ? `Hola ${n.titularNombre}` : 'Hola';
+    let msg = `${saludo}, te recordamos el pago de tu suscripción a ${plataforma} (${n.nombre}): S/ ${n.montoMensual.toFixed(2)}`;
+    if (vence) msg += ` con vencimiento el ${vence}`;
+    msg += '.';
+    if (cfg?.yapeNumero) msg += ` Puedes pagar por Yape a ${(cfg.yapeNombre ? cfg.yapeNombre + ' ' : '')}${cfg.yapeNumero}.`;
+    msg += ' ¡Gracias!';
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  /** Abre WhatsApp para dar soporte al titular (saludo genérico, no de cobro). */
+  contactarTitular() {
+    const n = this.negocio(); if (!n?.titularCelular) return;
+    const digitos = n.titularCelular.replace(/\D/g, '');
+    const numero = digitos.length === 9 ? '51' + digitos : digitos;
+    const saludo = n.titularNombre ? `Hola ${n.titularNombre.split(' ')[0]}` : 'Hola';
+    const msg = `${saludo}, te escribo del soporte de LaviSystem para ayudarte con tu sistema (${n.nombre}). ¿En qué puedo apoyarte?`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  metodoEtiqueta(m: string): string {
+    const map: Record<string, string> = { YAPE: 'Yape', PLIN: 'Plin', TRANSFERENCIA: 'Transferencia', EFECTIVO: 'Efectivo', OTRO: 'Otro' };
+    return map[m] ?? m;
   }
 
   // ---------- Reset password ----------
@@ -143,14 +210,30 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
     this.passwordNueva = p.charAt(0).toUpperCase() + p.slice(1) + Math.floor(100 + Math.random() * 900);
   }
 
+  /** Abre el modal de reset apuntando al administrador de la empresa. */
+  abrirResetAdmin() { this.resetUsuario.set(null); this.passwordNueva = ''; this.mostrarReset.set(true); }
+
+  /** Abre el modal de reset apuntando a un usuario específico (trabajador, coordinador, etc.). */
+  abrirResetUsuario(u: { id: number; nombreCompleto: string; usuario: string }) {
+    this.resetUsuario.set({ id: u.id, nombre: u.nombreCompleto, usuario: u.usuario });
+    this.passwordNueva = '';
+    this.mostrarReset.set(true);
+  }
+
   confirmarReset() {
     if (this.passwordNueva.trim().length < 8) { this.toast.error('La contraseña debe tener al menos 8 caracteres.'); return; }
+    const objetivo = this.resetUsuario();
+    const clave = this.passwordNueva.trim();
     this.guardando.set(true);
-    this.svc.resetPasswordAdmin(this.id, this.passwordNueva.trim()).subscribe({
+    const peticion = objetivo
+      ? this.svc.resetPasswordUsuario(this.id, objetivo.id, clave)
+      : this.svc.resetPasswordAdmin(this.id, clave);
+    peticion.subscribe({
       next: res => {
         this.guardando.set(false);
-        this.credencialesReset.set({ usuario: res.usuario, password: this.passwordNueva.trim() });
+        this.credencialesReset.set({ usuario: res.usuario, password: clave });
         this.mostrarReset.set(false);
+        this.resetUsuario.set(null);
         this.passwordNueva = '';
         this.toast.exito('Contraseña restablecida');
       },

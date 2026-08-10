@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AlertaGlobal, AlertasGlobalesService } from '../../core/services/alertas-globales.service';
 import { IconComponent } from '../icon/icon.component';
 
@@ -12,6 +12,7 @@ import { IconComponent } from '../icon/icon.component';
 })
 export class AlertasGlobalesComponent implements OnInit, OnDestroy {
   readonly servicio = inject(AlertasGlobalesService);
+  private readonly router = inject(Router);
   readonly expandido = signal(false);
   readonly limite = 3;
   readonly visibles = computed(() => this.expandido()
@@ -28,4 +29,10 @@ export class AlertasGlobalesComponent implements OnInit, OnDestroy {
   }
 
   toggleExpandido(): void { this.expandido.update(valor => !valor); }
+
+  /** Navega al destino de la alerta al hacer click en cualquier parte de la franja. */
+  irAAlerta(alerta: AlertaGlobal): void {
+    if (!alerta.ruta) return;
+    this.router.navigate([alerta.ruta], { queryParams: alerta.queryParams ?? undefined });
+  }
 }

@@ -13,6 +13,7 @@ public interface IGerencialRepository
 {
     Task<TableroSlaDto> ObtenerTableroSlaAsync(int sedeId, DateTime desde, DateTime hasta, CancellationToken ct = default);
     Task<VistaGerencialDto> ObtenerVistaGerencialAsync(int negocioId, int sedeId, CancellationToken ct = default);
+    Task<DashboardExtrasDto> ObtenerDashboardExtrasAsync(int negocioId, int sedeId, CancellationToken ct = default);
     Task<List<ConsolidadoSedeDto>> ObtenerConsolidadoAsync(int negocioId, CancellationToken ct = default);
 }
 
@@ -105,6 +106,9 @@ public class GerencialRepository : IGerencialRepository
         var hoy = DateTime.Today;
         var inicioSemana = hoy.AddDays(-(((int)hoy.DayOfWeek + 6) % 7));
         var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
+        var inicioMesAnt = inicioMes.AddMonths(-1);
+        var diaDelMes = hoy.Day; // para comparar "mes anterior hasta el mismo día"
+        var inicio14 = hoy.AddDays(-13);
         var dto = new VistaGerencialDto();
 
         await using (var cmd = conn.CreateCommand())
@@ -113,7 +117,12 @@ public class GerencialRepository : IGerencialRepository
                 SELECT
                     ISNULL(SUM(CASE WHEN CAST(FechaIngreso AS DATE) = @Hoy THEN Total ELSE 0 END), 0) AS VentasHoy,
                     ISNULL(SUM(CASE WHEN FechaIngreso >= @InicioMes THEN Total ELSE 0 END), 0) AS VentasMes,
+                    COUNT(CASE WHEN FechaIngreso >= @InicioMes THEN 1 END) AS PedidosMesCount,
+                    ISNULL(SUM(CASE WHEN FechaIngreso >= @InicioMesAnt AND FechaIngreso < @InicioMes THEN Total ELSE 0 END), 0) AS VentasMesAnt,
+                    ISNULL(SUM(CASE WHEN FechaIngreso >= @InicioMesAnt AND FechaIngreso < @CorteMesAnt THEN Total ELSE 0 END), 0) AS VentasMesAntAlDia,
                     ISNULL(SUM(Total - MontoPagado), 0) AS SaldoPorCobrar,
+                    COUNT(CASE WHEN EstadoProceso = 'PENDIENTE' THEN 1 END) AS PedidosPendientes,
+                    COUNT(CASE WHEN EstadoProceso = 'EN_PROCESO' THEN 1 END) AS PedidosEnProceso,
                     COUNT(CASE WHEN EstadoProceso IN ('PENDIENTE', 'EN_PROCESO') THEN 1 END) AS PedidosActivos,
                     COUNT(CASE WHEN EstadoProceso = 'LISTO' THEN 1 END) AS PedidosListos
                 FROM dbo.Pedido
@@ -121,15 +130,46 @@ public class GerencialRepository : IGerencialRepository
             cmd.AddParam("@SedeId", sedeId);
             cmd.AddParam("@Hoy", hoy);
             cmd.AddParam("@InicioMes", inicioMes);
+            cmd.AddParam("@InicioMesAnt", inicioMesAnt);
+            // corte = mismo día del mes anterior (acota para no pasarnos de su fin de mes)
+            cmd.AddParam("@CorteMesAnt", inicioMesAnt.AddDays(Math.Min(diaDelMes, DateTime.DaysInMonth(inicioMesAnt.Year, inicioMesAnt.Month))));
             await using var r = await cmd.ExecuteReaderAsync(ct);
             if (await r.ReadAsync(ct))
             {
                 dto.VentasHoy = r.GetDecimal(r.GetOrdinal("VentasHoy"));
                 dto.VentasMes = r.GetDecimal(r.GetOrdinal("VentasMes"));
+                dto.PedidosMesCount = r.GetInt32(r.GetOrdinal("PedidosMesCount"));
+                dto.VentasMesAnterior = r.GetDecimal(r.GetOrdinal("VentasMesAnt"));
+                dto.VentasMesAnteriorAlDia = r.GetDecimal(r.GetOrdinal("VentasMesAntAlDia"));
                 dto.SaldoPorCobrar = r.GetDecimal(r.GetOrdinal("SaldoPorCobrar"));
+                dto.PedidosPendientes = r.GetInt32(r.GetOrdinal("PedidosPendientes"));
+                dto.PedidosEnProceso = r.GetInt32(r.GetOrdinal("PedidosEnProceso"));
                 dto.PedidosActivos = r.GetInt32(r.GetOrdinal("PedidosActivos"));
                 dto.PedidosListosSinRecoger = r.GetInt32(r.GetOrdinal("PedidosListos"));
             }
+            dto.TicketPromedioMes = dto.PedidosMesCount > 0 ? Math.Round(dto.VentasMes / dto.PedidosMesCount, 2) : 0;
+        }
+
+        // Tendencia de ventas de los últimos 14 días (por día de ingreso). Se rellenan con 0
+        // los días sin ventas para que la barra/serie quede continua en el frontend.
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT CAST(FechaIngreso AS DATE) AS Dia, ISNULL(SUM(Total), 0) AS Total
+                FROM dbo.Pedido
+                WHERE SedeId = @SedeId AND Anulado = 0 AND CAST(FechaIngreso AS DATE) >= @Inicio14
+                GROUP BY CAST(FechaIngreso AS DATE)";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@Inicio14", inicio14);
+            var porDia = new Dictionary<DateTime, decimal>();
+            await using (var r = await cmd.ExecuteReaderAsync(ct))
+            {
+                while (await r.ReadAsync(ct))
+                    porDia[r.GetDateTime(r.GetOrdinal("Dia")).Date] = r.GetDecimal(r.GetOrdinal("Total"));
+            }
+            for (var d = inicio14; d <= hoy; d = d.AddDays(1))
+                dto.VentasUltimos14Dias.Add(new PuntoTendenciaDto(d.ToString("yyyy-MM-dd"),
+                    porDia.TryGetValue(d, out var v) ? v : 0m));
         }
 
         await using (var cmd = conn.CreateCommand())
@@ -167,7 +207,10 @@ public class GerencialRepository : IGerencialRepository
                     ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND CAST(Fecha AS DATE) = @Hoy THEN Monto ELSE 0 END), 0) AS CobradoHoy,
                     ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND MetodoPago = 'EFECTIVO' AND CAST(Fecha AS DATE) = @Hoy THEN Monto ELSE 0 END), 0)
                         - ISNULL(SUM(CASE WHEN Tipo = 'GASTO' AND MetodoPago = 'EFECTIVO' AND CAST(Fecha AS DATE) = @Hoy THEN Monto ELSE 0 END), 0)
-                        AS CajaEsperadaHoy
+                        AS CajaEsperadaHoy,
+                    ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND MetodoPago = 'EFECTIVO' AND Fecha >= @InicioMes THEN Monto ELSE 0 END), 0) AS IngEfectivoMes,
+                    ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND MetodoPago IN ('YAPE','PLIN','TRANSFERENCIA') AND Fecha >= @InicioMes THEN Monto ELSE 0 END), 0) AS IngDigitalMes,
+                    ISNULL(SUM(CASE WHEN Tipo = 'INGRESO' AND MetodoPago IN ('POS','TARJETA') AND Fecha >= @InicioMes THEN Monto ELSE 0 END), 0) AS IngTarjetaMes
                 FROM dbo.MovimientoCaja
                 WHERE SedeId = @SedeId";
             cmd.AddParam("@SedeId", sedeId);
@@ -179,9 +222,32 @@ public class GerencialRepository : IGerencialRepository
                 dto.GastosMes = r.GetDecimal(r.GetOrdinal("GastosMes"));
                 dto.CobradoHoy = r.GetDecimal(r.GetOrdinal("CobradoHoy"));
                 dto.CajaEsperadaHoy = r.GetDecimal(r.GetOrdinal("CajaEsperadaHoy"));
+                dto.IngresosEfectivoMes = r.GetDecimal(r.GetOrdinal("IngEfectivoMes"));
+                dto.IngresosDigitalMes = r.GetDecimal(r.GetOrdinal("IngDigitalMes"));
+                dto.IngresosTarjetaMes = r.GetDecimal(r.GetOrdinal("IngTarjetaMes"));
             }
         }
         dto.UtilidadMes = dto.VentasMes - dto.GastosMes;
+
+        // Top 5 servicios por facturación del mes (qué es lo que más deja dinero al negocio).
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT TOP 5 s.Nombre AS Nombre, SUM(i.Cantidad) AS Cantidad, SUM(i.Total) AS Total
+                FROM dbo.PedidoItem i
+                INNER JOIN dbo.Pedido p ON p.Id = i.PedidoId
+                INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
+                WHERE p.SedeId = @SedeId AND p.Anulado = 0 AND p.FechaIngreso >= @InicioMes
+                GROUP BY s.Nombre
+                ORDER BY SUM(i.Total) DESC";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@InicioMes", inicioMes);
+            dto.TopServiciosMes = await cmd.ReadListAsync(r => new TopServicioGerencialDto(
+                r.GetString(r.GetOrdinal("Nombre")),
+                r.GetDecimal(r.GetOrdinal("Cantidad")),
+                r.GetDecimal(r.GetOrdinal("Total"))
+            ), ct);
+        }
 
         await using (var cmd = conn.CreateCommand())
         {
@@ -205,6 +271,112 @@ public class GerencialRepository : IGerencialRepository
             cmd.CommandText = "SELECT COUNT(1) FROM dbo.Insumo WHERE SedeId = @SedeId AND Activo = 1 AND StockActual <= StockMinimo";
             cmd.AddParam("@SedeId", sedeId);
             dto.InsumosBajoStock = await cmd.ReadScalarAsync<int>(ct);
+        }
+
+        return dto;
+    }
+
+    /// <summary>Piezas visuales del dashboard: comparativos hoy/ayer y mes/mes anterior, total de
+    /// clientes, la serie de ventas de la semana (lun→dom) y las últimas órdenes ingresadas.</summary>
+    public async Task<DashboardExtrasDto> ObtenerDashboardExtrasAsync(int negocioId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        var hoy = DateTime.Today;
+        var ayer = hoy.AddDays(-1);
+        var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
+        var inicioMesAnt = inicioMes.AddMonths(-1);
+        var inicioSemana = hoy.AddDays(-(((int)hoy.DayOfWeek + 6) % 7)); // lunes de esta semana
+        var dto = new DashboardExtrasDto();
+
+        // Órdenes hoy / ayer + ventas de ayer (para los "▲% vs ayer")
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT
+                    COUNT(CASE WHEN CAST(FechaIngreso AS DATE) = @Hoy THEN 1 END) AS OrdenesHoy,
+                    COUNT(CASE WHEN CAST(FechaIngreso AS DATE) = @Ayer THEN 1 END) AS OrdenesAyer,
+                    ISNULL(SUM(CASE WHEN CAST(FechaIngreso AS DATE) = @Ayer THEN Total ELSE 0 END), 0) AS VentasAyer
+                FROM dbo.Pedido
+                WHERE SedeId = @SedeId AND Anulado = 0 AND CAST(FechaIngreso AS DATE) >= @Ayer";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@Hoy", hoy);
+            cmd.AddParam("@Ayer", ayer);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (await r.ReadAsync(ct))
+            {
+                dto.OrdenesHoy = r.GetInt32(r.GetOrdinal("OrdenesHoy"));
+                dto.OrdenesAyer = r.GetInt32(r.GetOrdinal("OrdenesAyer"));
+                dto.VentasAyer = r.GetDecimal(r.GetOrdinal("VentasAyer"));
+            }
+        }
+
+        // Clientes del negocio (compartidos entre sedes) + altas del mes vs mes anterior
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT
+                    COUNT(*) AS Total,
+                    COUNT(CASE WHEN FechaCreacion >= @InicioMes THEN 1 END) AS NuevosMes,
+                    COUNT(CASE WHEN FechaCreacion >= @InicioMesAnt AND FechaCreacion < @InicioMes THEN 1 END) AS NuevosMesAnt
+                FROM dbo.Cliente
+                WHERE NegocioId = @NegocioId AND Activo = 1";
+            cmd.AddParam("@NegocioId", negocioId);
+            cmd.AddParam("@InicioMes", inicioMes);
+            cmd.AddParam("@InicioMesAnt", inicioMesAnt);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (await r.ReadAsync(ct))
+            {
+                dto.TotalClientes = r.GetInt32(r.GetOrdinal("Total"));
+                dto.ClientesNuevosMes = r.GetInt32(r.GetOrdinal("NuevosMes"));
+                dto.ClientesNuevosMesAnterior = r.GetInt32(r.GetOrdinal("NuevosMesAnt"));
+            }
+        }
+
+        // Serie de ventas de la semana (lunes→domingo), rellenando días sin ventas con 0
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT CAST(FechaIngreso AS DATE) AS Dia, ISNULL(SUM(Total), 0) AS Total
+                FROM dbo.Pedido
+                WHERE SedeId = @SedeId AND Anulado = 0 AND CAST(FechaIngreso AS DATE) >= @InicioSemana
+                GROUP BY CAST(FechaIngreso AS DATE)";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@InicioSemana", inicioSemana);
+            var porDia = new Dictionary<DateTime, decimal>();
+            await using (var r = await cmd.ExecuteReaderAsync(ct))
+            {
+                while (await r.ReadAsync(ct))
+                    porDia[r.GetDateTime(r.GetOrdinal("Dia")).Date] = r.GetDecimal(r.GetOrdinal("Total"));
+            }
+            for (var i = 0; i < 7; i++)
+            {
+                var d = inicioSemana.AddDays(i);
+                dto.VentasSemana.Add(new PuntoTendenciaDto(d.ToString("yyyy-MM-dd"),
+                    porDia.TryGetValue(d, out var v) ? v : 0m));
+            }
+        }
+
+        // Últimas 5 órdenes ingresadas, con su servicio principal (el ítem de mayor monto)
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT TOP 5 p.Numero, c.Nombre AS ClienteNombre, p.EstadoProceso, p.Total,
+                    ISNULL((SELECT TOP 1 s.Nombre FROM dbo.PedidoItem i
+                            INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
+                            WHERE i.PedidoId = p.Id ORDER BY i.Total DESC), '—') AS ServicioPrincipal
+                FROM dbo.Pedido p
+                INNER JOIN dbo.Cliente c ON c.Id = p.ClienteId
+                WHERE p.SedeId = @SedeId AND p.Anulado = 0
+                ORDER BY p.FechaIngreso DESC";
+            cmd.AddParam("@SedeId", sedeId);
+            dto.OrdenesRecientes = await cmd.ReadListAsync(r => new OrdenRecienteDto(
+                r.GetInt32(r.GetOrdinal("Numero")),
+                r.GetString(r.GetOrdinal("ClienteNombre")),
+                r.GetString(r.GetOrdinal("ServicioPrincipal")),
+                r.GetString(r.GetOrdinal("EstadoProceso")),
+                r.GetDecimal(r.GetOrdinal("Total"))
+            ), ct);
         }
 
         return dto;

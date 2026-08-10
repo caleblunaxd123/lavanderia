@@ -107,7 +107,7 @@
 
   &--verde { background: #e6f9ee; color: #147a45; }
   &--gris  { background: #eef0f3; color: #64748b; }
-  &--azul  { background: #e8f1ff; color: #0b57d0; }
+  &--azul  { background: #e8f1ff; color: #053465; }
   &--rojo  { background: #fde8e8; color: #c0392b; }
 }
 
@@ -183,7 +183,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    background: linear-gradient(90deg, var(--azul-oscuro), var(--azul-claro));
+    background: var(--azul-oscuro);
 
     h3 { margin: 0; font-size: 15px; color: #fff; }
   }
@@ -526,14 +526,12 @@
   }
 
   &__acciones {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    // El flex/wrap de los botones lo aporta la regla global [class$="-card__acciones"] (styles.scss);
+    // aquí solo el separador propio de la tarjeta de inventario.
     padding-top: 11px;
     border-top: 1px solid #eef2f6;
 
-    .btn { min-height: 32px; }
+    .btn { min-height: 34px; }
   }
 
   &__iconos {
@@ -685,3 +683,5 @@
 
   input { padding-left: 28px !important; }
 }
+// Nota: los estilos de color de los botones (.btn--editar/--desactivar/--eliminar) y el
+// layout de las acciones de tarjeta viven en styles.scss (globales, commit 180bdca).

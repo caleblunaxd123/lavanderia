@@ -27,6 +27,7 @@ public class ServicioRepository : IServicioRepository
         Id = r.GetInt32(r.GetOrdinal("Id")),
         Nombre = r.GetString(r.GetOrdinal("Nombre")),
         Precio = r.GetDecimal(r.GetOrdinal("Precio")),
+        Costo = r.GetDecimal(r.GetOrdinal("Costo")),
         Unidad = r.GetString(r.GetOrdinal("Unidad")),
         CategoriaId = r.GetNullableInt("CategoriaId"),
         CategoriaNombre = r.GetNullableString("CategoriaNombre"),
@@ -36,7 +37,7 @@ public class ServicioRepository : IServicioRepository
     };
 
     private const string SelectConCategoria = @"
-        SELECT s.Id, s.Nombre, s.Precio, s.Unidad, s.CategoriaId, cat.Nombre AS CategoriaNombre, s.Activo, s.EsCargoDelivery,
+        SELECT s.Id, s.Nombre, s.Precio, s.Costo, s.Unidad, s.CategoriaId, cat.Nombre AS CategoriaNombre, s.Activo, s.EsCargoDelivery,
                CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.PedidoItem pi WHERE pi.ServicioId = s.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Servicio s
         LEFT JOIN dbo.Categoria cat ON cat.Id = s.CategoriaId";
@@ -111,12 +112,13 @@ public class ServicioRepository : IServicioRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Servicio (NegocioId, Nombre, Precio, Unidad, CategoriaId, Activo, EsCargoDelivery)
+            INSERT INTO dbo.Servicio (NegocioId, Nombre, Precio, Costo, Unidad, CategoriaId, Activo, EsCargoDelivery)
             OUTPUT INSERTED.Id
-            VALUES (@NegocioId, @Nombre, @Precio, @Unidad, @CategoriaId, @Activo, @EsCargoDelivery)";
+            VALUES (@NegocioId, @Nombre, @Precio, @Costo, @Unidad, @CategoriaId, @Activo, @EsCargoDelivery)";
         cmd.AddParam("@NegocioId", s.NegocioId);
         cmd.AddParam("@Nombre", s.Nombre);
         cmd.AddParam("@Precio", s.Precio);
+        cmd.AddParam("@Costo", s.Costo);
         cmd.AddParam("@Unidad", s.Unidad);
         cmd.AddParam("@CategoriaId", s.CategoriaId);
         cmd.AddParam("@Activo", s.Activo);
@@ -131,12 +133,13 @@ public class ServicioRepository : IServicioRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             UPDATE dbo.Servicio
-               SET Nombre = @Nombre, Precio = @Precio, Unidad = @Unidad,
+               SET Nombre = @Nombre, Precio = @Precio, Costo = @Costo, Unidad = @Unidad,
                    CategoriaId = @CategoriaId, Activo = @Activo
              WHERE Id = @Id AND NegocioId = @NegocioId";
         cmd.AddParam("@Id", s.Id);
         cmd.AddParam("@Nombre", s.Nombre);
         cmd.AddParam("@Precio", s.Precio);
+        cmd.AddParam("@Costo", s.Costo);
         cmd.AddParam("@Unidad", s.Unidad);
         cmd.AddParam("@CategoriaId", s.CategoriaId);
         cmd.AddParam("@Activo", s.Activo);

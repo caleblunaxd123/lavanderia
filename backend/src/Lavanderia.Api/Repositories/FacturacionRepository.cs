@@ -1,4 +1,5 @@
 using Lavanderia.Api.Domain;
+using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Infrastructure;
 using Microsoft.Data.SqlClient;
 
@@ -20,6 +21,7 @@ public interface IFacturacionRepository
     /// RECHAZADO/ERROR/ANULADO no cuentan: esos casos sí deben poder re-emitirse.</summary>
     Task<ComprobanteElectronico?> ObtenerVigentePorPedidoAsync(int pedidoId, CancellationToken ct = default);
     Task<(List<ComprobanteElectronico> Items, int Total)> ListarPaginadoAsync(int sedeId, int pagina, int tamanoPagina, CancellationToken ct = default);
+    Task<List<KpiComprobantesMesDto>> KpiMensualAsync(int sedeId, int meses, CancellationToken ct = default);
 }
 
 public class FacturacionRepository : IFacturacionRepository
@@ -254,5 +256,47 @@ public class FacturacionRepository : IFacturacionRepository
         var total = await cmdCount.ReadScalarAsync<int>(ct);
 
         return (items, total);
+    }
+
+    public async Task<List<KpiComprobantesMesDto>> KpiMensualAsync(int sedeId, int meses, CancellationToken ct = default)
+    {
+        meses = Math.Clamp(meses, 1, 24);
+        var hoy = DateTime.Today;
+        var desde = new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-(meses - 1));
+
+        // Todos los meses del rango, para que salgan con 0 si no hubo emisiones.
+        var buckets = new Dictionary<(int Anio, int Mes), KpiComprobantesMesDto>();
+        for (var i = 0; i < meses; i++)
+        {
+            var d = desde.AddMonths(i);
+            buckets[(d.Year, d.Month)] = new KpiComprobantesMesDto { Anio = d.Year, Mes = d.Month };
+        }
+
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT YEAR(FechaEmision) AS Anio, MONTH(FechaEmision) AS Mes, Tipo,
+                   COUNT(*) AS Cantidad, SUM(Total) AS Monto
+            FROM dbo.ComprobanteElectronico
+            WHERE SedeId = @SedeId AND Estado <> 'ANULADO' AND FechaEmision >= @Desde
+            GROUP BY YEAR(FechaEmision), MONTH(FechaEmision), Tipo";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Desde", desde);
+
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+        {
+            var anio = r.GetInt32(0);
+            var mes = r.GetInt32(1);
+            var tipo = r.GetString(2);
+            var cantidad = r.GetInt32(3);
+            var monto = r.IsDBNull(4) ? 0m : r.GetDecimal(4);
+            if (!buckets.TryGetValue((anio, mes), out var b)) continue;
+            if (tipo == "FACTURA") { b.FacturasCantidad = cantidad; b.FacturasMonto = monto; }
+            else { b.BoletasCantidad = cantidad; b.BoletasMonto = monto; }
+        }
+
+        return buckets.Values.OrderBy(b => b.Anio).ThenBy(b => b.Mes).ToList();
     }
 }

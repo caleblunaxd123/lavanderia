@@ -50,6 +50,8 @@ public class SedesController : TenantAwareControllerBase
         var nombre = dto.Nombre.Trim();
         if (await _repo.ExisteNombreAsync(nombre, NegocioId, id, ct))
             return Conflict(new { mensaje = "Ya existe otra sede con ese nombre." });
+        if (!dto.Activo && existente.Activo && await EsUltimaSedeActivaAsync(id, ct))
+            return BadRequest(new { mensaje = MensajeUltimaSede });
         existente.Nombre = nombre;
         existente.Direccion = Limpiar(dto.Direccion);
         existente.Telefono = Limpiar(dto.Telefono);
@@ -64,8 +66,20 @@ public class SedesController : TenantAwareControllerBase
     {
         var existente = await _repo.ObtenerPorIdAsync(id, ct);
         if (existente is null || existente.NegocioId != NegocioId) return NotFound();
+        if (!req.Activo && existente.Activo && await EsUltimaSedeActivaAsync(id, ct))
+            return BadRequest(new { mensaje = MensajeUltimaSede });
         await _repo.CambiarEstadoAsync(id, req.Activo, NegocioId, ct);
         return NoContent();
+    }
+
+    private const string MensajeUltimaSede =
+        "No puedes desactivar la única sede activa. Toda empresa debe tener al menos una sede activa.";
+
+    /// <summary>True si la sede indicada es la única activa del negocio (no se puede desactivar).</summary>
+    private async Task<bool> EsUltimaSedeActivaAsync(int sedeId, CancellationToken ct)
+    {
+        var activas = (await _repo.ListarPorNegocioAsync(NegocioId, ct)).Where(s => s.Activo).ToList();
+        return activas.Count <= 1 && activas.All(s => s.Id == sedeId);
     }
 
     private static SedeDto Map(Sede s) => new()

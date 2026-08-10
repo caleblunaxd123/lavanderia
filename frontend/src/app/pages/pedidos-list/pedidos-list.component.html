@@ -1,5 +1,5 @@
 <div class="page">
-  <app-page-header icono="clipboard" color="azul" titulo="Pedidos" tourId="pedidos"
+  <app-page-header icono="clipboard" color="azul" titulo="Lista de Pedidos" tourId="pedidos"
     [subtitulo]="total() + (total() === 1 ? ' pedido en este filtro' : ' pedidos en este filtro')">
     <a routerLink="/registro-antiguo" class="btn btn--ghost">Registro Antiguos</a>
     <a routerLink="/registrar" class="btn btn--primario">+ Nuevo Pedido</a>
@@ -33,29 +33,48 @@
 
   @if (metaMensual() > 0) {
     <div class="meta-mensual card" [class.meta-mensual--cumplida]="progresoMetaPct() >= 100">
-      <div class="meta-mensual__info">
+      <div class="meta-mensual__cabecera">
         <span class="meta-mensual__label">
-          <app-icon name="package" [size]="14"></app-icon>
+          <app-icon name="package" [size]="15"></app-icon>
           Meta del mes
         </span>
-        <strong class="meta-mensual__valor">
-          {{ pedidosDelMes() }} <small>de</small> {{ metaMensual() }}
-          <span class="meta-mensual__pct" [class.meta-mensual__pct--ok]="progresoMetaPct() >= 100">{{ progresoMetaPct() }}%</span>
-        </strong>
+        <span class="meta-mensual__pct" [class.meta-mensual__pct--ok]="progresoMetaPct() >= 100">{{ progresoMetaPct() }}%</span>
       </div>
-      <div class="meta-mensual__barra">
-        <div class="meta-mensual__relleno" [style.width.%]="progresoMetaPct()"></div>
+
+      <!-- Termómetro horizontal: bulbo a la izquierda, tubo con el mercurio y la escala numérica
+           marcada sobre la propia barra (0 · ¼ · ½ · ¾ · meta), como un termómetro de verdad. -->
+      <div class="termo" role="progressbar"
+           [attr.aria-valuenow]="pedidosDelMes()" aria-valuemin="0" [attr.aria-valuemax]="metaMensual()">
+        <span class="termo__bulbo">{{ pedidosDelMes() }}</span>
+        <div class="termo__tubo">
+          <div class="termo__mercurio" [class.termo__mercurio--ok]="progresoMetaPct() >= 100"
+               [style.width.%]="progresoMetaPct()"></div>
+          @for (marca of escalaMeta(); track marca.pct) {
+            <span class="termo__marca" [style.left.%]="marca.pct" [class.termo__marca--fin]="marca.pct === 100">
+              <i class="termo__tick"></i>
+              <b class="termo__num">{{ marca.valor }}</b>
+            </span>
+          }
+        </div>
       </div>
-      @if (progresoMetaPct() >= 100) {
-        <span class="meta-mensual__festejo">🎉 ¡Meta cumplida!</span>
-      }
+
+      <div class="meta-mensual__pie">
+        <span class="meta-mensual__valor">
+          <strong>{{ pedidosDelMes() }}</strong> de <strong>{{ metaMensual() }}</strong> pedidos registrados
+        </span>
+        @if (progresoMetaPct() >= 100) {
+          <span class="meta-mensual__festejo">🎉 ¡Meta cumplida!</span>
+        } @else {
+          <span class="meta-mensual__faltan">Faltan {{ metaMensual() - pedidosDelMes() }} para lograrla</span>
+        }
+      </div>
     </div>
   }
 
   @if (tendencia(); as t) {
     <div class="tendencias-grid">
-      <app-mini-barras titulo="Pedidos recibidos por día" subtitulo="Últimos 14 días" color="azul" [datos]="t.recibidos"></app-mini-barras>
-      <app-mini-barras titulo="Pedidos entregados por día" subtitulo="Últimos 14 días" color="verde" [datos]="t.entregados"></app-mini-barras>
+      <app-mini-barras titulo="Pedidos recibidos por día" subtitulo="Quincena (últimos 15 días)" color="azul" [datos]="t.recibidos"></app-mini-barras>
+      <app-mini-barras titulo="Pedidos entregados por día" subtitulo="Quincena (últimos 15 días)" color="verde" [datos]="t.entregados"></app-mini-barras>
     </div>
   }
 
@@ -71,22 +90,22 @@
 
   <div class="filtros-row">
     <div class="filtros" data-tour="pedidos-filtros" [class.filtros--deshabilitado]="!!busqueda()">
-      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='ultimos' && !soloFueraDeTiempo()"
+      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='ultimos' && !destacadoActivo()"
         (click)="cambiarFiltro('ultimos')" title="Los pedidos más recientes, de todos los estados">
         @if (totalUltimosTab() > 0) { <span class="filtros__badge">{{ totalUltimosTab() }}</span> }
         Últimos
       </button>
-      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='pendientes' && !soloFueraDeTiempo()"
+      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='pendientes' && !destacadoActivo()"
         (click)="cambiarFiltro('pendientes')" title="Pedidos aún en proceso (sin entregar)">
         @if (totalPendientesTab() > 0) { <span class="filtros__badge">{{ totalPendientesTab() }}</span> }
         Pendientes
       </button>
-      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='otros' && !soloFueraDeTiempo()"
+      <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='otros' && !destacadoActivo()"
         (click)="cambiarFiltro('otros')" title="Pedidos ya entregados o anulados">
         @if (totalOtrosTab() > 0) { <span class="filtros__badge">{{ totalOtrosTab() }}</span> }
         Otros
       </button>
-      <button class="filtros__item" [class.is-active]="filtro()==='fecha' && !soloFueraDeTiempo()"
+      <button class="filtros__item" [class.is-active]="filtro()==='fecha' && !destacadoActivo()"
         (click)="modalTipoConsulta.set(true)" title="Filtrar por rango de fechas">
         Fecha
       </button>
@@ -126,16 +145,16 @@
     }
   </div>
 
-  @if (soloFueraDeTiempo()) {
+  @if (bannerDestacado(); as bd) {
     <div class="fuera-tiempo-banner">
       <div class="fuera-tiempo-banner__info">
         <span class="fuera-tiempo-banner__icon"><app-icon name="warning" [size]="18"></app-icon></span>
         <div class="fuera-tiempo-banner__texto">
-          <strong>Fuera de tiempo — {{ resumenFueraDeTiempo().cantidad }} pedido{{ resumenFueraDeTiempo().cantidad === 1 ? '' : 's' }}</strong>
-          <span>Su entrega o recojo ya venció · Monto total <b>S/ {{ resumenFueraDeTiempo().totalDinero | number:'1.2-2' }}</b> · Falta cobrar <b>S/ {{ resumenFueraDeTiempo().saldoPorCobrar | number:'1.2-2' }}</b></span>
+          <strong>{{ bd.titulo }} — {{ resumenDestacado().cantidad }} pedido{{ resumenDestacado().cantidad === 1 ? '' : 's' }}</strong>
+          <span>{{ bd.desc }} · Monto total <b>S/ {{ resumenDestacado().totalDinero | number:'1.2-2' }}</b> · Falta cobrar <b>S/ {{ resumenDestacado().saldoPorCobrar | number:'1.2-2' }}</b></span>
         </div>
       </div>
-      <button type="button" class="btn btn--ghost btn--sm" (click)="salirFueraDeTiempo()">Ver todos los pedidos</button>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="salirDestacado()">Ver todos los pedidos</button>
     </div>
   } @else if (descripcionFiltro(); as desc) {
     <p class="filtro-desc"><app-icon name="info" [size]="13"></app-icon> {{ desc }}</p>

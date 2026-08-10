@@ -103,3 +103,20 @@
   .page { padding: 14px; }
   .tabla { font-size: 12px; }
 }
+
+.acciones-cumple {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn--cumple {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) { background: #ede9fe; }
+  &:disabled { opacity: .6; cursor: default; }
+}

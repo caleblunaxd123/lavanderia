@@ -25,7 +25,12 @@ $migraciones = @(
     (Join-Path $root "backend\db\scripts\040_dedup_constraints.sql"),
     (Join-Path $root "backend\db\scripts\041_dedup_catalogos.sql"),
     (Join-Path $root "backend\db\scripts\042_insumo_clase.sql"),
-    (Join-Path $root "backend\db\scripts\043_insumo_presentacion.sql")
+    (Join-Path $root "backend\db\scripts\043_insumo_presentacion.sql"),
+    (Join-Path $root "backend\db\scripts\044_cobranza_plataforma.sql"),
+    (Join-Path $root "backend\db\scripts\045_codigos_generados.sql"),
+    (Join-Path $root "backend\db\scripts\046_marca_lavisystem_colores.sql"),
+    (Join-Path $root "backend\db\scripts\047_inventario_lavixa.sql"),
+    (Join-Path $root "backend\db\scripts\048_servicio_costo.sql")
 )
 $urlFile = Join-Path $buildRoot "ultima-url.txt"
 $apiOut = Join-Path $buildRoot "api.out.log"

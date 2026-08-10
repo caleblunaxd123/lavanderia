@@ -13,6 +13,7 @@ import { PaginacionComponent } from '../../shared/paginacion/paginacion.componen
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { debounceTime } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importador-masivo/importador-masivo.component';
 
@@ -27,6 +28,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
   private readonly cajaSvc = inject(CajaService);
   private readonly toast = inject(ToastService);
   private readonly actualizaciones = inject(ActualizacionDatosService);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly tab = signal<'insumos' | 'historial'>('insumos');
@@ -145,10 +147,19 @@ export class InventarioComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    // Si se llega desde la alerta "insumos bajo stock", abrir directamente filtrado a esos insumos.
+    if (this.route.snapshot.queryParamMap.get('ver') === 'bajo-stock') {
+      this.filtroEstado.set('BAJO_STOCK');
+    }
     this.cargar();
-    this.svc.tendenciaConsumo(14).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
+    this.cargarTendencia();
     this.cajaSvc.tiposGasto().subscribe(t => this.tiposGasto.set(t));
     this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 20_000);
+  }
+
+  /** Recarga el gráfico "Consumo de insumos por día". */
+  private cargarTendencia() {
+    this.svc.tendenciaConsumo(14).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
   }
 
   ngOnDestroy() {
@@ -190,6 +201,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     if (this.cargando() || this.guardandoInsumo() || this.guardandoMovimiento()) return;
     this.cargar(true);
+    this.cargarTendencia();
     if (this.tab() === 'historial') this.cargarHistorial();
   }
 
@@ -411,7 +423,10 @@ export class InventarioComponent implements OnInit, OnDestroy {
         this.insumoAnimadoTimer = setTimeout(() => {
           if (this.insumoAnimadoId() === i.id) this.insumoAnimadoId.set(null);
         }, 1200);
+        // Refresco completo tras el movimiento: stock (tarjetas), gráfico de consumo e historial.
         this.cargar();
+        this.cargarTendencia();
+        if (this.tab() === 'historial') this.cargarHistorial();
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoMovimiento.set(false);

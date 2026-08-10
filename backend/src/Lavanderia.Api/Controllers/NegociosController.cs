@@ -27,7 +27,7 @@ public class NegociosController : ControllerBase
     {
         "login", "ticket", "cuadre-caja", "seleccionar-sede", "inicio", "pedidos", "registrar",
         "registro-antiguo", "clientes", "promociones", "reportes", "inventario", "ajustes",
-        "facturacion", "assets", "plataforma", "seguimiento",
+        "facturacion", "assets", "plataforma", "seguimiento", "repartidor", "recibo-suscripcion",
     };
     private static readonly Regex SlugValido = new("^[a-z0-9][a-z0-9-]{1,49}$", RegexOptions.IgnoreCase);
     private static readonly Regex UsuarioValido = new("^[a-z0-9._-]{3,50}$", RegexOptions.IgnoreCase);
@@ -41,11 +41,12 @@ public class NegociosController : ControllerBase
     private readonly IServicioRepository _servicios;
     private readonly IConfiguracionNegocioRepository _configuracion;
     private readonly INegocioAccessValidator _accessValidator;
+    private readonly IPagoSuscripcionRepository _pagos;
 
     public NegociosController(INegocioRepository negocios, ISedeRepository sedes,
         IUsuarioRepository usuarios, IRolRepository roles, IRolPermisoRepository permisos,
         IServicioRepository servicios, IConfiguracionNegocioRepository configuracion,
-        INegocioAccessValidator accessValidator)
+        INegocioAccessValidator accessValidator, IPagoSuscripcionRepository pagos)
     {
         _negocios = negocios;
         _sedes = sedes;
@@ -55,6 +56,7 @@ public class NegociosController : ControllerBase
         _servicios = servicios;
         _configuracion = configuracion;
         _accessValidator = accessValidator;
+        _pagos = pagos;
     }
 
     [HttpGet]
@@ -266,6 +268,96 @@ public class NegociosController : ControllerBase
         await _usuarios.ActualizarPasswordAsync(admin.Id, BCrypt.Net.BCrypt.HashPassword(req.NuevaPassword), id, ct);
         return Ok(new { usuario = admin.UsuarioLogin });
     }
+
+    /// <summary>Restablece la contraseña de CUALQUIER usuario de la empresa (soporte del propietario):
+    /// útil cuando un trabajador o coordinador pierde su acceso, no solo el administrador. El usuario
+    /// se valida contra la empresa (ListarTodos ya está acotado por negocioId), evitando tocar usuarios
+    /// de otra empresa. Devuelve el nombre de usuario para comunicárselo al cliente.</summary>
+    [HttpPost("{id:int}/usuarios/{usuarioId:int}/reset-password")]
+    public async Task<IActionResult> ResetPasswordUsuario(int id, int usuarioId, [FromBody] ResetPasswordAdminRequest req, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+
+        if (!Regex.IsMatch(req.NuevaPassword, "^(?=.*[A-Za-z])(?=.*\\d).{8,}$"))
+            return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres, con letras y números." });
+
+        var usuarios = await _usuarios.ListarTodosAsync(id, ct);
+        var usuario = usuarios.FirstOrDefault(u => u.Id == usuarioId);
+        if (usuario is null)
+            return NotFound(new { mensaje = "El usuario no existe en esta empresa." });
+        if (!usuario.Activo)
+            return BadRequest(new { mensaje = "Este usuario está inactivo; reactívalo antes de restablecer su clave." });
+
+        await _usuarios.ActualizarPasswordAsync(usuario.Id, BCrypt.Net.BCrypt.HashPassword(req.NuevaPassword), id, ct);
+        return Ok(new { usuario = usuario.UsuarioLogin });
+    }
+
+    // ---------- Cobranza: pagos de la suscripción ----------
+    private static readonly string[] MetodosPago = { "YAPE", "PLIN", "TRANSFERENCIA", "EFECTIVO", "OTRO" };
+
+    /// <summary>Registra un pago de la suscripción: deja el pago en el historial y avanza el
+    /// próximo pago la cantidad de meses cubiertos, dejando la suscripción ACTIVA.</summary>
+    [HttpPost("{id:int}/pagos")]
+    public async Task<ActionResult<PagoSuscripcionDto>> RegistrarPago(int id, [FromBody] RegistrarPagoSuscripcionRequest req, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+
+        var metodo = (req.Metodo ?? "").Trim().ToUpperInvariant();
+        if (!MetodosPago.Contains(metodo)) return BadRequest(new { mensaje = "Método de pago inválido." });
+        if (req.Monto <= 0) return BadRequest(new { mensaje = "El monto debe ser mayor a S/ 0." });
+        var meses = Math.Clamp(req.Meses, 1, 24);
+
+        // El período cubierto arranca donde termina la cobertura vigente (si paga adelantado)
+        // o desde hoy (si ya venció o nunca pagó).
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var desde = (n.ProximoPago.HasValue && n.ProximoPago.Value > hoy) ? n.ProximoPago.Value : hoy;
+        var hasta = desde.AddMonths(meses);
+
+        var pago = new PagoSuscripcion
+        {
+            NegocioId = id,
+            Fecha = hoy,
+            Monto = req.Monto,
+            Metodo = metodo,
+            PeriodoDesde = desde,
+            PeriodoHasta = hasta,
+            Nota = NormalizarOpcional(req.Nota)
+        };
+        pago.Id = await _pagos.CrearAsync(pago, ct);
+
+        // Deja la suscripción al día: mismo plan/monto, estado ACTIVA y próximo pago = fin del período.
+        await _negocios.ActualizarSuscripcionAsync(id, n.PlanSuscripcion, "ACTIVA", n.MontoMensual, hasta, ct);
+        _accessValidator.Invalidar(id);
+
+        return Ok(ToPagoDto(pago));
+    }
+
+    /// <summary>Historial de pagos de una empresa (más recientes primero).</summary>
+    [HttpGet("{id:int}/pagos")]
+    public async Task<ActionResult<List<PagoSuscripcionDto>>> ListarPagos(int id, CancellationToken ct)
+    {
+        var n = await _negocios.ObtenerPorIdAsync(id, ct);
+        if (n is null || n.Slug == "plataforma-interna")
+            return NotFound(new { mensaje = "Empresa no encontrada." });
+        var pagos = await _pagos.ListarPorNegocioAsync(id, ct);
+        return Ok(pagos.Select(ToPagoDto).ToList());
+    }
+
+    /// <summary>Un pago puntual (para generar su recibo imprimible).</summary>
+    [HttpGet("{id:int}/pagos/{pagoId:int}")]
+    public async Task<ActionResult<PagoSuscripcionDto>> ObtenerPago(int id, int pagoId, CancellationToken ct)
+    {
+        var pago = await _pagos.ObtenerAsync(pagoId, id, ct);
+        if (pago is null) return NotFound(new { mensaje = "Pago no encontrado." });
+        return Ok(ToPagoDto(pago));
+    }
+
+    private static PagoSuscripcionDto ToPagoDto(PagoSuscripcion p) =>
+        new(p.Id, p.Fecha, p.Monto, p.Metodo, p.PeriodoDesde, p.PeriodoHasta, p.Nota, p.FechaCreacion);
 
     // Mismos defaults que ya usa Lavixa en produccion (ver 021_propietario_plataforma.sql).
     // ADMIN no necesita filas: AuthController.ObtenerModulosAsync le da Modulos.Todos directo.

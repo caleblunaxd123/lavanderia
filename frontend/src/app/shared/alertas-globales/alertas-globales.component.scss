@@ -31,6 +31,16 @@
   &--advertencia { --alert-bg: #a85c00; --alert-border: #713d00; }
   &--informativa { --alert-bg: #2878b8; --alert-border: #155487; }
   &--exito { --alert-bg: #178268; --alert-border: #0b5e4a; }
+
+  // Toda la franja es clickeable (navega al destino de la alerta)
+  &--clickable {
+    cursor: pointer;
+    transition: filter .14s ease, box-shadow .14s ease, transform .14s ease;
+
+    &:hover { filter: brightness(1.06); box-shadow: 0 6px 16px rgba(15, 23, 42, .18); }
+    &:active { transform: translateY(1px); }
+    &:focus-visible { outline: 3px solid rgba(255, 255, 255, .85); outline-offset: 2px; }
+  }
 }
 
 .global-alert__icon {

@@ -2,9 +2,9 @@
   <app-header />
 }
 @if (esPlataforma()) {
-  <app-plataforma-header />
+  <app-plataforma-sidebar />
 }
-<main class="app-content" [class.app-content--sidebar]="mostrarHeader()">
+<main class="app-content" [class.app-content--sidebar]="mostrarHeader() || esPlataforma()">
   @if (mostrarAlertas()) {
     <app-alertas-globales />
   }

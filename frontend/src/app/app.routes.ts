@@ -21,8 +21,18 @@ export const routes: Routes = [
       {
         path: 'empresa/:id',
         loadComponent: () => import('./pages/plataforma-negocio-detalle/plataforma-negocio-detalle.component').then(m => m.PlataformaNegocioDetalleComponent)
+      },
+      {
+        path: 'ajustes',
+        loadComponent: () => import('./pages/plataforma-ajustes/plataforma-ajustes.component').then(m => m.PlataformaAjustesComponent)
       }
     ]
+  },
+  {
+    // Recibo imprimible de un pago de suscripción (pantalla completa, sin nav).
+    path: 'recibo-suscripcion/:negocioId/:pagoId',
+    canActivate: [authGuard, rolGuard(['PROPIETARIO'])],
+    loadComponent: () => import('./pages/plataforma-recibo/plataforma-recibo.component').then(m => m.PlataformaReciboComponent)
   },
   {
     path: 'ticket/:id',

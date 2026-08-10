@@ -1,6 +1,7 @@
 <div class="page">
   <button type="button" class="volver-pill" (click)="volver()">
-    <app-icon name="arrow-left" [size]="14"></app-icon> Pedidos
+    <span class="volver-pill__flecha"><app-icon name="arrow-left" [size]="18"></app-icon></span>
+    <span>Volver a Pedidos</span>
   </button>
 
   @if (cargando()) {
@@ -32,49 +33,16 @@
           <button type="button" class="chip-fecha" (click)="abrirModalFecha()"
             title="Cambiar fecha">
             <app-icon name="calendar" [size]="13"></app-icon>
-            {{ p.modalidad === 'Delivery' ? 'Entrega' : 'Recojo' }}:
+            {{ p.modalidad === 'Delivery' ? 'Delivery' : 'Recojo' }}:
             <strong>{{ p.fechaEntregaEst ? (p.fechaEntregaEst | date:'EEE d MMM, h:mm a') : 'sin definir' }}</strong>
             <app-icon name="edit" [size]="12"></app-icon>
           </button>
         }
-        <button type="button" class="btn btn--ghost" (click)="iniciarTour()"
-          title="¿Cómo funciona esta pantalla?" aria-label="Ver tutorial">
-          <app-icon name="info" [size]="15"></app-icon>
+        <button type="button" class="btn btn--ayuda" (click)="iniciarTour()"
+          title="¿Cómo funciona esta pantalla?" aria-label="Ver tutorial de esta pantalla">
+          <app-icon name="info" [size]="16"></app-icon>
+          <span>¿Cómo funciona?</span>
         </button>
-        <div class="menu-acciones" data-tour="detalle-mas">
-          <button type="button" class="btn btn--ghost" (click)="menuAcciones.set(!menuAcciones())">
-            Más acciones <app-icon name="chevron-right" [size]="12"></app-icon>
-          </button>
-          @if (menuAcciones()) {
-            <div class="menu-acciones__backdrop" (click)="menuAcciones.set(false)"></div>
-            <div class="menu-acciones__lista" role="menu">
-              <button type="button" (click)="imprimirTicket(p)">
-                <app-icon name="printer" [size]="14"></app-icon> Reimprimir ticket
-              </button>
-              @if (!p.anulado && saldoPendiente() === 0) {
-                <button type="button" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('BOLETA')">
-                  <app-icon name="note" [size]="14"></app-icon> Emitir Boleta
-                </button>
-                <button type="button" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('FACTURA')">
-                  <app-icon name="note" [size]="14"></app-icon> Emitir Factura
-                </button>
-              }
-              @if (!p.anulado && p.estadoProceso !== 'ENTREGADO') {
-                <button type="button" (click)="abrirModalFecha()">
-                  <app-icon name="calendar" [size]="14"></app-icon> Cambiar fecha
-                </button>
-                @if (p.modalidad === 'Tienda') {
-                  <button type="button" (click)="abrirDestinoDelivery(p)">
-                    <app-icon name="pin" [size]="14"></app-icon> Convertir a Delivery
-                  </button>
-                }
-                <button type="button" class="peligro" (click)="abrirModalAnular()">
-                  <app-icon name="ban" [size]="14"></app-icon> Anular pedido
-                </button>
-              }
-            </div>
-          }
-        </div>
       </div>
     </header>
 
@@ -108,13 +76,7 @@
           }
         </div>
 
-        @if (puedeAvanzar(p)) {
-          <button class="btn-principal" [class.btn-principal--entrega]="p.estadoProceso === 'LISTO'"
-            (click)="accionPrincipal(p)" [disabled]="avanzando()">
-            @if (p.estadoProceso === 'LISTO') { <app-icon name="package" [size]="18"></app-icon> }
-            {{ avanzando() ? 'Actualizando…' : accionPrincipalLabel(p) }}
-          </button>
-        } @else if (flujoInconsistente(p)) {
+        @if (flujoInconsistente(p)) {
           <div class="banner banner--alerta">
             El pedido no tiene un área actual válida. Revisa el historial antes de continuar.
           </div>
@@ -157,7 +119,7 @@
               }
             </div>
             <strong>{{ p.direccionEntrega || 'Dirección por confirmar' }}</strong>
-            <span class="hint">{{ p.distritoEntrega || 'Distrito por confirmar' }}</span>
+            <p class="hint">{{ p.distritoEntrega || 'Distrito por confirmar' }}</p>
             @if (p.referenciaEntrega) { <p class="hint">Ref: {{ p.referenciaEntrega }}</p> }
             @if (urlMapaPedido(p); as urlMapa) {
               <a class="link-mapa" [href]="urlMapa" target="_blank" rel="noopener noreferrer">
@@ -259,11 +221,51 @@
             </button>
           }
           @if (saldoPendiente() > 0 && p.estadoProceso === 'LISTO') {
-            <p class="hint">El cobro se hace al entregar (botón de arriba).</p>
+            <p class="hint">El cobro se hace al entregar (botón verde de "Acciones", más abajo).</p>
           }
         </section>
       </div>
     </div>
+
+    <!-- ═══ Acciones del pedido (todo visible, sin menús ocultos) ═══ -->
+    <section class="card acciones-pedido" data-tour="detalle-mas">
+      <h4 class="acciones-pedido__titulo">Acciones del pedido</h4>
+
+      @if (puedeAvanzar(p)) {
+        <button class="btn-principal" [class.btn-principal--entrega]="p.estadoProceso === 'LISTO'"
+          (click)="accionPrincipal(p)" [disabled]="avanzando()">
+          @if (p.estadoProceso === 'LISTO') { <app-icon name="package" [size]="20"></app-icon> }
+          {{ avanzando() ? 'Actualizando…' : accionPrincipalLabel(p) }}
+        </button>
+      }
+
+      <div class="acciones-pedido__secundarias">
+        <button type="button" class="btn btn--accion" (click)="imprimirTicket(p)">
+          <app-icon name="printer" [size]="18"></app-icon> Reimprimir ticket
+        </button>
+        @if (!p.anulado && saldoPendiente() === 0) {
+          <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('BOLETA')">
+            <app-icon name="note" [size]="18"></app-icon> Emitir Boleta
+          </button>
+          <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('FACTURA')">
+            <app-icon name="note" [size]="18"></app-icon> Emitir Factura
+          </button>
+        }
+        @if (!p.anulado && p.estadoProceso !== 'ENTREGADO') {
+          <button type="button" class="btn btn--accion" (click)="abrirModalFecha()">
+            <app-icon name="calendar" [size]="18"></app-icon> Cambiar fecha
+          </button>
+          @if (p.modalidad === 'Tienda') {
+            <button type="button" class="btn btn--accion" (click)="abrirDestinoDelivery(p)">
+              <app-icon name="pin" [size]="18"></app-icon> Convertir a Delivery
+            </button>
+          }
+          <button type="button" class="btn btn--accion btn--accion-peligro" (click)="abrirModalAnular()">
+            <app-icon name="ban" [size]="18"></app-icon> Anular pedido
+          </button>
+        }
+      </div>
+    </section>
 
     <!-- ═══ Secundario, colapsado ═══ -->
     @if (p.observaciones) {
@@ -434,7 +436,7 @@
   <div class="modal-backdrop" (click)="cerrarDestinoDelivery()"></div>
   <div class="modal-simple modal-simple--destino" role="dialog" aria-modal="true" aria-labelledby="titulo-convertir-delivery">
     <div class="modal-simple__head">
-      <h3 id="titulo-convertir-delivery"><app-icon name="pin" [size]="15"></app-icon> Destino de Delivery</h3>
+      <h3 id="titulo-convertir-delivery"><app-icon name="pin" [size]="15"></app-icon> Destino de entrega</h3>
       <button type="button" (click)="cerrarDestinoDelivery()" aria-label="Cerrar"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">

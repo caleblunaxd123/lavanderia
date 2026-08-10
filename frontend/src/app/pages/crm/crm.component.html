@@ -89,8 +89,12 @@
                 <tr>
                   <td>{{ c.nombre }}</td>
                   <td>{{ etiquetaDias(c.diasParaCumpleanos) }}</td>
-                  <td>
-                    <button class="btn-wsp" (click)="saludarCumpleanos(c)" title="Enviar WhatsApp">
+                  <td class="acciones-cumple">
+                    <button class="btn btn--sm btn--cumple" (click)="generarCodigoCumple(c)"
+                      [disabled]="generandoCumpleId() === c.clienteId" title="Generar código de cumpleaños y enviar por WhatsApp">
+                      {{ generandoCumpleId() === c.clienteId ? '…' : '🎂 Código' }}
+                    </button>
+                    <button class="btn-wsp" (click)="saludarCumpleanos(c)" title="Solo saludar por WhatsApp">
                       <app-icon name="whatsapp" [size]="14"></app-icon>
                     </button>
                   </td>

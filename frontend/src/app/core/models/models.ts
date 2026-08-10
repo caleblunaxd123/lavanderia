@@ -212,6 +212,7 @@ export interface PlataformaResumen {
   pedidosMesTotal: number;
   empresasPorVencer: number;
   empresasVencidas: number;
+  recaudadoMes: number;
 }
 
 export interface SedeResumen { id: number; nombre: string; direccion?: string | null; activo: boolean; }
@@ -253,6 +254,33 @@ export interface CambiarSuscripcionRequest {
   estadoSuscripcion: string;
   montoMensual: number;
   proximoPago?: string | null;
+}
+
+// ---------- Cobranza del propietario ----------
+export interface PagoSuscripcion {
+  id: number;
+  fecha: string;
+  monto: number;
+  metodo: string;
+  periodoDesde?: string | null;
+  periodoHasta?: string | null;
+  nota?: string | null;
+  fechaCreacion: string;
+}
+
+export interface RegistrarPagoSuscripcionRequest {
+  monto: number;
+  metodo: string;
+  meses: number;
+  nota?: string | null;
+}
+
+export interface ConfiguracionPlataforma {
+  nombrePlataforma: string;
+  yapeNombre?: string | null;
+  yapeNumero?: string | null;
+  contactoSoporte?: string | null;
+  diasAvisoCobro: number;
 }
 
 export interface CrearPedidoRequest {

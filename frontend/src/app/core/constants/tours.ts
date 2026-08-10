@@ -30,10 +30,10 @@ export const TOURS: Record<string, PasoTour[]> = {
   // ---------------- Detalle del pedido ----------------
   'pedido-detalle': [
     { titulo: 'Detalle del pedido', texto: 'Esta es la ficha completa de un pedido. Todo lo que puedes hacer con él está aquí.' },
-    { ancla: 'detalle-progreso', titulo: 'En qué etapa va', texto: 'La barra de arriba muestra por dónde va el pedido. El botón grande hace la acción que toca ahora (avanzar o entregar).' },
+    { ancla: 'detalle-progreso', titulo: 'En qué etapa va', texto: 'La barra muestra por dónde va el pedido: cada punto verde es una etapa ya cumplida.' },
     { ancla: 'detalle-cliente', titulo: 'Datos del cliente', texto: 'Nombre y celular. El botón verde abre WhatsApp con un mensaje ya escrito según la etapa del pedido.' },
     { ancla: 'detalle-pago', titulo: 'El pago', texto: 'Cuánto pagó y cuánto debe. Si hay saldo, aquí lo cobras. En verde cuando ya está pagado del todo.' },
-    { ancla: 'detalle-mas', titulo: 'Más acciones', texto: 'Reimprimir ticket, emitir boleta/factura, cambiar la fecha o anular. Lo menos frecuente vive aquí para no estorbar.' },
+    { ancla: 'detalle-mas', titulo: 'Acciones del pedido', texto: 'Aquí, a la vista, están todas las acciones: el botón grande verde hace lo que toca ahora (cobrar y entregar o avanzar la etapa), y al lado tienes reimprimir ticket, cambiar fecha, convertir a delivery, emitir boleta/factura o anular.' },
   ],
 
   // ---------------- Registrar ----------------

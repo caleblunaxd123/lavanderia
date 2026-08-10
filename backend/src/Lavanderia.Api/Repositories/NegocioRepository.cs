@@ -200,7 +200,11 @@ public class NegocioRepository : INegocioRepository
               (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna' AND Activo = 1
                  AND ProximoPago IS NOT NULL AND ProximoPago BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(DAY, 7, CAST(GETDATE() AS DATE))) AS EmpresasPorVencer,
               (SELECT COUNT(*) FROM dbo.Negocio WHERE Slug <> 'plataforma-interna'
-                 AND (EstadoSuscripcion = 'VENCIDA' OR (ProximoPago IS NOT NULL AND ProximoPago < CAST(GETDATE() AS DATE)))) AS EmpresasVencidas";
+                 AND (EstadoSuscripcion = 'VENCIDA' OR (ProximoPago IS NOT NULL AND ProximoPago < CAST(GETDATE() AS DATE)))) AS EmpresasVencidas,
+              (SELECT ISNULL(SUM(ps.Monto), 0) FROM dbo.PagoSuscripcion ps
+                 INNER JOIN dbo.Negocio n ON n.Id = ps.NegocioId
+                 WHERE n.Slug <> 'plataforma-interna'
+                   AND YEAR(ps.Fecha) = YEAR(GETDATE()) AND MONTH(ps.Fecha) = MONTH(GETDATE())) AS RecaudadoMes";
         return await cmd.ReadFirstOrDefaultAsync(r => new PlataformaResumenDto(
             r.GetInt32(r.GetOrdinal("TotalEmpresas")),
             r.GetInt32(r.GetOrdinal("EmpresasActivas")),
@@ -209,8 +213,9 @@ public class NegocioRepository : INegocioRepository
             r.GetDecimal(r.GetOrdinal("IngresoMensualRecurrente")),
             r.GetInt32(r.GetOrdinal("PedidosMesTotal")),
             r.GetInt32(r.GetOrdinal("EmpresasPorVencer")),
-            r.GetInt32(r.GetOrdinal("EmpresasVencidas"))
-        ), ct) ?? new PlataformaResumenDto(0, 0, 0, 0, 0, 0, 0, 0);
+            r.GetInt32(r.GetOrdinal("EmpresasVencidas")),
+            r.GetDecimal(r.GetOrdinal("RecaudadoMes"))
+        ), ct) ?? new PlataformaResumenDto(0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     public async Task ActualizarDatosAsync(int id, string nombre, string? ruc, string? titularNombre, string? titularEmail, string? titularCelular, string? notas, CancellationToken ct = default)

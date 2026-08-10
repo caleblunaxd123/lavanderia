@@ -248,6 +248,11 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         });
     }
 
+    [HttpGet("facturacion/kpi")]
+    [Authorize(Policy = "Modulo:AJUSTES")]
+    public async Task<ActionResult<List<KpiComprobantesMesDto>>> KpiMensual([FromQuery] int meses = 6, CancellationToken ct = default)
+        => Ok(await _facturacion.KpiMensualAsync(SedeRequeridaId, meses, ct));
+
     [HttpGet("facturacion/comprobantes/{id:int}")]
     [Authorize(Policy = "Modulo:AJUSTES")]
     public async Task<ActionResult<ComprobanteDto>> Obtener(int id, CancellationToken ct)

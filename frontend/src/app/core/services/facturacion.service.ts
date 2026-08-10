@@ -37,6 +37,17 @@ export interface Comprobante {
   fechaEmision: string;
 }
 
+export interface KpiComprobantesMes {
+  anio: number;
+  mes: number;
+  boletasCantidad: number;
+  boletasMonto: number;
+  facturasCantidad: number;
+  facturasMonto: number;
+  totalCantidad: number;
+  totalMonto: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FacturacionService {
   private readonly http = inject(HttpClient);
@@ -57,6 +68,11 @@ export class FacturacionService {
   listarComprobantes(pagina = 1, tamanoPagina = 15) {
     const params = new HttpParams().set('pagina', pagina).set('tamanoPagina', tamanoPagina);
     return this.http.get<PagedResult<Comprobante>>(`${this.base}/comprobantes`, { params });
+  }
+
+  /** KPI mensual de boletas y facturas (conteo + monto por mes). */
+  kpiMensual(meses = 6) {
+    return this.http.get<KpiComprobantesMes[]>(`${this.base}/kpi`, { params: new HttpParams().set('meses', meses) });
   }
 
   obtenerComprobante(id: number) {

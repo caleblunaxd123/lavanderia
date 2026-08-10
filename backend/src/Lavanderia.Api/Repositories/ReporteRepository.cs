@@ -139,23 +139,31 @@ public class ReporteRepository : IReporteRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT s.Nombre, SUM(i.Cantidad) AS CantidadVendida, SUM(i.Total) AS IngresoTotal,
-                   CASE WHEN SUM(i.Cantidad) > 0 THEN SUM(i.Total) / SUM(i.Cantidad) ELSE 0 END AS PrecioPromedio
+                   CASE WHEN SUM(i.Cantidad) > 0 THEN SUM(i.Total) / SUM(i.Cantidad) ELSE 0 END AS PrecioPromedio,
+                   s.Costo AS CostoUnit,
+                   s.Costo * SUM(i.Cantidad) AS CostoTotal,
+                   SUM(i.Total) - s.Costo * SUM(i.Cantidad) AS Margen,
+                   CASE WHEN SUM(i.Total) > 0 THEN (SUM(i.Total) - s.Costo * SUM(i.Cantidad)) / SUM(i.Total) * 100 ELSE 0 END AS MargenPct
             FROM dbo.PedidoItem i
             INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
             INNER JOIN dbo.Pedido p ON p.Id = i.PedidoId
             WHERE p.Anulado = 0 AND CAST(p.FechaIngreso AS DATE) BETWEEN @Desde AND @Hasta AND p.SedeId = @SedeId
-            GROUP BY s.Nombre
+            GROUP BY s.Nombre, s.Costo
             ORDER BY SUM(i.Total) DESC";
         cmd.AddParam("@Desde", desde.Date);
         cmd.AddParam("@Hasta", hasta.Date);
         cmd.AddParam("@SedeId", sedeId);
-        var columnas = new List<string> { "Servicio", "Cantidad vendida", "Precio promedio", "Ingreso generado" };
+        var columnas = new List<string> { "Servicio", "Cantidad vendida", "Precio promedio", "Ingreso generado", "Costo unit.", "Costo total", "Margen", "Margen %" };
         return await Ejecutar(cmd, columnas, r => new Dictionary<string, string>
         {
             ["Servicio"] = Texto(r, "Nombre"),
             ["Cantidad vendida"] = r.GetDecimal(r.GetOrdinal("CantidadVendida")).ToString("0.##"),
             ["Precio promedio"] = Soles(r, "PrecioPromedio"),
             ["Ingreso generado"] = Soles(r, "IngresoTotal"),
+            ["Costo unit."] = Soles(r, "CostoUnit"),
+            ["Costo total"] = Soles(r, "CostoTotal"),
+            ["Margen"] = Soles(r, "Margen"),
+            ["Margen %"] = r.GetDecimal(r.GetOrdinal("MargenPct")).ToString("0.#") + "%",
         }, ct);
     }
 

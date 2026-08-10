@@ -13,7 +13,7 @@
 .link-btn {
   background: none;
   border: none;
-  color: var(--azul-oscuro, #0b57d0);
+  color: var(--azul-oscuro, #053465);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
@@ -93,7 +93,7 @@
   font-weight: 600;
   color: #475569;
   cursor: pointer;
-  &.is-active { background: #fff; color: var(--azul-oscuro, #0b57d0); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  &.is-active { background: #fff; color: var(--azul-oscuro, #053465); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 }
 
 // ---------- Pasos ----------
@@ -324,7 +324,7 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    color: var(--azul-oscuro, #0b57d0);
+    color: var(--azul-oscuro, #053465);
     list-style: revert;
   }
   .detalle-grid {
@@ -385,9 +385,9 @@
   font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
-  &--primario { background: var(--azul-oscuro, #0b57d0); color: #fff; &:disabled { opacity: .6; cursor: default; } }
+  &--primario { background: var(--azul-oscuro, #053465); color: #fff; &:disabled { opacity: .6; cursor: default; } }
   &--ghost { background: #f1f5f9; color: #475569; }
-  &--outline-primary { background: #fff; border: 1.5px solid var(--azul-oscuro, #0b57d0); color: var(--azul-oscuro, #0b57d0); }
+  &--outline-primary { background: #fff; border: 1.5px solid var(--azul-oscuro, #053465); color: var(--azul-oscuro, #053465); }
   &--sm { padding: 6px 11px; font-size: 12px; }
   &--cerrar { width: 100%; margin-top: 16px; padding: 13px; font-size: 15px; }
 }

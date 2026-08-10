@@ -224,7 +224,7 @@ export class MapaUbicacionComponent implements AfterViewInit, OnChanges, OnDestr
         radius: 9,
         color: '#ffffff',
         weight: 3,
-        fillColor: '#0b57d0',
+        fillColor: '#053465',
         fillOpacity: 1
       }).addTo(this.mapa);
     } else {

@@ -28,7 +28,7 @@ $mtop-h: 56px;
   align-items: center;
   gap: 12px;
   padding: 0 14px;
-  background: linear-gradient(90deg, var(--azul-oscuro) 0%, var(--azul-claro) 100%);
+  background: var(--azul-oscuro);
   color: #fff;
   box-shadow: 0 2px 14px rgba(11, 40, 96, .3);
 
@@ -99,13 +99,13 @@ $mtop-h: 56px;
   display: flex;
   flex-direction: column;
   color: var(--sb-text);
-  background: linear-gradient(168deg, var(--azul-oscuro) 0%, var(--azul-claro) 108%);
+  background: var(--azul-oscuro);
   box-shadow: 3px 0 24px -8px rgba(11, 40, 96, .35);
 
   // Brillo sutil superior que le da profundidad
   &::before {
     content: ''; position: absolute; inset: 0; pointer-events: none;
-    background: radial-gradient(120% 40% at 0% 0%, rgba(255,255,255,.14), transparent 60%);
+    background: none;
   }
 
   &__brand {
@@ -113,6 +113,14 @@ $mtop-h: 56px;
     display: flex; align-items: center; gap: 11px;
     padding: 18px 18px 16px;
     border-bottom: 1px solid var(--sb-border);
+
+    // Variante con logo del negocio: grande y centrado, igual que el panel de propietario.
+    &--logo {
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 22px 18px 18px;
+    }
   }
 
   &__logo {
@@ -125,6 +133,20 @@ $mtop-h: 56px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
       svg { width: 23px; height: 23px; }
     }
+  }
+
+  // Logo del negocio a tamaño completo (mismo criterio que el sidebar de plataforma).
+  // Si el fondo del logo coincide con el de la barra, se ve sin costura; en el login
+  // (panel blanco) las esquinas redondeadas lo muestran como tarjeta.
+  &__logo-full {
+    box-sizing: border-box;
+    width: 190px;
+    max-width: 92%;
+    max-height: 110px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    border-radius: 12px;
   }
 
   &__brand-text {
@@ -468,7 +490,7 @@ $mtop-h: 56px;
   &:hover { padding-left: 17px; background: #f8fafc; }
   &--critica { --attention-color: #c0392b; }
   &--advertencia { --attention-color: #b7791f; }
-  &--informativa { --attention-color: #0b57d0; }
+  &--informativa { --attention-color: #053465; }
 
   &__icon {
     width: 34px;

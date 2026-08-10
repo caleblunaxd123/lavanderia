@@ -56,13 +56,18 @@
     <div class="card tabla-wrap">
       <table class="tabla">
         <thead>
-          <tr><th>Nombre</th><th>Precio</th><th>Unidad</th><th>Categoría</th><th>Estado</th><th></th></tr>
+          <tr><th>Nombre</th><th>Precio</th><th>Costo</th><th>Margen</th><th>Unidad</th><th>Categoría</th><th>Estado</th><th></th></tr>
         </thead>
         <tbody>
           @for (s of serviciosPaginados(); track s.id) {
             <tr [class.inactivo]="!s.activo">
               <td class="nombre">{{ s.nombre }}</td>
               <td class="mono">S/ {{ s.precio | number:'1.2-2' }}</td>
+              <td class="mono">{{ s.costo ? ('S/ ' + (s.costo | number:'1.2-2')) : '—' }}</td>
+              <td class="mono" [class.txt-rojo]="(s.precio - (s.costo || 0)) < 0">
+                S/ {{ (s.precio - (s.costo || 0)) | number:'1.2-2' }}
+                @if (s.precio) { <small>({{ ((s.precio - (s.costo || 0)) / s.precio * 100) | number:'1.0-0' }}%)</small> }
+              </td>
               <td>{{ s.unidad }}</td>
               <td>{{ s.categoriaNombre || '—' }}</td>
               <td>
@@ -96,6 +101,8 @@
           </div>
           <div class="servicio-card__body">
             <div><span>Precio:</span> <strong>S/ {{ s.precio | number:'1.2-2' }}</strong></div>
+            <div><span>Costo:</span> {{ s.costo ? ('S/ ' + (s.costo | number:'1.2-2')) : '—' }}</div>
+            <div><span>Margen:</span> <strong [class.txt-rojo]="(s.precio - (s.costo || 0)) < 0">S/ {{ (s.precio - (s.costo || 0)) | number:'1.2-2' }}</strong></div>
             <div><span>Unidad:</span> {{ s.unidad }}</div>
             <div><span>Categoría:</span> {{ s.categoriaNombre || '—' }}</div>
           </div>
@@ -150,6 +157,23 @@
                 <option [value]="u">{{ u }}</option>
               }
             </select>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="servicio-costo">Costo <small class="hint">(opcional, para rentabilidad)</small></label>
+            <div class="money-input"><span>S/</span><input id="servicio-costo" type="number" inputmode="decimal"
+              step="0.01" min="0" max="10000" [(ngModel)]="form.costo" name="costo" placeholder="0.00" /></div>
+          </div>
+          <div>
+            <label>Margen estimado</label>
+            <div class="margen-preview" [class.negativo]="(form.precio || 0) - (form.costo || 0) < 0">
+              S/ {{ ((form.precio || 0) - (form.costo || 0)) | number:'1.2-2' }}
+              @if (form.precio) {
+                <small>({{ (((form.precio || 0) - (form.costo || 0)) / form.precio * 100) | number:'1.0-0' }}%)</small>
+              }
+            </div>
           </div>
         </div>
 

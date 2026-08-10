@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Comprobante, FacturacionService } from '../../core/services/facturacion.service';
+import { Comprobante, FacturacionService, KpiComprobantesMes } from '../../core/services/facturacion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
@@ -29,7 +29,17 @@ export class ComprobantesListComponent implements OnInit {
   readonly reenviandoId = signal<number | null>(null);
   readonly confirmarAnular = signal<Comprobante | null>(null);
 
-  ngOnInit() { this.cargar(); }
+  // ---------- KPI mensual de boletas/facturas ----------
+  readonly kpi = signal<KpiComprobantesMes[]>([]);
+  readonly mesActual = computed(() => this.kpi().at(-1) ?? null);
+  readonly maxMontoSerie = computed(() => Math.max(1, ...this.kpi().map(m => m.totalMonto)));
+  private readonly nombresMes = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  nombreMes(mes: number): string { return this.nombresMes[mes] ?? ''; }
+
+  ngOnInit() {
+    this.cargar();
+    this.svc.kpiMensual(6).subscribe({ next: k => this.kpi.set(k), error: () => {} });
+  }
 
   cargar() {
     this.cargando.set(true);

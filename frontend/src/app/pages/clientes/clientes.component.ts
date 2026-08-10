@@ -9,6 +9,8 @@ import { Cliente, Pedido } from '../../core/models/models';
 import { ClienteFrecuente, ClientesService, MovimientoPuntos } from '../../core/services/clientes.service';
 import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { PedidosService } from '../../core/services/pedidos.service';
+import { CodigoGenerado, PromocionesService } from '../../core/services/promociones.service';
+import { WhatsappService } from '../../core/services/whatsapp.service';
 import { ToastService } from '../../core/services/toast.service';
 import { esCelularValido } from '../../core/util/telefono';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
@@ -28,6 +30,8 @@ import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importado
 export class ClientesComponent implements OnInit, OnDestroy {
   private readonly service = inject(ClientesService);
   private readonly pedidosSvc = inject(PedidosService);
+  private readonly promociones = inject(PromocionesService);
+  private readonly whatsapp = inject(WhatsappService);
   private readonly toast = inject(ToastService);
   private readonly actualizaciones = inject(ActualizacionDatosService);
   private readonly destroyRef = inject(DestroyRef);
@@ -270,10 +274,23 @@ export class ClientesComponent implements OnInit, OnDestroy {
     this.guardando.set(true);
     this.errorNuevo.set(null);
 
+    // Los campos opcionales vacíos deben ir como null, no como "" — si no, las validaciones
+    // de formato del backend (DNI 8 dígitos, celular 9 dígitos) rechazan la cadena vacía.
+    const aNull = (v: unknown) => { const t = (v ?? '').toString().trim(); return t ? t : null; };
+    const payload: Partial<Cliente> = {
+      ...this.nuevoCliente,
+      nombre: this.nuevoCliente.nombre?.trim(),
+      celular: aNull(this.nuevoCliente.celular),
+      dni: aNull(this.nuevoCliente.dni),
+      documentoFiscal: aNull(this.nuevoCliente.documentoFiscal),
+      direccion: aNull(this.nuevoCliente.direccion),
+      fechaNacimiento: aNull(this.nuevoCliente.fechaNacimiento),
+    };
+
     const edit = this.editando();
     const obs$: import('rxjs').Observable<any> = edit
-      ? this.service.actualizar(edit.id, this.nuevoCliente)
-      : this.service.crear(this.nuevoCliente);
+      ? this.service.actualizar(edit.id, payload)
+      : this.service.crear(payload);
 
     obs$.subscribe({
       next: (res: any) => {
@@ -393,6 +410,59 @@ export class ClientesComponent implements OnInit, OnDestroy {
         this.toast.desdeHttp(err, 'No se pudo agregar el registro.');
       }
     });
+  }
+
+  // ---------- Canje de puntos → código de descuento ----------
+  readonly modalCanjeAbierto = signal(false);
+  canjePuntos = 0;
+  canjeDias = 30;
+  readonly generandoCanje = signal(false);
+  readonly codigoCanje = signal<CodigoGenerado | null>(null);
+
+  abrirModalCanje() {
+    const c = this.clienteDetalle();
+    if (!c) return;
+    this.canjePuntos = c.puntos ?? 0;
+    this.canjeDias = 30;
+    this.codigoCanje.set(null);
+    this.modalCanjeAbierto.set(true);
+  }
+
+  cerrarModalCanje() { this.modalCanjeAbierto.set(false); }
+
+  generarCodigoCanje() {
+    const c = this.clienteDetalle();
+    if (!c) return;
+    if (this.canjePuntos < 1) { this.toast.advertencia('Indica cuántos puntos convertir.'); return; }
+    if (this.canjePuntos > (c.puntos ?? 0)) { this.toast.advertencia(`El cliente solo tiene ${c.puntos ?? 0} puntos.`); return; }
+    this.generandoCanje.set(true);
+    this.promociones.generar({ origen: 'PUNTOS', clienteId: c.id, puntosACanjear: this.canjePuntos, diasVigencia: this.canjeDias }).subscribe({
+      next: res => {
+        this.generandoCanje.set(false);
+        this.codigoCanje.set(res);
+        this.toast.exito(`Código ${res.promocion.codigo} generado`);
+        this.cargarPuntos();
+        this.service.obtener(c.id).subscribe(a => this.clienteDetalle.set(a));
+        this.recargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.generandoCanje.set(false);
+        this.toast.desdeHttp(err, 'No se pudo generar el código.');
+      }
+    });
+  }
+
+  enviarWhatsappCanje() {
+    const res = this.codigoCanje();
+    const c = this.clienteDetalle();
+    if (!res) return;
+    if (c?.celular) this.whatsapp.enviar(c.celular, res.mensajeWhatsapp);
+    else this.toast.advertencia('El cliente no tiene celular; copia el código y envíalo manualmente.');
+  }
+
+  copiarCodigoCanje() {
+    const cod = this.codigoCanje()?.promocion.codigo;
+    if (cod) navigator.clipboard?.writeText(cod).then(() => this.toast.info('Código copiado'), () => {});
   }
 
   cambiarOrdenesFiltro(f: 'en-proceso' | 'con-deuda' | 'entregados' | 'todos') {

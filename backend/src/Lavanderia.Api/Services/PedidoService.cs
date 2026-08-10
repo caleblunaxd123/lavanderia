@@ -664,18 +664,20 @@ public class PedidoService : IPedidoService
         var areasTask = _areas.ListarActivasAsync(sedeId, ct);
         var pedidosDelMesTask = _pedidos.PedidosDelMesAsync(hoy, sedeId, ct);
         var gerencialTask = _gerencial.ObtenerVistaGerencialAsync(negocioId, sedeId, ct);
+        var extrasTask = _gerencial.ObtenerDashboardExtrasAsync(negocioId, sedeId, ct);
         var slaTask = _gerencial.ObtenerTableroSlaAsync(sedeId, hoy.AddDays(-30), hoy, ct);
         var abandonadosTask = ListarAbandonadosAsync(3, sedeId, ct);
         var configuracionTask = _configNegocio.ObtenerAsync(negocioId, ct);
 
         await Task.WhenAll(
             estadosTask, porAreaTask, areasTask, pedidosDelMesTask,
-            gerencialTask, slaTask, abandonadosTask, configuracionTask);
+            gerencialTask, extrasTask, slaTask, abandonadosTask, configuracionTask);
 
         var estados = await estadosTask;
         var porArea = await porAreaTask;
         var areas = await areasTask;
         var gerencial = await gerencialTask;
+        var extras = await extrasTask;
         var sla = await slaTask;
         var abandonados = await abandonadosTask;
 
@@ -707,7 +709,16 @@ public class PedidoService : IPedidoService
             PedidosEstancados = sla.Estancados.Take(5).ToList(),
             TotalPedidosAbandonados = abandonados.Count,
             PedidosAbandonados = abandonados.Take(5).ToList(),
-            ActualizadoEn = DateTime.Now
+            ActualizadoEn = DateTime.Now,
+            OrdenesHoy = extras.OrdenesHoy,
+            OrdenesAyer = extras.OrdenesAyer,
+            VentasAyer = extras.VentasAyer,
+            TotalClientes = extras.TotalClientes,
+            ClientesNuevosMes = extras.ClientesNuevosMes,
+            ClientesNuevosMesAnterior = extras.ClientesNuevosMesAnterior,
+            VentasSemana = extras.VentasSemana,
+            OrdenesRecientes = extras.OrdenesRecientes,
+            ServiciosMasSolicitados = gerencial.TopServiciosMes
         };
     }
 

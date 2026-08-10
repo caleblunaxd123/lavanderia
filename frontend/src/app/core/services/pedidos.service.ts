@@ -45,6 +45,16 @@ export interface Dashboard {
   pedidosDelMes: number;
   metaMensual: number;
   insumosBajoStock: number | null;
+  // Bloques estilo panel (comparativos, actividad y distribución)
+  ordenesHoy: number;
+  ordenesAyer: number;
+  ventasAyer: number;
+  totalClientes: number;
+  clientesNuevosMes: number;
+  clientesNuevosMesAnterior: number;
+  ventasSemana: Array<{ fecha: string; total: number }>;
+  ordenesRecientes: OrdenReciente[];
+  serviciosMasSolicitados: Array<{ nombre: string; cantidad: number; total: number }>;
   comprobantesPendientes: number | null;
   comprobantesRechazados: number | null;
   totalPedidosEstancados: number;
@@ -77,6 +87,14 @@ export interface Dashboard {
     diasEsperando: number;
   }>;
   actualizadoEn: string;
+}
+
+export interface OrdenReciente {
+  numero: number;
+  clienteNombre: string;
+  servicioPrincipal: string;
+  estadoProceso: string;
+  total: number;
 }
 
 export interface PedidoContadores {
@@ -151,8 +169,10 @@ export class PedidosService {
     return this.http.get<number>(`${this.base}/siguiente-numero`);
   }
 
-  validarCodigoPromocion(codigo: string) {
-    return this.http.get<PromocionValida>(`${this.base}/promocion/validar`, { params: { codigo } });
+  validarCodigoPromocion(codigo: string, clienteId?: number | null) {
+    let params: Record<string, string | number> = { codigo };
+    if (clienteId) params = { ...params, clienteId };
+    return this.http.get<PromocionValida>(`${this.base}/promocion/validar`, { params });
   }
 
   abandonados(dias = 3) {

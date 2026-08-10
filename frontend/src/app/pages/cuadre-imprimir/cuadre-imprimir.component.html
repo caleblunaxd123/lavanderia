@@ -1,6 +1,10 @@
 <div class="acciones-print">
   <div class="acciones-print__inner">
     <button class="btn btn--primario" (click)="imprimir()"><app-icon name="printer" [size]="16"></app-icon> Imprimir</button>
+    <button class="btn btn--wsp" (click)="enviarWhatsapp()" [disabled]="!cuadre()"><app-icon name="whatsapp" [size]="16"></app-icon> WhatsApp</button>
+    <button class="btn btn--mail" (click)="enviarCorreo()" [disabled]="!cuadre() || generandoPdf()">
+      <app-icon name="mail" [size]="16"></app-icon> {{ generandoPdf() ? 'Preparando…' : 'Correo' }}
+    </button>
     <button class="btn btn--ghost" (click)="cerrar()">Cerrar</button>
   </div>
 </div>

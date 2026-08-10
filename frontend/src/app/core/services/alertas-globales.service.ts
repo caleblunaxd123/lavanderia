@@ -189,7 +189,8 @@ export class AlertasGlobalesService {
         clave: 'abandonados', huella: `${d.totalPedidosAbandonados}:${primero?.pedidoId ?? 0}`,
         titulo: `${d.totalPedidosAbandonados} pedido${d.totalPedidosAbandonados === 1 ? '' : 's'} esperando recojo`,
         detalle: primero ? `La orden #${primero.numero} de ${primero.clienteNombre} lleva ${primero.diasEsperando} días lista.` : 'Hay pedidos listos sin recoger desde hace varios días.',
-        accion: 'Gestionar recojos', ruta: '/pedidos', nivel: 'advertencia', icono: 'phone-alert',
+        accion: 'Gestionar recojos', ruta: '/pedidos', queryParams: { ver: 'abandonados' },
+        nivel: 'advertencia', icono: 'phone-alert',
         cantidad: d.totalPedidosAbandonados, ambito: 'negocio'
       });
     }
@@ -198,7 +199,7 @@ export class AlertasGlobalesService {
         clave: 'stock', huella: String(d.insumosBajoStock),
         titulo: `${d.insumosBajoStock} insumo${d.insumosBajoStock === 1 ? '' : 's'} bajo stock mínimo`,
         detalle: 'Repón existencias antes de que afecten la atención de pedidos.', accion: 'Abrir inventario',
-        ruta: '/inventario', nivel: 'advertencia', icono: 'package',
+        ruta: '/inventario', queryParams: { ver: 'bajo-stock' }, nivel: 'advertencia', icono: 'package',
         cantidad: d.insumosBajoStock ?? 0, ambito: 'negocio'
       });
     }
@@ -207,7 +208,7 @@ export class AlertasGlobalesService {
         clave: 'listos', huella: String(d.totalListos),
         titulo: `${d.totalListos} pedido${d.totalListos === 1 ? '' : 's'} listo${d.totalListos === 1 ? '' : 's'} para entregar`,
         detalle: 'Confirma el cobro y la identidad de quien recibe antes de completar la entrega.', accion: 'Ver pedidos',
-        ruta: '/pedidos', nivel: 'informativa', icono: 'check', cantidad: d.totalListos, ambito: 'negocio'
+        ruta: '/pedidos', queryParams: { ver: 'listos' }, nivel: 'informativa', icono: 'check', cantidad: d.totalListos, ambito: 'negocio'
       });
     }
     if (this.tieneModulo('AJUSTES') && (d.comprobantesPendientes ?? 0) > 0) {

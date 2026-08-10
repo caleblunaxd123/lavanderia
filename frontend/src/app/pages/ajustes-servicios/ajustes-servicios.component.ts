@@ -83,7 +83,7 @@ export class AjustesServiciosComponent implements OnInit {
   errorForm = signal<string | null>(null);
   guardando = signal(false);
 
-  unidades = ['kg', 'prenda', 'pieza', 'und', 'servicio'];
+  unidades = ['kg', 'prenda', 'pieza', 'und', 'servicio', 'm2'];
 
   ngOnInit() {
     this.cargar();
@@ -142,6 +142,11 @@ export class AjustesServiciosComponent implements OnInit {
       this.errorForm.set('Ingresa un precio mayor a S/ 0.00 y menor o igual a S/ 10,000.00.');
       return;
     }
+    const costo = Number(this.form.costo ?? 0);
+    if (!Number.isFinite(costo) || costo < 0 || costo > 10_000) {
+      this.errorForm.set('El costo debe estar entre S/ 0.00 y S/ 10,000.00.');
+      return;
+    }
     const editandoId = this.editando()?.id;
     const duplicado = this.servicios().some(s =>
       s.id !== editandoId && this.normalizar(s.nombre) === this.normalizar(nombre)
@@ -150,7 +155,7 @@ export class AjustesServiciosComponent implements OnInit {
       this.errorForm.set(`Ya existe un servicio llamado “${nombre}”. Edita el existente o usa un nombre diferente.`);
       return;
     }
-    this.form = { ...this.form, nombre, unidad, precio: Math.round(precio * 100) / 100 };
+    this.form = { ...this.form, nombre, unidad, precio: Math.round(precio * 100) / 100, costo: Math.round(costo * 100) / 100 };
     this.guardando.set(true);
     this.errorForm.set(null);
 
@@ -270,7 +275,7 @@ export class AjustesServiciosComponent implements OnInit {
   volver() { this.router.navigate(['/ajustes']); }
 
   private formVacio(): Partial<ServicioEditable> {
-    return { nombre: '', precio: 0, unidad: 'prenda', categoriaId: null, activo: true };
+    return { nombre: '', precio: 0, costo: 0, unidad: 'prenda', categoriaId: null, activo: true };
   }
 
   private normalizar(valor: string): string {

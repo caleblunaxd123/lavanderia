@@ -36,7 +36,7 @@ export class MapaSeguimientoComponent implements AfterViewInit, OnChanges, OnDes
   @Input() destinoLng: number | null = null;
   @Input() motoLat: number | null = null;
   @Input() motoLng: number | null = null;
-  @Input() colorMoto = '#0b57d0';
+  @Input() colorMoto = '#053465';
 
   private mapa?: L.Map;
   private mDestino?: L.Marker;

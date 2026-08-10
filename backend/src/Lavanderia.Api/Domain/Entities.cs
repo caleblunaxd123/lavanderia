@@ -110,6 +110,31 @@ public class Sede
     public DateTime FechaCreacion { get; set; }
 }
 
+/// <summary>Pago mensual que una empresa (tenant) le hace al dueño del SaaS por la suscripción.</summary>
+public class PagoSuscripcion
+{
+    public int Id { get; set; }
+    public int NegocioId { get; set; }
+    public DateOnly Fecha { get; set; }
+    public decimal Monto { get; set; }
+    public string Metodo { get; set; } = "YAPE"; // YAPE / PLIN / TRANSFERENCIA / EFECTIVO / OTRO
+    public DateOnly? PeriodoDesde { get; set; }
+    public DateOnly? PeriodoHasta { get; set; }
+    public string? Nota { get; set; }
+    public int? RegistradoPorUsuarioId { get; set; }
+    public DateTime FechaCreacion { get; set; }
+}
+
+/// <summary>Configuración del dueño del SaaS (fila única): datos de cobro para recordatorios y recibos.</summary>
+public class ConfiguracionPlataforma
+{
+    public string NombrePlataforma { get; set; } = "LaviSystem";
+    public string? YapeNombre { get; set; }
+    public string? YapeNumero { get; set; }
+    public string? ContactoSoporte { get; set; }
+    public int DiasAvisoCobro { get; set; } = 3;
+}
+
 public class Cliente
 {
     public int Id { get; set; }
@@ -155,6 +180,8 @@ public class Servicio
     public int NegocioId { get; set; }
     public string Nombre { get; set; } = "";
     public decimal Precio { get; set; }
+    /// <summary>Costo estimado del servicio (para calcular margen/rentabilidad). 0 = sin definir.</summary>
+    public decimal Costo { get; set; }
     public string Unidad { get; set; } = "";
     public int? CategoriaId { get; set; }
     public string? CategoriaNombre { get; set; }
@@ -191,6 +218,12 @@ public class Promocion
     public DateOnly? FechaFin { get; set; }
     public bool Activa { get; set; } = true;
     public string? Codigo { get; set; }
+    // Códigos generados (ver 045). Null en las promos de marketing clásicas.
+    public int? ClienteId { get; set; }
+    public string? ClienteNombre { get; set; }
+    public string? Origen { get; set; }      // NUEVO | CUMPLE | REFERIDO | PUNTOS | MANUAL
+    public int? MaxUsos { get; set; }         // null = ilimitado
+    public int Usos { get; set; }
 }
 
 public class Pedido

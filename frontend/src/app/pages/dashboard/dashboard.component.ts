@@ -78,6 +78,74 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.min(100, Math.round((d.pedidosDelMes / d.metaMensual) * 100));
   });
 
+  // ===== Panel visual (estilo mockup): comparativos, curva semanal y dona =====
+  private pctDelta(actual: number, previo: number): number | null {
+    if (previo <= 0) return actual > 0 ? 100 : null;
+    return Math.round(((actual - previo) / previo) * 100);
+  }
+  readonly deltaOrdenes = computed(() => {
+    const d = this.data(); return d ? this.pctDelta(d.ordenesHoy, d.ordenesAyer) : null;
+  });
+  readonly deltaVentas = computed(() => {
+    const d = this.data(); return d ? this.pctDelta(d.ventasDelDia, d.ventasAyer) : null;
+  });
+  readonly deltaClientes = computed(() => {
+    const d = this.data(); return d ? this.pctDelta(d.clientesNuevosMes, d.clientesNuevosMesAnterior) : null;
+  });
+
+  /** Serie de ventas de la semana como coordenadas SVG (viewBox 0 0 320 120). */
+  readonly semana = computed(() => {
+    const serie = this.data()?.ventasSemana ?? [];
+    const W = 320, H = 120, padX = 10, padY = 14;
+    const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const max = Math.max(1, ...serie.map(p => p.total));
+    const n = Math.max(1, serie.length);
+    const stepX = (W - padX * 2) / Math.max(1, n - 1);
+    const puntos = serie.map((p, i) => ({
+      x: Math.round(padX + i * stepX),
+      y: Math.round(H - padY - (p.total / max) * (H - padY * 2)),
+      total: p.total,
+      label: dias[i] ?? ''
+    }));
+    const linePath = puntos.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x} ${pt.y}`).join(' ');
+    const areaPath = puntos.length
+      ? `${linePath} L${puntos[puntos.length - 1].x} ${H - padY} L${puntos[0].x} ${H - padY} Z`
+      : '';
+    return { puntos, linePath, areaPath, max, W, H, hayVentas: max > 1 || serie.some(p => p.total > 0) };
+  });
+
+  /** Dona de servicios (stroke-dasharray sobre un círculo r=54). */
+  private readonly coloresDona = ['#053465', '#06B0BD', '#046086', '#7cc7d6', '#94a3b8'];
+  readonly dona = computed(() => {
+    const items = this.data()?.serviciosMasSolicitados ?? [];
+    const total = items.reduce((a, s) => a + s.total, 0);
+    const C = 2 * Math.PI * 54;
+    let acumulado = 0;
+    const segmentos = items.map((s, i) => {
+      const pct = total > 0 ? s.total / total : 0;
+      const seg = {
+        nombre: s.nombre,
+        pctTexto: Math.round(pct * 100),
+        color: this.coloresDona[i % this.coloresDona.length],
+        dash: `${(pct * C).toFixed(2)} ${(C - pct * C).toFixed(2)}`,
+        offset: (-acumulado * C).toFixed(2)
+      };
+      acumulado += pct;
+      return seg;
+    });
+    return { total, segmentos, C };
+  });
+
+  estadoBadge(estado: string): { label: string; clase: string } {
+    switch (estado) {
+      case 'LISTO': return { label: 'Listo', clase: 'ok' };
+      case 'EN_PROCESO': return { label: 'En proceso', clase: 'proc' };
+      case 'PENDIENTE': return { label: 'Pendiente', clase: 'pend' };
+      case 'ENTREGADO': return { label: 'Entregado', clase: 'entregado' };
+      default: return { label: estado, clase: 'neutral' };
+    }
+  }
+
   readonly alertas = computed<AlertaInicio[]>(() => {
     const d = this.data();
     if (!d) return [];

@@ -2,9 +2,10 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Servicio } from '../../core/models/models';
+import { Cliente, Servicio } from '../../core/models/models';
 import { CatalogosService } from '../../core/services/catalogos.service';
-import { Promocion, PromocionesService } from '../../core/services/promociones.service';
+import { ClientesService } from '../../core/services/clientes.service';
+import { CodigoGenerado, OrigenCodigo, Promocion, PromocionesService } from '../../core/services/promociones.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
@@ -22,6 +23,7 @@ type FormPromocion = Partial<Promocion> & { servicioId: number | null };
 export class PromocionesComponent implements OnInit {
   private readonly svc = inject(PromocionesService);
   private readonly catalogos = inject(CatalogosService);
+  private readonly clientes = inject(ClientesService);
   private readonly toast = inject(ToastService);
 
   readonly promociones = signal<Promocion[]>([]);
@@ -120,6 +122,7 @@ export class PromocionesComponent implements OnInit {
       fechaFin: this.form.fechaFin || null,
       activa: this.form.activa ?? true,
       codigo: this.form.codigo?.trim().toUpperCase() || null,
+      maxUsos: this.form.maxUsos ?? null,
     };
 
     const obs$: import('rxjs').Observable<any> = edit
@@ -202,10 +205,140 @@ export class PromocionesComponent implements OnInit {
     return `${ini} - ${fin}`;
   }
 
+  // ====================== Generador automático de códigos ======================
+  readonly origenes = [
+    { valor: 'NUEVO' as OrigenCodigo, etiqueta: 'Cliente nuevo', icono: '🎉', ayuda: 'Descuento de bienvenida para captar a un cliente nuevo.', requiereCliente: false, pidePuntos: false, pct: 10, dias: 30 },
+    { valor: 'CUMPLE' as OrigenCodigo, etiqueta: 'Cumpleaños', icono: '🎂', ayuda: 'Regalo de cumpleaños para un cliente.', requiereCliente: true, pidePuntos: false, pct: 15, dias: 15 },
+    { valor: 'REFERIDO' as OrigenCodigo, etiqueta: 'Recomendación', icono: '🤝', ayuda: 'Código que un cliente comparte para traer clientes nuevos.', requiereCliente: false, pidePuntos: false, pct: 10, dias: 30 },
+    { valor: 'PUNTOS' as OrigenCodigo, etiqueta: 'Puntos ganados', icono: '⭐', ayuda: 'Convierte los puntos acumulados de un cliente en un descuento.', requiereCliente: true, pidePuntos: true, pct: 0, dias: 30 },
+  ];
+
+  readonly generadorAbierto = signal(false);
+  readonly genOrigen = signal<OrigenCodigo>('NUEVO');
+  readonly genCliente = signal<Cliente | null>(null);
+  readonly genResultados = signal<Cliente[]>([]);
+  readonly generando = signal(false);
+  readonly genError = signal<string | null>(null);
+  readonly codigoGenerado = signal<CodigoGenerado | null>(null);
+  genBusqueda = '';
+  genPct = 10;
+  genPuntos = 0;
+  genDias = 30;
+
+  readonly origenActual = computed(() => this.origenes.find(o => o.valor === this.genOrigen())!);
+
+  abrirGenerador() {
+    this.genOrigen.set('NUEVO');
+    this.aplicarDefaultsOrigen();
+    this.genCliente.set(null);
+    this.genResultados.set([]);
+    this.genBusqueda = '';
+    this.genError.set(null);
+    this.codigoGenerado.set(null);
+    this.generadorAbierto.set(true);
+  }
+
+  cerrarGenerador() { this.generadorAbierto.set(false); }
+
+  setGenOrigen(o: OrigenCodigo) {
+    this.genOrigen.set(o);
+    this.aplicarDefaultsOrigen();
+    this.genError.set(null);
+  }
+
+  private aplicarDefaultsOrigen() {
+    const meta = this.origenActual();
+    this.genPct = meta.pct;
+    this.genDias = meta.dias;
+    this.genPuntos = 0;
+  }
+
+  buscarClienteGen(texto: string) {
+    const t = texto.trim();
+    if (t.length < 2) { this.genResultados.set([]); return; }
+    this.clientes.buscar(t, undefined, 8).subscribe({
+      next: list => this.genResultados.set(list),
+      error: () => this.genResultados.set([])
+    });
+  }
+
+  elegirClienteGen(c: Cliente) {
+    this.genCliente.set(c);
+    this.genResultados.set([]);
+    this.genBusqueda = c.nombre;
+    if (this.genOrigen() === 'PUNTOS') this.genPuntos = c.puntos ?? 0;
+  }
+
+  quitarClienteGen() {
+    this.genCliente.set(null);
+    this.genBusqueda = '';
+    this.genResultados.set([]);
+  }
+
+  generarCodigo() {
+    const meta = this.origenActual();
+    const cliente = this.genCliente();
+    if (meta.requiereCliente && !cliente) {
+      this.genError.set('Elige un cliente para este tipo de código.');
+      return;
+    }
+    if (meta.pidePuntos) {
+      if (!this.genPuntos || this.genPuntos < 1) { this.genError.set('Indica cuántos puntos convertir.'); return; }
+      if (cliente && this.genPuntos > (cliente.puntos ?? 0)) { this.genError.set(`El cliente solo tiene ${cliente.puntos ?? 0} puntos.`); return; }
+    } else if (!this.genPct || this.genPct < 1) {
+      this.genError.set('El descuento debe ser mayor a cero.');
+      return;
+    }
+
+    this.generando.set(true);
+    this.genError.set(null);
+    this.svc.generar({
+      origen: meta.valor,
+      clienteId: cliente?.id ?? null,
+      descuentoPct: meta.pidePuntos ? null : this.genPct,
+      puntosACanjear: meta.pidePuntos ? this.genPuntos : null,
+      diasVigencia: this.genDias
+    }).subscribe({
+      next: res => {
+        this.generando.set(false);
+        this.codigoGenerado.set(res);
+        this.toast.exito('Código generado');
+        this.cargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.generando.set(false);
+        this.genError.set(err.error?.mensaje ?? 'No se pudo generar el código.');
+      }
+    });
+  }
+
+  enviarWhatsappCodigo() {
+    const res = this.codigoGenerado();
+    if (!res) return;
+    const tel = (res.celular ?? '').replace(/\D/g, '');
+    const base = tel ? `https://wa.me/51${tel}` : 'https://wa.me/';
+    window.open(`${base}?text=${encodeURIComponent(res.mensajeWhatsapp)}`, '_blank');
+  }
+
+  copiarCodigo() {
+    const cod = this.codigoGenerado()?.promocion.codigo;
+    if (!cod) return;
+    navigator.clipboard?.writeText(cod).then(
+      () => this.toast.info('Código copiado'),
+      () => {}
+    );
+  }
+
+  volverAGenerar() {
+    this.codigoGenerado.set(null);
+    this.genError.set(null);
+  }
+
   private formVacio(): FormPromocion {
     return {
       tipo: 'VOLUMEN', descripcion: '', descuentoPct: null, descuentoMonto: null,
-      servicioId: null, cantidadMinima: 1, fechaInicio: null, fechaFin: null, activa: true, codigo: null
+      servicioId: null, cantidadMinima: 1, fechaInicio: null, fechaFin: null, activa: true, codigo: null,
+      maxUsos: 1  // por defecto, de un solo uso (se desactiva al aplicarse su código)
     };
   }
 }

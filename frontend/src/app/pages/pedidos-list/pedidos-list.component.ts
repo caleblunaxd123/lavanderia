@@ -22,6 +22,9 @@ import { ActualizacionDatosService } from '../../core/services/actualizacion-dat
 type Filtro = 'pendientes' | 'otros' | 'ultimos' | 'fecha';
 type TipoFecha = 'ingreso' | 'entrega';
 type VistaPedidos = 'lista' | 'tablero';
+// Vistas destacadas que llegan desde las alertas de "Atención operativa" (?ver=...): cada una
+// acota la lista al subconjunto exacto que cuenta la alerta, en vez de mostrar todos los pedidos.
+type ModoDestacado = 'fuera-de-tiempo' | 'listos' | 'abandonados';
 type KanbanTone = 'pendiente' | 'area' | 'listo' | 'entregado' | 'anulado' | 'alerta';
 
 interface KanbanColumn {
@@ -53,8 +56,13 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  // Modo "fuera de tiempo": llega desde la alerta del inicio (?ver=fuera-de-tiempo).
-  readonly soloFueraDeTiempo = signal(false);
+  // Vista destacada activa (llega desde una alerta con ?ver=...). null = lista normal.
+  readonly modoDestacado = signal<ModoDestacado | null>(null);
+  readonly destacadoActivo = computed(() => this.modoDestacado() !== null);
+  // IDs exactos del subconjunto que cuenta la alerta (estancados o abandonados, según el
+  // dashboard). Así la lista muestra EXACTAMENTE esos pedidos y el número de la alerta calza.
+  // null = aún no cargados o modo que se filtra por estado (fallback en esDestacado).
+  readonly destacadosIds = signal<Set<number> | null>(null);
 
   readonly pedidos = signal<Pedido[]>([]);
   readonly tendencia = signal<TendenciaPedidos | null>(null);
@@ -79,6 +87,13 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     const meta = this.metaMensual();
     if (!meta || meta <= 0) return 0;
     return Math.min(100, Math.round((this.pedidosDelMes() / meta) * 100));
+  });
+
+  /** Números de la escala del termómetro (0, ¼, ½, ¾ y la meta), como las marcas de un termómetro real. */
+  readonly escalaMeta = computed(() => {
+    const meta = this.metaMensual();
+    if (meta <= 0) return [] as { valor: number; pct: number }[];
+    return [0, 0.25, 0.5, 0.75, 1].map(f => ({ valor: Math.round(meta * f), pct: f * 100 }));
   });
 
   // Contadores por tab
@@ -133,7 +148,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     const f = this.filtrosColumna();
     const norm = (s: string) => (s || '').toLowerCase();
     return this.pedidos().filter(p =>
-      (!this.soloFueraDeTiempo() || this.entregaVencida(p)) &&
+      (!this.destacadoActivo() || this.esDestacado(p)) &&
       (!f.numero || String(p.numero).includes(f.numero.trim())) &&
       (!f.cliente || norm(p.clienteNombre ?? '').includes(norm(f.cliente))) &&
       (!f.dni || norm(p.clienteDni ?? '').includes(norm(f.dni))) &&
@@ -144,13 +159,27 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     );
   });
 
-  readonly resumenFueraDeTiempo = computed(() => {
+  readonly resumenDestacado = computed(() => {
     const lista = this.pedidosFiltrados();
     return {
       cantidad: lista.length,
       totalDinero: lista.reduce((acc, p) => acc + (p.total ?? 0), 0),
       saldoPorCobrar: lista.reduce((acc, p) => acc + this.saldoPedido(p), 0),
     };
+  });
+
+  /** Título y descripción del banner de la vista destacada, según de qué alerta se llegó. */
+  readonly bannerDestacado = computed(() => {
+    switch (this.modoDestacado()) {
+      case 'fuera-de-tiempo':
+        return { titulo: 'Fuera de tiempo', desc: 'Exceden el tiempo esperado de su etapa' };
+      case 'listos':
+        return { titulo: 'Listos para entregar', desc: 'Pedidos terminados, pendientes de entrega y cobro' };
+      case 'abandonados':
+        return { titulo: 'Esperando recojo', desc: 'Listos sin recoger desde hace varios días' };
+      default:
+        return null;
+    }
   });
 
   readonly kanbanColumns = computed<KanbanColumn[]>(() => {
@@ -253,23 +282,29 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.whatsapp.cargar();
     this.cargarAbandonados();
     this.cargarMetaMensual();
-    this.service.tendencia(14).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
+    this.service.tendencia(15).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
     this.timerId = setInterval(() => this.refrescarDinamicamente(), 10_000);
 
     let primera = true;
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
-      const fuera = params.get('ver') === 'fuera-de-tiempo';
-      if (fuera) {
-        this.soloFueraDeTiempo.set(true);
-        this.filtro.set('pendientes');
+      const ver = params.get('ver');
+      const modo: ModoDestacado | null =
+        ver === 'fuera-de-tiempo' || ver === 'listos' || ver === 'abandonados' ? ver : null;
+      if (modo) {
+        this.modoDestacado.set(modo);
+        this.filtro.set('pendientes');   // los 3 subconjuntos viven dentro de "pendientes"
         this.busqueda.set('');
         this.vista.set('lista');
         this.tamanoPagina.set(100);
         this.pagina.set(1);
+        this.destacadosIds.set(null);
+        // "listos" se filtra por estado; los otros dos usan los IDs exactos del dashboard.
+        if (modo === 'fuera-de-tiempo' || modo === 'abandonados') this.cargarDestacados(modo);
         this.recargar();
       } else {
-        const estaba = this.soloFueraDeTiempo();
-        this.soloFueraDeTiempo.set(false);
+        const estaba = this.destacadoActivo();
+        this.modoDestacado.set(null);
+        this.destacadosIds.set(null);
         if (estaba) this.tamanoPagina.set(15);
         if (primera || estaba) this.recargar();
       }
@@ -277,8 +312,21 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  salirFueraDeTiempo() {
+  salirDestacado() {
     this.router.navigate([], { relativeTo: this.route, queryParams: {} });
+  }
+
+  /** Trae del dashboard los IDs exactos del subconjunto que reporta la alerta (estancados o abandonados). */
+  private cargarDestacados(modo: ModoDestacado) {
+    this.service.dashboard().subscribe({
+      next: d => {
+        const ids = modo === 'fuera-de-tiempo'
+          ? d.pedidosEstancados.map(e => e.pedidoId)
+          : d.pedidosAbandonados.map(a => a.pedidoId);
+        this.destacadosIds.set(new Set(ids));
+      },
+      error: () => this.destacadosIds.set(null)
+    });
   }
 
   ngAfterViewInit() {
@@ -341,8 +389,9 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   cambiarFiltro(f: Filtro) {
-    if (this.soloFueraDeTiempo()) {
-      this.soloFueraDeTiempo.set(false);
+    if (this.destacadoActivo()) {
+      this.modoDestacado.set(null);
+      this.destacadosIds.set(null);
       this.tamanoPagina.set(15);
       this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
     }
@@ -559,6 +608,28 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   entregaVencida(p: Pedido): boolean {
     if (!p.fechaEntregaEst || ['ENTREGADO', 'ANULADO'].includes(p.estadoProceso)) return false;
     return new Date(p.fechaEntregaEst).getTime() < Date.now();
+  }
+
+  /**
+   * ¿Este pedido pertenece al subconjunto de la vista destacada activa? Para "fuera de tiempo" y
+   * "esperando recojo" usamos los IDs exactos del dashboard (para que calce con el número de la
+   * alerta); "listos" se resuelve por estado. Con respaldos razonables si los IDs aún no llegaron.
+   */
+  esDestacado(p: Pedido): boolean {
+    switch (this.modoDestacado()) {
+      case 'fuera-de-tiempo': {
+        const ids = this.destacadosIds();
+        return ids ? ids.has(p.id) : this.entregaVencida(p);
+      }
+      case 'abandonados': {
+        const ids = this.destacadosIds();
+        return ids ? ids.has(p.id) : (p.estadoProceso === 'LISTO' && !p.anulado);
+      }
+      case 'listos':
+        return p.estadoProceso === 'LISTO' && !p.anulado;
+      default:
+        return true;
+    }
   }
 
   private vistaInicial(): VistaPedidos {

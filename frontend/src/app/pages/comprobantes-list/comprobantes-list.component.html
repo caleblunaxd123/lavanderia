@@ -3,6 +3,48 @@
     subtitulo="Boletas y facturas electrónicas emitidas ante SUNAT."
     volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
+  <!-- KPI mensual de boletas y facturas -->
+  @if (mesActual(); as m) {
+    <section class="kpi-comprobantes card">
+      <div class="kpi-comprobantes__head">
+        <h3>Boletas y facturas · {{ nombreMes(m.mes) }} {{ m.anio }}</h3>
+        <span class="hint">KPI mensual — esta sede</span>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-box kpi-box--boleta">
+          <span class="kpi-box__label">Boletas</span>
+          <strong class="kpi-box__num">{{ m.boletasCantidad }}</strong>
+          <span class="kpi-box__monto">S/ {{ m.boletasMonto | number:'1.2-2' }}</span>
+        </div>
+        <div class="kpi-box kpi-box--factura">
+          <span class="kpi-box__label">Facturas</span>
+          <strong class="kpi-box__num">{{ m.facturasCantidad }}</strong>
+          <span class="kpi-box__monto">S/ {{ m.facturasMonto | number:'1.2-2' }}</span>
+        </div>
+        <div class="kpi-box kpi-box--total">
+          <span class="kpi-box__label">Total emitido</span>
+          <strong class="kpi-box__num">{{ m.totalCantidad }}</strong>
+          <span class="kpi-box__monto">S/ {{ m.totalMonto | number:'1.2-2' }}</span>
+        </div>
+      </div>
+      <div class="kpi-trend">
+        <span class="kpi-trend__title">Últimos meses (por monto emitido)</span>
+        <div class="kpi-trend__bars">
+          @for (mm of kpi(); track mm.anio + '-' + mm.mes) {
+            <div class="kpi-trend__col"
+              [title]="nombreMes(mm.mes) + ' ' + mm.anio + ': ' + mm.totalCantidad + ' comprobantes · S/ ' + (mm.totalMonto | number:'1.2-2')">
+              <span class="kpi-trend__val">{{ mm.totalCantidad }}</span>
+              <div class="kpi-trend__track">
+                <div class="kpi-trend__bar" [style.height.%]="mm.totalMonto / maxMontoSerie() * 100"></div>
+              </div>
+              <span class="kpi-trend__lbl">{{ nombreMes(mm.mes) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  }
+
   @if (cargando()) {
     <div class="estado">Cargando…</div>
   } @else if (error()) {

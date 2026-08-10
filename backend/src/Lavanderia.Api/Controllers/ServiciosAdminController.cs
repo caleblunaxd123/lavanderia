@@ -39,6 +39,7 @@ public class ServiciosAdminController : TenantAwareControllerBase
             NegocioId = NegocioId,
             Nombre = dto.Nombre.Trim(),
             Precio = dto.Precio,
+            Costo = dto.Costo,
             Unidad = dto.Unidad.Trim(),
             CategoriaId = dto.CategoriaId,
             Activo = dto.Activo
@@ -60,6 +61,7 @@ public class ServiciosAdminController : TenantAwareControllerBase
 
         existente.Nombre = dto.Nombre.Trim();
         existente.Precio = dto.Precio;
+        existente.Costo = dto.Costo;
         existente.Unidad = dto.Unidad.Trim();
         existente.CategoriaId = dto.CategoriaId;
         existente.Activo = dto.Activo;
@@ -191,6 +193,7 @@ public class ServiciosAdminController : TenantAwareControllerBase
         Id = s.Id,
         Nombre = s.Nombre,
         Precio = s.Precio,
+        Costo = s.Costo,
         Unidad = s.Unidad,
         CategoriaId = s.CategoriaId,
         CategoriaNombre = s.CategoriaNombre,

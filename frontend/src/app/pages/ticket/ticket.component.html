@@ -97,7 +97,7 @@
         </div>
         @if (p.fechaEntregaEst) {
           <div class="ticket__row">
-            <span>{{ p.modalidad === 'Delivery' ? 'Entrega:' : 'Recojo:' }}</span>
+            <span>{{ p.modalidad === 'Delivery' ? 'Delivery:' : 'Recojo:' }}</span>
             <strong>{{ p.fechaEntregaEst | date:'dd/MM/yy HH:mm' }}</strong>
           </div>
         }

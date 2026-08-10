@@ -1,24 +1,20 @@
 <div class="login">
   <!-- Panel izquierdo: marca (producto o lavandería) -->
-  <aside class="login__brand-pane">
+  <aside class="login__brand-pane" [class.login__brand-pane--marca]="!logoUrl()">
     <div class="login__brand-inner">
       @if (logoUrl()) {
+        <!-- Lavandería con logo propio -->
         <img [src]="logoUrl()" [alt]="nombreNegocio()" class="login__brand-logo" />
+        <h1 class="login__brand-name">{{ nombreNegocio() }}</h1>
+        <p class="login__brand-tagline">Sistema de gestión</p>
       } @else {
-        <div class="login__brand-drop">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M12 2c3 4 6 7.5 6 11.5A6 6 0 1 1 6 13.5C6 9.5 9 6 12 2Z" />
-          </svg>
-        </div>
+        <!-- Logo OFICIAL LaviSystem a color (tal cual el archivo de marca) sobre panel blanco -->
+        <img [src]="logoColor" alt="LaviSystem — Sistema de gestión y facturación" class="login__brand-official" />
       }
-      <h1 class="login__brand-name">{{ nombreNegocio() }}</h1>
-      <p class="login__brand-tagline">
-        {{ tieneSlug() ? 'Sistema de gestión' : productoTagline }}
-      </p>
     </div>
-    <p class="login__brand-foot">
-      Tecnología de <strong>{{ productoNombre }}</strong>
-    </p>
+    @if (logoUrl()) {
+      <p class="login__brand-foot">Tecnología de <strong>{{ productoNombre }}</strong></p>
+    }
   </aside>
 
   <!-- Panel derecho: formulario de ingreso -->

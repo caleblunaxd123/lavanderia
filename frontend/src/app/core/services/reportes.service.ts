@@ -55,6 +55,29 @@ export interface VistaGerencial {
   comprobantesRechazados: number;
   insumosBajoStock: number;
   cajaEsperadaHoy: number;
+  // Bloques para el gerente
+  ventasUltimos14Dias: PuntoTendencia[];
+  ventasMesAnterior: number;
+  ventasMesAnteriorAlDia: number;
+  pedidosMesCount: number;
+  ticketPromedioMes: number;
+  ingresosEfectivoMes: number;
+  ingresosDigitalMes: number;
+  ingresosTarjetaMes: number;
+  pedidosPendientes: number;
+  pedidosEnProceso: number;
+  topServiciosMes: TopServicioGerencial[];
+}
+
+export interface PuntoTendencia {
+  fecha: string;
+  total: number;
+}
+
+export interface TopServicioGerencial {
+  nombre: string;
+  cantidad: number;
+  total: number;
 }
 
 export interface ConsolidadoSede {

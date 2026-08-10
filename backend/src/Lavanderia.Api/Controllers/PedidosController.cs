@@ -76,6 +76,13 @@ public class PedidosController : TenantAwareControllerBase
         try
         {
             var pedido = await _service.CrearAsync(req, UsuarioId, NegocioId, SedeRequeridaId, ct);
+            // Marca el consumo del código si se aplicó uno (los de un solo uso quedan agotados).
+            // Best-effort: no debe tumbar la creación del pedido si algo falla al contabilizar.
+            if (!string.IsNullOrWhiteSpace(req.CodigoPromocion))
+            {
+                try { await _promociones.ConsumirPorCodigoAsync(req.CodigoPromocion, NegocioId, pedido.ClienteId, ct); }
+                catch { /* el descuento ya se aplicó en el total; el conteo es secundario */ }
+            }
             return CreatedAtAction(nameof(Obtener), new { id = pedido.Id }, pedido);
         }
         catch (InvalidOperationException ex)
@@ -170,7 +177,7 @@ public class PedidosController : TenantAwareControllerBase
     /// </summary>
     [HttpGet("promocion/validar")]
     [Authorize(Policy = "Modulo:REGISTRAR")]
-    public async Task<ActionResult<PromocionValidaDto>> ValidarCodigoPromocion([FromQuery] string codigo, CancellationToken ct)
+    public async Task<ActionResult<PromocionValidaDto>> ValidarCodigoPromocion([FromQuery] string codigo, [FromQuery] int? clienteId, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(codigo)) return BadRequest(new { mensaje = "Indica un código." });
 
@@ -183,6 +190,14 @@ public class PedidosController : TenantAwareControllerBase
             return BadRequest(new { mensaje = "Esta promoción todavía no empieza." });
         if (promo.FechaFin.HasValue && hoy > promo.FechaFin.Value)
             return BadRequest(new { mensaje = "Esta promoción ya venció." });
+
+        // Códigos generados de un solo uso / personales
+        if (promo.MaxUsos.HasValue && promo.Usos >= promo.MaxUsos.Value)
+            return BadRequest(new { mensaje = "Este código ya fue utilizado." });
+        if (promo.ClienteId.HasValue && promo.ClienteId.Value != clienteId)
+            return BadRequest(new { mensaje = clienteId is null
+                ? "Este código es personal: primero elige el cliente del pedido."
+                : "Este código pertenece a otro cliente." });
 
         return Ok(new PromocionValidaDto
         {

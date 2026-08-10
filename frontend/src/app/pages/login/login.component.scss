@@ -29,20 +29,21 @@
     background: #ffffff;
     border-right: 1px solid #eef2f7;
 
-    // Marca de agua: la nube de la marca, gigante y en azul muy pálido, sale por la
-    // esquina superior derecha del panel (como el arte que envió el diseñador).
-    // Va en ::before para que quede detrás del logo sin afectar su nitidez.
-    &::before {
-      content: '';
-      position: absolute;
-      top: -18%;
-      right: -30%;
-      width: 118%;
-      height: 118%;
-      background: url('/lavisystem-watermark.png') no-repeat center / contain;
-      pointer-events: none;
-      z-index: 0;
-    }
+  }
+
+  // Marca de agua LaviSystem: SOLO en el login del producto (sin logo de tenant).
+  // Es la marca (nube + swoosh) del arte del diseñador, en azul muy pálido, grande y
+  // sangrando fuera del panel — tal cual el ejemplo. Va detrás del logo, sin restarle nitidez.
+  // Las lavanderías con su propio logo NO llevan esta marca de agua.
+  &__brand-pane--marca::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('/lavisystem-watermark.png') no-repeat;
+    background-position: 44% 50%;
+    background-size: 132% auto;
+    pointer-events: none;
+    z-index: 0;
   }
 
   // El contenido del panel va por encima de la marca de agua.
@@ -58,18 +59,19 @@
 
   // Logo del tenant (lavandería con logo propio) sobre el panel blanco
   &__brand-logo {
-    max-width: 200px;
-    max-height: 160px;
+    max-width: 260px;
+    max-height: 150px;
     margin: 0 auto 20px;
     display: block;
     object-fit: contain;
+    border-radius: 16px;   // si el logo trae fondo propio, se ve como tarjeta sobre el blanco
   }
 
   // Logo OFICIAL LaviSystem a color (imagen única) sobre el blanco
   &__brand-official {
     display: block;
-    width: 380px;
-    max-width: 82%;
+    width: 480px;
+    max-width: 90%;
     height: auto;
     margin: 0 auto;
   }

@@ -3,7 +3,7 @@ import { Component, HostListener, OnInit, computed, inject, signal } from '@angu
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { HeaderComponent } from './layout/header/header.component';
-import { PlataformaHeaderComponent } from './layout/plataforma-header/plataforma-header.component';
+import { PlataformaSidebarComponent } from './layout/plataforma-sidebar/plataforma-sidebar.component';
 import { AuthService } from './core/services/auth.service';
 import { ConfiguracionService } from './core/services/configuracion.service';
 import { TenantContextService } from './core/services/tenant-context.service';
@@ -13,7 +13,7 @@ import { TourOverlayComponent } from './shared/tour/tour-overlay.component';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaHeaderComponent, AlertasGlobalesComponent, ToasterComponent, TourOverlayComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaSidebarComponent, AlertasGlobalesComponent, ToasterComponent, TourOverlayComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
@@ -33,17 +33,18 @@ export class AppComponent implements OnInit {
     if (r.startsWith('/cuadre-caja/imprimir/')) return false;  // cuadre imprimible tambien
     if (r.startsWith('/seguimiento/')) return false;  // portal publico del cliente (incluye pago): jamas mostrar el nav interno
     if (r.startsWith('/repartidor/')) return false;  // portal publico del repartidor
+    if (r.startsWith('/recibo-suscripcion/')) return false;  // recibo imprimible del propietario
     if (this.esPlataforma()) return false;  // usa su propio header minimo
     return true;
   });
   readonly mostrarAlertas = computed(() => {
+    if (!this.auth.autenticado()) return false;
     const r = this.rutaActual();
-    if (!this.auth.autenticado() || r.startsWith('/login')) return false;
-    return !r.startsWith('/ticket/') &&
-      !r.startsWith('/cuadre-caja/imprimir/') &&
-      !r.startsWith('/seguimiento/') &&
-      !r.startsWith('/repartidor/') &&
-      !r.startsWith('/seleccionar-sede');
+    // El aviso global (franja de "atención") vive SOLO en la pantalla de inicio de cada panel
+    // —Inicio del negocio y Panel del propietario—. En el resto de módulos ya no aparece:
+    // las mismas alertas están en la campana "Atención operativa" del sidebar.
+    // endsWith cubre la ruta con o sin el slug del tenant (ej. "/inicio" y "/lavixa/inicio").
+    return r.endsWith('/inicio') || r === '/plataforma' || r.endsWith('/plataforma');
   });
 
   ngOnInit() {

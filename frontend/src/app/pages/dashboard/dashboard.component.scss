@@ -17,7 +17,7 @@
   margin-bottom: 18px;
   border: 1px solid rgba(255,255,255,.16);
   border-radius: 8px;
-  background: linear-gradient(120deg, var(--azul-oscuro, #0b57d0) 0%, #176fbd 58%, #087f83 100%);
+  background: var(--azul-oscuro, #053465);
   color: #fff;
   box-shadow: 0 12px 28px rgba(18, 70, 124, .2);
 
@@ -213,7 +213,7 @@
   gap: 7px;
   padding: 0 16px;
   border-radius: 8px;
-  background: var(--azul-oscuro, #0b57d0);
+  background: var(--azul-oscuro, #053465);
   color: #fff;
   font-size: 13.5px;
   font-weight: 750;
@@ -531,7 +531,7 @@
   align-items: center;
   gap: 8px;
 
-  button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 7px; background: #0b57d0; color: #fff; font-weight: 700; cursor: pointer; }
+  button { min-height: 38px; padding: 0 14px; border: 0; border-radius: 7px; background: #053465; color: #fff; font-weight: 700; cursor: pointer; }
 }
 
 @media (max-width: 980px) {
@@ -571,4 +571,130 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ============================================================
+   Panel visual estilo mockup: stat cards, actividad, curva, dona
+   ============================================================ */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: #fff; border: 1px solid var(--gris-borde); border-radius: 14px;
+  padding: 18px 20px; text-decoration: none; color: inherit;
+  transition: box-shadow .15s ease, transform .12s ease;
+
+  &[href], &[routerLink] { cursor: pointer; }
+  &:hover { box-shadow: 0 8px 22px rgba(5,52,101,.08); transform: translateY(-1px); }
+
+  &__label { font-size: 12.5px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  &__value { display: block; font-size: 30px; font-weight: 800; color: var(--azul-oscuro); line-height: 1.15; margin-top: 4px; }
+  &__delta {
+    display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 700;
+    &.up { color: #0e9f6e; }
+    &.down { color: #dc2626; }
+    &.neutral { color: #94a3b8; font-weight: 500; }
+  }
+  &__icon {
+    width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: #fff;
+    &--cyan { background: var(--azul-claro); }
+    &--navy { background: var(--azul-oscuro); }
+  }
+}
+
+.board-grid {
+  display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; margin-bottom: 16px;
+  align-items: stretch;
+  > .panel { margin: 0; }
+}
+
+.panel__link { font-size: 12.5px; font-weight: 700; color: var(--azul-claro); text-decoration: none;
+  &:hover { text-decoration: underline; } }
+
+/* --- Tabla de órdenes recientes --- */
+.recent-table { display: flex; flex-direction: column; }
+.recent-table__head, .recent-table__row {
+  display: grid; grid-template-columns: 64px 1.2fr 1.2fr 92px 84px; gap: 8px; align-items: center;
+}
+.recent-table__head {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; font-weight: 700;
+  padding: 0 0 8px; border-bottom: 1px solid #eef2f7;
+}
+.recent-table__row {
+  padding: 11px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px;
+  &:last-child { border-bottom: none; }
+}
+.recent-table .mono { font-weight: 700; color: #64748b; }
+.recent-table .tw { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-table .muted { color: #64748b; }
+.recent-table .ta-r { text-align: right; }
+.recent-table .strong { font-weight: 800; color: var(--azul-oscuro); }
+.badge {
+  display: inline-block; font-style: normal; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  &--ok { background: #e7f8ef; color: #0e9f6e; }
+  &--proc { background: #e6f6f9; color: #0784a3; }
+  &--pend { background: #fff4e5; color: #b7791f; }
+  &--entregado { background: #eef2f7; color: #475569; }
+  &--neutral { background: #eef2f7; color: #475569; }
+}
+
+/* --- Curva de ventas de la semana --- */
+.panel.chart { display: flex; flex-direction: column; }
+.area-chart { width: 100%; height: 150px; display: block; overflow: visible; }
+.area-chart__fill { fill: rgba(6,176,189,.14); stroke: none; }
+.area-chart__line { fill: none; stroke: var(--azul-claro); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round;
+  vector-effect: non-scaling-stroke; }
+.area-chart__dot { fill: #fff; stroke: var(--azul-claro); stroke-width: 2; }
+.area-chart__labels {
+  display: flex; justify-content: space-between; margin-top: 8px;
+  span { font-size: 11px; color: #94a3b8; }
+}
+
+/* --- Dona de servicios --- */
+.donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.donut { width: 150px; height: 150px; flex-shrink: 0;
+  &__bg { fill: none; stroke: #eef2f7; stroke-width: 18; } }
+.donut-legend {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 150px;
+  li { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--gris-texto);
+    strong { margin-left: auto; font-weight: 800; color: var(--azul-oscuro); } }
+  .dot { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+}
+
+/* --- Resumen del día --- */
+.summary-list {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;
+  li { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: var(--gris-texto);
+    &:last-child { border-bottom: none; }
+    strong { margin-left: auto; font-weight: 800; color: var(--azul-oscuro); font-size: 18px; } }
+}
+.summary-ic {
+  width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
+  &.ok { background: #0e9f6e; }
+  &.proc { background: var(--azul-claro); }
+  &.pend { background: #f59e0b; }
+  &.cash { background: var(--azul-oscuro); }
+}
+
+@media (max-width: 900px) {
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .board-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .recent-table__head { display: none; }
+  .recent-table__row { grid-template-columns: 52px 1fr 72px; grid-template-areas: 'num cli total' 'num serv total'; row-gap: 2px; }
+  .recent-table__row .mono { grid-area: num; }
+  .recent-table__row .tw:not(.muted) { grid-area: cli; }
+  .recent-table__row .muted { grid-area: serv; font-size: 11.5px; }
+  .recent-table__row .badge { display: none; }
+  .recent-table__row .strong { grid-area: total; }
+}
+@media (max-width: 420px) {
+  .stat-cards { grid-template-columns: 1fr; }
 }

@@ -65,6 +65,18 @@
 
 html { scroll-behavior: smooth; }
 
+/* ---------- Escala global de interfaz ----------
+   Al proyectar el sistema por Meet u otras pantallas grandes se veía pequeño. Un ligero zoom
+   agranda TODO de forma uniforme (texto, íconos y espaciados) sin tener que ajustar cada
+   componente uno por uno. Se comporta como el zoom del navegador (Ctrl +), así que respeta
+   el layout responsivo. Se anula al imprimir para no alterar el tamaño de los tickets. */
+@media screen {
+  html { zoom: 1.1; }
+}
+@media print {
+  html { zoom: 1; }
+}
+
 html, body {
   height: 100%;
   margin: 0;
@@ -412,7 +424,7 @@ a.card:hover,
   &:disabled { opacity: .55; cursor: not-allowed; }
 
   &--primario {
-    background: linear-gradient(90deg, var(--azul-oscuro), var(--azul-claro));
+    background: var(--azul-oscuro);
     color: #fff;
     box-shadow: 0 1px 2px rgba(11, 87, 208, .25);
     &:hover:not(:disabled) { filter: brightness(1.05); box-shadow: 0 4px 12px rgba(11, 87, 208, .28); }

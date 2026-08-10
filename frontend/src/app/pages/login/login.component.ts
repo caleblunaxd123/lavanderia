@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { TenantContextService } from '../../core/services/tenant-context.service';
-import { DESARROLLADOR_CREDITO, PRODUCTO_NOMBRE, PRODUCTO_TAGLINE } from '../../core/util/marca';
+import { DESARROLLADOR_CREDITO, PRODUCTO_LOGO_COLOR, PRODUCTO_NOMBRE, PRODUCTO_TAGLINE } from '../../core/util/marca';
 import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
@@ -26,6 +26,7 @@ export class LoginComponent implements OnInit {
   // (LaviSystem), sin nombre ni logo de ningún negocio en particular.
   readonly productoNombre = PRODUCTO_NOMBRE;
   readonly productoTagline = PRODUCTO_TAGLINE;
+  readonly logoColor = PRODUCTO_LOGO_COLOR;
   readonly desarrolladorCredito = DESARROLLADOR_CREDITO;
   readonly tieneSlug = signal(false);
   readonly nombreNegocio = computed(() =>
