@@ -122,9 +122,14 @@ export class PlataformaNegocioCrearComponent {
   generarPassword() {
     // 9 chars: 3 sílabas (6) + 3 dígitos, garantiza el mínimo de 8 con letras y números.
     const s = ['la', 've', 'ro', 'mi', 'sa', 'to', 'ni', 'ba', 'lu', 'ca'];
-    const pick = () => s[Math.floor(Math.random() * s.length)];
+    const azar = (max: number) => {
+      const valor = new Uint32Array(1);
+      crypto.getRandomValues(valor);
+      return valor[0] % max;
+    };
+    const pick = () => s[azar(s.length)];
     const p = pick() + pick() + pick();
-    this.form.adminPassword = p.charAt(0).toUpperCase() + p.slice(1) + Math.floor(100 + Math.random() * 900);
+    this.form.adminPassword = p.charAt(0).toUpperCase() + p.slice(1) + (100 + azar(900));
   }
 
   copiar(texto: string) {

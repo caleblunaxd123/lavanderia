@@ -1,5 +1,5 @@
 ﻿import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, EventEmitter, Input, Output, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
@@ -25,7 +25,7 @@ export interface FilaImport {
 /**
  * Modal reutilizable de carga masiva: sirve para servicios, clientes y cualquier catálogo futuro.
  * Recibe el esquema de columnas y emite las filas válidas; el componente padre hace el POST.
- * Acepta archivo Excel (.xlsx, convertido en el navegador), CSV o texto pegado desde Excel.
+ * Acepta archivo Excel (.xlsx, validado por el servidor), CSV o texto pegado desde Excel.
  */
 @Component({
   selector: 'app-importador-masivo',
@@ -54,6 +54,7 @@ export class ImportadorMasivoComponent {
   readonly texto = signal('');
   readonly nombreArchivo = signal<string | null>(null);
   readonly descargando = signal(false);
+  readonly leyendoArchivo = signal(false);
 
   readonly filas = computed<FilaImport[]>(() => {
     const raw = this.texto();
@@ -65,28 +66,50 @@ export class ImportadorMasivoComponent {
   readonly validas = computed(() => this.filas().filter(f => f.estado === 'ok'));
   readonly conError = computed(() => this.filas().filter(f => f.estado === 'error'));
 
-  async onArchivo(event: Event) {
+  onArchivo(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    this.nombreArchivo.set(file.name);
-    if (/\.(xlsx|xls)$/i.test(file.name)) {
-      try {
-        const XLSX = await import('xlsx');
-        const buffer = await file.arrayBuffer();
-        const libro = XLSX.read(buffer, { type: 'array' });
-        const hoja = libro.Sheets[libro.SheetNames[0]];
-        this.texto.set(hoja ? XLSX.utils.sheet_to_csv(hoja, { FS: ';' }) : '');
-      } catch {
-        this.texto.set('');
-        this.toast.error('No se pudo leer el Excel. Verifica que sea un .xlsx válido o usa CSV.');
-      }
-    } else {
+    if (file.size > 5 * 1024 * 1024) {
+      this.toast.error('El archivo no puede superar los 5 MB.');
+      input.value = '';
+      return;
+    }
+
+    if (/\.xlsx$/i.test(file.name)) {
+      this.cargarExcel(file);
+    } else if (/\.(csv|txt)$/i.test(file.name)) {
+      this.nombreArchivo.set(file.name);
       const reader = new FileReader();
       reader.onload = () => this.texto.set(String(reader.result ?? ''));
+      reader.onerror = () => this.toast.error('No se pudo leer el archivo.');
       reader.readAsText(file, 'utf-8');
+    } else {
+      this.toast.error('Formato no compatible. Usa un archivo .xlsx, .csv o .txt.');
     }
     input.value = '';
+  }
+
+  private cargarExcel(file: File) {
+    if (this.leyendoArchivo()) return;
+    const datos = new FormData();
+    datos.append('archivo', file, file.name);
+    this.leyendoArchivo.set(true);
+
+    this.http.post<{ texto: string }>(`${environment.apiUrl}/plantillas/leer-excel`, datos).subscribe({
+      next: respuesta => {
+        this.leyendoArchivo.set(false);
+        this.nombreArchivo.set(file.name);
+        this.texto.set(respuesta.texto ?? '');
+        if (!respuesta.texto?.trim()) this.toast.info('El Excel no contiene filas para importar.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.leyendoArchivo.set(false);
+        this.nombreArchivo.set(null);
+        this.texto.set('');
+        this.toast.error(error.error?.mensaje ?? 'No se pudo leer el Excel. Verifica que sea un .xlsx valido.');
+      }
+    });
   }
 
   descargarPlantilla() {

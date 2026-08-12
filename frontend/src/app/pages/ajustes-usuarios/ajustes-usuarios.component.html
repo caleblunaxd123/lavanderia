@@ -137,7 +137,7 @@
         </label>
 
         @if (errorForm()) {
-          <div class="modal__error">{{ errorForm() }}</div>
+          <div class="modal__error" role="alert">{{ errorForm() }}</div>
         }
       </div>
 
@@ -191,7 +191,7 @@
         </div>
 
         @if (errorReset()) {
-          <div class="modal__error">{{ errorReset() }}</div>
+          <div class="modal__error" role="alert">{{ errorReset() }}</div>
         }
 
         <div class="modal__actions">

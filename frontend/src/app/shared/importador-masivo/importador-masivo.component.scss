@@ -82,6 +82,7 @@
   &__cols > .imp__sep:last-child { display: none; }
   &__acciones { display: flex; gap: 8px; flex-wrap: wrap; }
   &__file { cursor: pointer; margin: 0; input { display: none; } }
+  &__file--disabled { cursor: wait; opacity: .65; pointer-events: none; }
 
   &__textarea {
     width: 100%;

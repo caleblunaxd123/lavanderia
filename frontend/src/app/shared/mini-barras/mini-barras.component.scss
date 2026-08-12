@@ -103,3 +103,24 @@
 .mini-barras__valor--hoy {
   color: var(--barra-fuerte);
 }
+
+@media (max-width: 600px) {
+  .mini-barras {
+    padding-inline: 12px;
+
+    &__grafico,
+    &__ejex {
+      gap: clamp(2px, 1.2vw, 5px);
+      padding-inline: 0;
+    }
+
+    &__col,
+    &__lbl {
+      min-width: 0;
+      max-width: none;
+    }
+
+    &__valor,
+    &__lbl { font-size: 9px; }
+  }
+}

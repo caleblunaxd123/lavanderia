@@ -70,12 +70,6 @@ html { scroll-behavior: smooth; }
    agranda TODO de forma uniforme (texto, íconos y espaciados) sin tener que ajustar cada
    componente uno por uno. Se comporta como el zoom del navegador (Ctrl +), así que respeta
    el layout responsivo. Se anula al imprimir para no alterar el tamaño de los tickets. */
-@media screen {
-  html { zoom: 1.1; }
-}
-@media print {
-  html { zoom: 1; }
-}
 
 html, body {
   height: 100%;

@@ -78,6 +78,18 @@ export class ConfiguracionService {
     root.style.setProperty('--azul-oscuro', c.colorPrimario);
     root.style.setProperty('--azul-claro', c.colorSecundario);
     root.style.setProperty('--naranja', c.colorAcento);
+    root.style.setProperty('--texto-sobre-secundario', this.textoConMayorContraste(c.colorSecundario));
     document.title = c.nombreNegocio;
+  }
+
+  private textoConMayorContraste(color: string): '#ffffff' | '#0f172a' {
+    const valor = color.trim().replace(/^#/, '');
+    const hex = valor.length === 3 ? valor.split('').map(c => c + c).join('') : valor;
+    if (!/^[0-9a-f]{6}$/i.test(hex)) return '#ffffff';
+
+    const canales = [0, 2, 4].map(i => Number.parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    const luminancia = 0.2126 * canales[0] + 0.7152 * canales[1] + 0.0722 * canales[2];
+    return (luminancia + 0.05) / 0.05 >= 1.05 / (luminancia + 0.05) ? '#0f172a' : '#ffffff';
   }
 }

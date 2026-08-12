@@ -91,6 +91,57 @@ try {
     $me = Test-Call "Sesion autenticada" GET "/api/auth/me" -Expected 200
     $adminId = [int]$me.Body.id
 
+    # Simula dos pestañas renovando exactamente el mismo refresh token. Solo una debe ganar;
+    # aceptar ambas permitiría reutilizar una credencial ya consumida y crear sesiones paralelas.
+    Add-Type -AssemblyName System.Net.Http
+    $concurrencyClient = [System.Net.Http.HttpClient]::new()
+    try {
+        $concurrencyClient.DefaultRequestHeaders.Add('X-Forwarded-For', '203.0.113.200')
+        $loginConcurrencyBody = @{
+            usuario = $Usuario
+            password = $Password
+        } | ConvertTo-Json -Compress
+        $loginConcurrencyContent = [System.Net.Http.StringContent]::new(
+            $loginConcurrencyBody, [System.Text.Encoding]::UTF8, 'application/json')
+        $loginConcurrencyResponse = $concurrencyClient.PostAsync(
+            "$($BaseUrl.TrimEnd('/'))/api/auth/login", $loginConcurrencyContent).Result
+
+        $statuses = @([int]$loginConcurrencyResponse.StatusCode)
+        $winningRefreshToken = $null
+        if ([int]$loginConcurrencyResponse.StatusCode -eq 200) {
+            $loginConcurrency = $loginConcurrencyResponse.Content.ReadAsStringAsync().Result | ConvertFrom-Json
+            $refreshBody = @{ refreshToken = $loginConcurrency.refreshToken } | ConvertTo-Json -Compress
+            $refreshTasks = @()
+            1..2 | ForEach-Object {
+                $refreshContent = [System.Net.Http.StringContent]::new(
+                    $refreshBody, [System.Text.Encoding]::UTF8, 'application/json')
+                $refreshTasks += $concurrencyClient.PostAsync(
+                    "$($BaseUrl.TrimEnd('/'))/api/auth/refresh", $refreshContent)
+            }
+            [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]$refreshTasks)
+            $statuses = @($refreshTasks | ForEach-Object { [int]$_.Result.StatusCode })
+            $winner = @($refreshTasks | Where-Object { [int]$_.Result.StatusCode -eq 200 }) | Select-Object -First 1
+            if ($winner) {
+                $winningRefreshToken = ($winner.Result.Content.ReadAsStringAsync().Result | ConvertFrom-Json).refreshToken
+            }
+        }
+
+        $concurrencyOk = @($statuses | Where-Object { $_ -eq 200 }).Count -eq 1 -and
+            @($statuses | Where-Object { $_ -eq 401 }).Count -eq 1
+        $concurrencyResult = [pscustomobject]@{
+            Status = if ($concurrencyOk) { 200 } else { 500 }
+            Body = [pscustomobject]@{ mensaje = "Estados concurrentes: $($statuses -join ',')" }
+            Raw = ""
+        }
+        Assert-Status -Name "Sesion: refresh atomico entre pestanas" -Response $concurrencyResult -Expected @(200) | Out-Null
+        if ($winningRefreshToken) {
+            Invoke-QaRequest -Method POST -Path "/api/auth/logout" -Body @{ refreshToken = $winningRefreshToken } -Token "" | Out-Null
+        }
+    }
+    finally {
+        $concurrencyClient.Dispose()
+    }
+
     if ($null -eq $login.Body.usuario.sedeId) {
         $sedesDisponibles = Test-Call "Sesion: listar sedes disponibles" GET "/api/sedes" -Expected 200
         $sedeActiva = @($sedesDisponibles.Body | Where-Object { $_.activo })[0]
@@ -134,11 +185,17 @@ try {
     Test-Call "Tipo de gasto: actualizar" PUT "/api/tipos-gasto-admin/$expenseTypeId" @{ id = $expenseTypeId; nombre = "$expenseTypeName Editado"; activo = $true } -Expected 204 | Out-Null
 
     $areaName = "QA Area $suffix"
-    $area = Test-Call "Area: crear" POST "/api/areas-lavado-admin" @{ nombre = $areaName; orden = 90; tiempoEstMinutos = 20; activa = $true } -Expected 201
+    $areasActuales = Test-Call "Area: listar para reservar orden" GET "/api/areas-lavado-admin" -Expected 200
+    $ordenesOcupados = @($areasActuales.Body | ForEach-Object { [int]$_.orden })
+    $ordenesLibres = @(1..100 | Where-Object { $_ -notin $ordenesOcupados } | Sort-Object -Descending)
+    if ($ordenesLibres.Count -lt 2) { throw "No hay dos ordenes de area libres para ejecutar la bateria QA." }
+    $areaOrden = [int]$ordenesLibres[0]
+    $areaOrdenEditado = [int]$ordenesLibres[1]
+    $area = Test-Call "Area: crear" POST "/api/areas-lavado-admin" @{ nombre = $areaName; orden = $areaOrden; tiempoEstMinutos = 20; activa = $true } -Expected 201
     $areaId = [int]$area.Body.id
     Test-Call "Area: nombre duplicado" POST "/api/areas-lavado-admin" @{ nombre = $areaName.ToLowerInvariant(); orden = 91; tiempoEstMinutos = 20; activa = $true } -Expected 409 | Out-Null
-    Test-Call "Area: orden duplicado" POST "/api/areas-lavado-admin" @{ nombre = "QA Otra Area $suffix"; orden = 90; tiempoEstMinutos = 20; activa = $true } -Expected 409 | Out-Null
-    Test-Call "Area: actualizar" PUT "/api/areas-lavado-admin/$areaId" @{ id = $areaId; nombre = "$areaName Editada"; orden = 92; tiempoEstMinutos = 25; activa = $true } -Expected 204 | Out-Null
+    Test-Call "Area: orden duplicado" POST "/api/areas-lavado-admin" @{ nombre = "QA Otra Area $suffix"; orden = $areaOrden; tiempoEstMinutos = 20; activa = $true } -Expected 409 | Out-Null
+    Test-Call "Area: actualizar" PUT "/api/areas-lavado-admin/$areaId" @{ id = $areaId; nombre = "$areaName Editada"; orden = $areaOrdenEditado; tiempoEstMinutos = 25; activa = $true } -Expected 204 | Out-Null
 
     # Inventario
     $supplyName = "QA Detergente $suffix"
@@ -156,7 +213,9 @@ try {
     $client = Test-Call "Cliente: crear" POST "/api/clientes" @{ nombre = "QA Cliente $suffix"; celular = $clientPhone; dni = $suffix.Substring([Math]::Max(0, $suffix.Length - 8)); direccion = "Direccion QA"; puntos = 0 } -Expected 201
     $clientId = [int]$client.Body.id
     Test-Call "Cliente: celular invalido" POST "/api/clientes" @{ nombre = "QA Invalido"; celular = "123" } -Expected 400 | Out-Null
-    Test-Call "Cliente: duplicado" POST "/api/clientes" @{ nombre = "QA Duplicado"; celular = $clientPhone } -Expected 409 | Out-Null
+    Test-Call "Cliente: mismo nombre y celular duplicado" POST "/api/clientes" @{ nombre = "QA Cliente $suffix"; celular = $clientPhone } -Expected 409 | Out-Null
+    $sharedPhoneClient = Test-Call "Cliente: permite celular familiar compartido" POST "/api/clientes" @{ nombre = "QA Familiar $suffix"; celular = $clientPhone } -Expected 201
+    $sharedPhoneClientId = [int]$sharedPhoneClient.Body.id
     Test-Call "Cliente: actualizar" PUT "/api/clientes/$clientId" @{ id = $clientId; nombre = "QA Cliente Editado $suffix"; celular = $clientPhone; direccion = "Direccion editada"; puntos = 0 } -Expected 204 | Out-Null
     Test-Call "Cliente: sumar puntos" POST "/api/clientes/$clientId/puntos" @{ motivo = "QA fidelizacion"; puntos = 10; tipo = "SUMA" } -Expected 204 | Out-Null
     Test-Call "Cliente: tipo de puntos invalido" POST "/api/clientes/$clientId/puntos" @{ motivo = "QA invalido"; puntos = 1; tipo = "OTRO" } -Expected 400 | Out-Null
@@ -206,6 +265,10 @@ try {
     Test-Call "Usuario: bloquea autodesactivacion" PATCH "/api/usuarios/$adminId/estado" @{ activo = $false } -Expected 400 | Out-Null
 
     $modules = Test-Call "Permisos: listar modulos" GET "/api/permisos/modulos" -Expected 200
+    $permissionsMatrix = Test-Call "Permisos: obtener configuracion actual" GET "/api/permisos" -Expected 200
+    $originalPermissions = @($permissionsMatrix.Body | Where-Object { [int]$_.rolId -eq [int]$operatorRole.id } | ForEach-Object {
+        @{ rolId = [int]$_.rolId; modulo = [string]$_.modulo; puedeAcceder = [bool]$_.puedeAcceder }
+    })
     Test-Call "Permisos: rechaza modulo invalido" PUT "/api/permisos" @{ permisos = @(@{ rolId = $operatorRole.id; modulo = "NO_EXISTE"; puedeAcceder = $true }) } -Expected 400 | Out-Null
     Test-Call "Permisos: rechaza duplicados" PUT "/api/permisos" @{ permisos = @(
         @{ rolId = $operatorRole.id; modulo = "CLIENTES"; puedeAcceder = $true },
@@ -317,7 +380,11 @@ try {
 }
 finally {
     if ($script:token) {
+        if ($originalPermissions -and $originalPermissions.Count -gt 0) {
+            Test-Call "Limpieza: restaurar permisos del rol" PUT "/api/permisos" @{ permisos = $originalPermissions } -Expected 204 | Out-Null
+        }
         if ($deliveryId) { Test-Call "Limpieza: anular delivery QA" POST "/api/pedidos/$deliveryId/anular" @{ motivo = "Limpieza automatica de prueba QA" } -Expected 204 | Out-Null }
+        if ($sharedPhoneClientId) { Test-Call "Limpieza: desactivar familiar QA" DELETE "/api/clientes/$sharedPhoneClientId" -Expected 200 | Out-Null }
         if ($clientId) { Test-Call "Limpieza: desactivar cliente QA" DELETE "/api/clientes/$clientId" -Expected 200 | Out-Null }
         if ($driverId) { Test-Call "Limpieza: desactivar motorizado QA" PATCH "/api/motorizados/$driverId/estado" @{ activo = $false } -Expected 204 | Out-Null }
         if ($serviceId) { Test-Call "Limpieza: desactivar servicio QA" DELETE "/api/servicios-admin/$serviceId" -Expected 200 | Out-Null }

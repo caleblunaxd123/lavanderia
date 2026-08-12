@@ -24,4 +24,13 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('router-outlet')).not.toBeNull();
     expect(compiled.querySelector('app-toaster')).not.toBeNull();
   });
+
+  it('normalizes tenant routes even if the tenant context changed during navigation', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.componentInstance as unknown as { quitarSlug(url: string): string };
+
+    expect(app.quitarSlug('/lavixa/seleccionar-sede')).toBe('/seleccionar-sede');
+    expect(app.quitarSlug('/lavixa/ticket/123?interno=1')).toBe('/ticket/123?interno=1');
+    expect(app.quitarSlug('/seguimiento/token-publico')).toBe('/seguimiento/token-publico');
+  });
 });

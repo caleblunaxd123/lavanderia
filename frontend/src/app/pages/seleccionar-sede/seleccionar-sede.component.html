@@ -30,7 +30,7 @@
     }
 
     @if (error()) {
-      <div class="sel__error">{{ error() }}</div>
+      <div class="sel__error" role="alert">{{ error() }}</div>
     }
 
     <button class="sel__logout" (click)="cerrarSesion()">Cerrar sesión</button>

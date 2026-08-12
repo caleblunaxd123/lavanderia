@@ -11,6 +11,12 @@ import { ToasterComponent } from './shared/toaster/toaster.component';
 import { AlertasGlobalesComponent } from './shared/alertas-globales/alertas-globales.component';
 import { TourOverlayComponent } from './shared/tour/tour-overlay.component';
 
+const SEGMENTOS_RUTA_APP = new Set([
+  'login', 'ticket', 'cuadre-caja', 'seleccionar-sede', 'inicio', 'pedidos', 'registrar',
+  'registro-antiguo', 'clientes', 'promociones', 'reportes', 'inventario', 'ajustes',
+  'facturacion', 'assets', 'plataforma', 'seguimiento', 'repartidor', 'recibo-suscripcion',
+]);
+
 @Component({
   selector: 'app-root',
   imports: [CommonModule, RouterOutlet, HeaderComponent, PlataformaSidebarComponent, AlertasGlobalesComponent, ToasterComponent, TourOverlayComponent],
@@ -23,12 +29,16 @@ export class AppComponent implements OnInit {
   private readonly config = inject(ConfiguracionService);
   private readonly tenant = inject(TenantContextService);
 
-  private readonly rutaActual = signal<string>('/');
-  readonly esPlataforma = computed(() => this.rutaActual().startsWith('/plataforma'));
+  private readonly rutaActual = signal<string | null>(null);
+  readonly esPlataforma = computed(() => this.rutaActual()?.startsWith('/plataforma') ?? false);
   readonly mostrarHeader = computed(() => {
     const r = this.rutaActual();
-    if (!this.auth.autenticado()) return false;
+    if (!r || !this.auth.autenticado()) return false;
+    // Un usuario operativo sin sede activa está necesariamente en el selector de sede. No debe
+    // ver enlaces a módulos que requieren SedeId y solo devolverían "Selecciona una sede".
+    if (!this.auth.usuario()?.sedeId) return false;
     if (r.startsWith('/login')) return false;
+    if (r.startsWith('/seleccionar-sede')) return false;
     if (r.startsWith('/ticket/')) return false;  // ticket es fullscreen para imprimir
     if (r.startsWith('/cuadre-caja/imprimir/')) return false;  // cuadre imprimible tambien
     if (r.startsWith('/seguimiento/')) return false;  // portal publico del cliente (incluye pago): jamas mostrar el nav interno
@@ -40,6 +50,7 @@ export class AppComponent implements OnInit {
   readonly mostrarAlertas = computed(() => {
     if (!this.auth.autenticado()) return false;
     const r = this.rutaActual();
+    if (!r) return false;
     // El aviso global (franja de "atención") vive SOLO en la pantalla de inicio de cada panel
     // —Inicio del negocio y Panel del propietario—. En el resto de módulos ya no aparece:
     // las mismas alertas están en la campana "Atención operativa" del sidebar.
@@ -63,7 +74,7 @@ export class AppComponent implements OnInit {
           // Login neutral (/login, sin slug): NUNCA cargar la marca de un negocio —
           // la pantalla es del PRODUCTO (LaviSystem), no de ninguna lavandería, aun
           // si quedó una sesión abierta de un tenant.
-          const enLoginNeutral = !slug && this.rutaActual().startsWith('/login');
+          const enLoginNeutral = !slug && (this.rutaActual()?.startsWith('/login') ?? false);
           if (slug) {
             this.config.cargarPorSlug(slug).subscribe({ error: () => {} });
           } else if (this.auth.autenticado() && !enLoginNeutral) {
@@ -83,6 +94,18 @@ export class AppComponent implements OnInit {
     if (slug && url.startsWith(`/${slug}`)) {
       const resto = url.slice(slug.length + 1);
       return resto ? `/${resto}` : '/';
+    }
+
+    // NavigationEnd puede entregar la URL ya serializada con /:slug aunque el contexto haya
+    // cambiado durante la misma navegación (por ejemplo, login -> seleccionar sede). Detectar
+    // la segunda parte evita que el shell interno aparezca en pantallas fullscreen.
+    const corte = url.search(/[?#]/u);
+    const ruta = corte >= 0 ? url.slice(0, corte) : url;
+    const sufijo = corte >= 0 ? url.slice(corte) : '';
+    const segmentos = ruta.split('/').filter(Boolean);
+    if (segmentos.length > 1 && !SEGMENTOS_RUTA_APP.has(segmentos[0].toLowerCase()) &&
+        SEGMENTOS_RUTA_APP.has(segmentos[1].toLowerCase())) {
+      return `/${segmentos.slice(1).join('/')}${sufijo}`;
     }
     return url;
   }

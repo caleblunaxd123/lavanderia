@@ -4,7 +4,7 @@
   @if (cargando()) {
     <div class="estado">Cargando…</div>
   } @else if (error()) {
-    <div class="estado estado--error">{{ error() }}</div>
+    <div class="estado estado--error" role="alert">{{ error() }}</div>
   } @else {
     <!-- Totales del negocio -->
     <div class="kpis">

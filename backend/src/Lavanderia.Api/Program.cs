@@ -5,12 +5,12 @@ using Lavanderia.Api.Services;
 using Lavanderia.Api.Services.Facturacion;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
+using System.Net;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -295,10 +295,17 @@ var forwardedHeaders = new ForwardedHeadersOptions
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
     ForwardLimit = 1
 };
-// Cloudflare Tunnel reaches the app from localhost, while other reverse proxies may use a
-// private address. The origin itself only listens on loopback in the shared-demo launcher.
-forwardedHeaders.KnownNetworks.Clear();
-forwardedHeaders.KnownProxies.Clear();
+// Cloudflare Tunnel reaches the app from localhost. Never trust forwarded headers from an
+// arbitrary direct client: otherwise it could spoof its IP to evade the login rate limiter or
+// make an HTTP request appear HTTPS. Other reverse proxies must be listed explicitly.
+forwardedHeaders.KnownProxies.Add(IPAddress.Loopback);
+forwardedHeaders.KnownProxies.Add(IPAddress.IPv6Loopback);
+foreach (var configuredProxy in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+{
+    if (!IPAddress.TryParse(configuredProxy, out var proxyAddress))
+        throw new InvalidOperationException($"ReverseProxy:KnownProxies contiene una IP invalida: '{configuredProxy}'.");
+    forwardedHeaders.KnownProxies.Add(proxyAddress);
+}
 app.UseForwardedHeaders(forwardedHeaders);
 
 if (app.Environment.IsProduction()) app.UseHsts();
@@ -323,12 +330,19 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseExceptionHandler(errorApp =>
+app.Use(async (context, next) =>
 {
-    errorApp.Run(async context =>
+    try
     {
-        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
-        if (context.Response.HasStarted) return;
+        await next();
+    }
+    catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+    {
+        // El cliente cerró la conexión; no es una falla de la aplicación ni hay respuesta útil.
+    }
+    catch (Exception exception)
+    {
+        if (context.Response.HasStarted) throw;
 
         // SqlException 8152 = "String or binary data would be truncated" (columna mas chica que
         // el dato enviado) y 2627/2601 = violacion de constraint UNIQUE: son errores de datos del
@@ -345,11 +359,17 @@ app.UseExceptionHandler(errorApp =>
             _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado. Intenta nuevamente.")
         };
 
+        var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("GlobalExceptionHandler");
+        if (status >= StatusCodes.Status500InternalServerError)
+            logger.LogError(exception, "Error no controlado en {Method} {Path}", context.Request.Method, context.Request.Path);
+        else
+            logger.LogWarning("Solicitud rechazada en {Method} {Path}: {Message}", context.Request.Method, context.Request.Path, exception?.Message);
+
         context.Response.Clear();
         context.Response.StatusCode = status;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsJsonAsync(new { mensaje });
-    });
+    }
 });
 
 // Sirve el frontend (Angular) compilado desde wwwroot: la API y la web quedan en un
@@ -407,6 +427,7 @@ using (var scope = app.Services.CreateScope())
         var seeder = scope.ServiceProvider.GetRequiredService<DbInitializer>();
         await seeder.EjecutarAsync();
         await seeder.EjecutarPropietarioAsync();
+        await seeder.EndurecerCredencialesPredeterminadasAsync(app.Environment.IsProduction());
     }
     catch (Exception ex)
     {

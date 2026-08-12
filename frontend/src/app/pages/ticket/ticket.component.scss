@@ -46,7 +46,7 @@
 
   &--primario { background: var(--naranja); color: #fff; }
   &--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
-  &--descargar { background: var(--azul-claro); color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+  &--descargar { background: var(--azul-claro); color: var(--texto-sobre-secundario, #fff); display: inline-flex; align-items: center; gap: 6px; }
   &--pdf { background: #25d366; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
   &:disabled { opacity: .55; cursor: not-allowed; }
 }

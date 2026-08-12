@@ -3,7 +3,7 @@
     <div class="estado">Cargando tu pedido...</div>
   } @else if (error()) {
     <div class="tarjeta">
-      <p class="estado estado--error">{{ error() }}</p>
+      <p class="estado estado--error" role="alert">{{ error() }}</p>
     </div>
   } @else if (data()) {
     @let d = data()!;

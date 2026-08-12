@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Lavanderia.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -120,5 +121,30 @@ public class PlantillasController : ControllerBase
         return File(ms.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             $"plantilla-{tipo.ToLowerInvariant()}.xlsx");
+    }
+
+    [HttpPost("leer-excel")]
+    [RequestSizeLimit(ExcelImportador.TamanoMaximoBytes)]
+    public async Task<IActionResult> LeerExcel([FromForm] IFormFile? archivo, CancellationToken ct)
+    {
+        if (archivo is null || archivo.Length == 0)
+            return BadRequest(new { mensaje = "Selecciona un archivo Excel .xlsx." });
+        if (archivo.Length > ExcelImportador.TamanoMaximoBytes)
+            return BadRequest(new { mensaje = "El archivo no puede superar los 5 MB." });
+        if (!string.Equals(Path.GetExtension(archivo.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { mensaje = "Solo se admiten archivos Excel .xlsx." });
+
+        await using var memoria = new MemoryStream((int)archivo.Length);
+        await archivo.CopyToAsync(memoria, ct);
+        memoria.Position = 0;
+
+        try
+        {
+            return Ok(new { texto = ExcelImportador.ConvertirATsv(memoria) });
+        }
+        catch (ImportacionExcelException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
     }
 }

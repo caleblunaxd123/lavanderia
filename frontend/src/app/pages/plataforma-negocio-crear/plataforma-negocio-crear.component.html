@@ -76,7 +76,7 @@
       <input type="email" [(ngModel)]="form.adminEmail" name="adminEmail" placeholder="correo@ejemplo.com" autocomplete="email" />
 
       @if (errorForm()) {
-        <div class="form__error">{{ errorForm() }}</div>
+        <div class="form__error" role="alert">{{ errorForm() }}</div>
       }
 
       <div class="form__actions">

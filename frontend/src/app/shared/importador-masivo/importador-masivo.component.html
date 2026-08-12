@@ -24,9 +24,9 @@
             <app-icon name="download" [size]="14"></app-icon>{{ descargando() ? 'Generando…' : 'Descargar plantilla Excel' }}
           </button>
         }
-        <label class="btn btn--ghost btn--sm imp__file">
-          <app-icon name="clipboard" [size]="14"></app-icon>Subir Excel o CSV
-          <input type="file" accept=".xlsx,.xls,.csv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onArchivo($event)" hidden />
+        <label class="btn btn--ghost btn--sm imp__file" [class.imp__file--disabled]="leyendoArchivo()">
+          <app-icon name="clipboard" [size]="14"></app-icon>{{ leyendoArchivo() ? 'Leyendo archivo...' : 'Subir Excel o CSV' }}
+          <input type="file" [disabled]="leyendoArchivo()" accept=".xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onArchivo($event)" hidden />
         </label>
       </div>
     </div>

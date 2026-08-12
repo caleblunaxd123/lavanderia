@@ -1,7 +1,7 @@
 @if (cargando()) {
   <div class="estado-carga">Cargando el pedido…</div>
 } @else if (error()) {
-  <div class="estado-carga estado-carga--error">{{ error() }}</div>
+  <div class="estado-carga estado-carga--error" role="alert">{{ error() }}</div>
 } @else if (data(); as d) {
   <div class="rep">
     <header class="rep__header">
@@ -55,7 +55,7 @@
     }
 
     @if (gpsError()) { <div class="aviso aviso--gps">{{ gpsError() }}</div> }
-    @if (mensaje()) { <div class="aviso aviso--error">{{ mensaje() }}</div> }
+    @if (mensaje()) { <div class="aviso aviso--error" role="alert">{{ mensaje() }}</div> }
 
     <!-- Destino -->
     <section class="tarjeta">

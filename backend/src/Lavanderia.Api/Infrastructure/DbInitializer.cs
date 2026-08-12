@@ -137,6 +137,36 @@ public class DbInitializer
             usuario, id);
     }
 
+    /// <summary>
+    /// Las bases heredadas pueden conservar los hashes de las claves documentadas aunque el
+    /// proceso ya arranque con secretos seguros. En Production se rotan solo si todavía verifican
+    /// exactamente contra los valores iniciales; una clave cambiada por el usuario nunca se toca.
+    /// </summary>
+    public async Task EndurecerCredencialesPredeterminadasAsync(bool esProduccion, CancellationToken ct = default)
+    {
+        if (!esProduccion) return;
+
+        var adminLogin = _config.GetValue<string>("SeedAdmin:Usuario") ?? "admin";
+        var adminPassword = _config.GetValue<string>("SeedAdmin:Password")!;
+        var tenantSlug = _config.GetValue<string>("SeedAdmin:Slug") ?? "lavixa";
+        var negocio = await _negocios.ObtenerPorSlugIncluyendoInactivoAsync(tenantSlug, ct);
+        var admin = negocio is null ? null : await _usuarios.BuscarPorUsuarioAsync(adminLogin, negocio.Id, ct);
+        if (admin is not null && BCrypt.Net.BCrypt.Verify("admin123", admin.PasswordHash))
+        {
+            await _usuarios.ActualizarPasswordAsync(admin.Id, BCrypt.Net.BCrypt.HashPassword(adminPassword), admin.NegocioId, ct);
+            _log.LogWarning("Se roto la clave inicial insegura del administrador '{Usuario}' para el tenant '{Slug}'.", adminLogin, tenantSlug);
+        }
+
+        var propietarioLogin = _config.GetValue<string>("SeedPropietario:Usuario") ?? "propietario";
+        var propietarioPassword = _config.GetValue<string>("SeedPropietario:Password")!;
+        var propietario = await _usuarios.BuscarPropietarioPorUsuarioAsync(propietarioLogin, ct);
+        if (propietario is not null && BCrypt.Net.BCrypt.Verify("propietario123", propietario.PasswordHash))
+        {
+            await _usuarios.ActualizarPasswordAsync(propietario.Id, BCrypt.Net.BCrypt.HashPassword(propietarioPassword), propietario.NegocioId, ct);
+            _log.LogWarning("Se roto la clave inicial insegura del propietario '{Usuario}'.", propietarioLogin);
+        }
+    }
+
     /// <summary>Slug de URL a partir del nombre del negocio (minusculas, sin acentos ni espacios).</summary>
     private static string Slugificar(string nombre)
     {

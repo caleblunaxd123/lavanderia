@@ -177,6 +177,7 @@ $env:ASPNETCORE_ENVIRONMENT = "Production"
 $env:ASPNETCORE_URLS = "http://127.0.0.1:$Port"
 $env:Jwt__SecretKey = Get-OrCreateSecret "jwt-secret.txt" 64
 $env:SeedAdmin__Password = Get-OrCreateSecret "seed-admin.txt" 32
+$env:SeedAdmin__Slug = $TenantSlug
 $env:SeedPropietario__Password = Get-OrCreateSecret "seed-propietario.txt" 32
 $env:DataProtection__KeysPath = Join-Path $localState "keys"
 # Las fotos de evidencia se guardan fuera de la carpeta de publicacion (que se borra en cada
@@ -232,6 +233,7 @@ try {
     Write-Host "==================================================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "Panel propietario (solo para ti): $ownerUrl" -ForegroundColor Yellow
+    Write-Host "Claves seguras locales:             $localState\seed-admin.txt y seed-propietario.txt" -ForegroundColor Yellow
     Write-Host "Verificacion de salud:            $publicUrl/health/ready"
     Write-Host ""
     if ($publicReady) {

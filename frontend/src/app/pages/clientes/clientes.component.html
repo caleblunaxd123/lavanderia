@@ -217,7 +217,7 @@
       <input type="date" [(ngModel)]="nuevoCliente.fechaNacimiento" name="fechaNacimiento" />
 
       @if (errorNuevo()) {
-        <div class="modal__error">{{ errorNuevo() }}</div>
+        <div class="modal__error" role="alert">{{ errorNuevo() }}</div>
       }
 
       <div class="modal__actions">
@@ -267,7 +267,7 @@
         <div class="detalle-puntos__head">
           <span>Lista de puntos</span>
           <div class="detalle-puntos__acciones">
-            @if ((c.puntos ?? 0) > 0) {
+            @if (c.puntos > 0) {
               <button type="button" class="btn btn--canje btn--sm" (click)="abrirModalCanje()">⭐ Canjear por código</button>
             }
             <button type="button" class="btn btn--secundario btn--sm" (click)="abrirModalPunto()">+ Agregar registro</button>

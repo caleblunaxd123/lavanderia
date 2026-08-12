@@ -10,6 +10,17 @@ export const authGuard: CanActivateFn = () => {
   return false;
 };
 
+/** Evita mostrar el formulario de acceso junto con una sesion ya iniciada. */
+export const guestGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (!auth.autenticado()) return true;
+
+  const usuario = auth.usuario();
+  if (usuario?.rol === 'PROPIETARIO') return router.createUrlTree(['/plataforma']);
+  return router.createUrlTree([usuario?.sedeId ? '/inicio' : '/seleccionar-sede']);
+};
+
 export const rolGuard = (rolesPermitidos: string[]): CanActivateFn => () => {
   const auth = inject(AuthService);
   const router = inject(Router);

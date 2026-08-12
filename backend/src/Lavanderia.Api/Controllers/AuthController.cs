@@ -145,7 +145,11 @@ public class AuthController : ControllerBase
             }
         }
 
-        await _refreshTokens.RevocarAsync(hash, ct);
+        // Solo una solicitud puede consumir el token. Dos pestañas pueden intentar renovar al
+        // mismo tiempo; la actualización condicional del repositorio decide atómicamente cuál
+        // gana y la otra no debe recibir una segunda sesión válida.
+        if (!await _refreshTokens.RevocarAsync(hash, ct))
+            return Unauthorized(new { mensaje = "Sesión expirada. Inicia sesión de nuevo." });
 
         usuario.SedeId = sedeSesionId;
         if (sedeSesionId is int sedeActivaId)
@@ -212,8 +216,9 @@ public class AuthController : ControllerBase
         usuario.SedeNombre = sede.Nombre;
         var modulos = await ObtenerModulosAsync(usuario, ct);
         var (token, expira) = _tokens.GenerarAccessToken(usuario, modulos);
-        if (!string.IsNullOrWhiteSpace(req.RefreshToken))
-            await _refreshTokens.RevocarAsync(RefreshTokenGenerator.Hash(req.RefreshToken), ct);
+        if (!string.IsNullOrWhiteSpace(req.RefreshToken) &&
+            !await _refreshTokens.RevocarAsync(RefreshTokenGenerator.Hash(req.RefreshToken), ct))
+            return Unauthorized(new { mensaje = "La sesión ya fue renovada. Vuelve a iniciar sesión." });
 
         var refreshToken = await EmitirRefreshTokenAsync(usuario.Id, sede.Id, ct);
 
