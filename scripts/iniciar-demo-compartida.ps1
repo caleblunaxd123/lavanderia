@@ -30,7 +30,8 @@ $migraciones = @(
     (Join-Path $root "backend\db\scripts\045_codigos_generados.sql"),
     (Join-Path $root "backend\db\scripts\046_marca_lavisystem_colores.sql"),
     (Join-Path $root "backend\db\scripts\047_inventario_lavixa.sql"),
-    (Join-Path $root "backend\db\scripts\048_servicio_costo.sql")
+    (Join-Path $root "backend\db\scripts\048_servicio_costo.sql"),
+    (Join-Path $root "backend\db\scripts\049_facturacion_electronica_integral.sql")
 )
 $urlFile = Join-Path $buildRoot "ultima-url.txt"
 $apiOut = Join-Path $buildRoot "api.out.log"

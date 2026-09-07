@@ -1,7 +1,6 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+﻿import { CommonModule } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import JsBarcode from 'jsbarcode';
 import { Pedido } from '../../core/models/models';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { PedidosService } from '../../core/services/pedidos.service';
@@ -32,8 +31,21 @@ export class TicketComponent implements OnInit {
 
   readonly negocio = computed(() => this.config.configuracion());
 
+  // Logo optimizado para impresion (ver ConfiguracionService.logoImpresion).
+  readonly logoImpresion = computed(() => ConfiguracionService.logoImpresion(this.negocio().logoUrl));
+
+  // Direccion del negocio para el ticket: une las abreviaturas de direccion a la palabra que
+  // sigue con un espacio duro, para que no queden colgadas al final de un renglon angosto
+  // (ej. "..., Urb." arriba y "El Alamo, Comas" abajo -> pasa junto: "Urb. El Alamo, Comas").
+  readonly direccionTicket = computed(() =>
+    (this.negocio().direccion ?? '').replace(
+      /\b(Urb|Mz|Lt|Cond|Res|A\.H|P\.J|Av|Jr|Ca|Cal|Psje|Pje)\.\s+/gi,
+      m => m.replace(/\s+$/, String.fromCharCode(160))
+    )
+  );
+
   readonly marcaCorta = computed(() =>
-    (this.negocio().nombreNegocio || 'Lavandería').replace(/^lavander[ií]a\s+/i, '').trim().toUpperCase()
+    (this.negocio().nombreNegocio || 'LavanderÃ­a').replace(/^lavander[iÃ­]a\s+/i, '').trim().toUpperCase()
   );
 
   readonly condicionesLista = computed(() =>
@@ -48,12 +60,23 @@ export class TicketComponent implements OnInit {
     return p ? Math.max(0, p.total - p.montoPagado) : 0;
   });
 
-  constructor() {
-    effect(() => {
-      const p = this.pedido();
-      if (p) this.renderizarCodigoBarrasCuandoExista(p.numero);
-    });
+  private static readonly MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  /** Fecha en el estilo del ticket de referencia: "24 de agosto, 2026 / 10:11 am". */
+  fechaLarga(f: string | Date | null | undefined): string {
+    if (!f) return '';
+    const d = new Date(f);
+    if (isNaN(d.getTime())) return '';
+    const mes = TicketComponent.MESES[d.getMonth()];
+    let h = d.getHours();
+    const min = d.getMinutes().toString().padStart(2, '0');
+    const ampm = h < 12 ? 'am' : 'pm';
+    h = h % 12; if (h === 0) h = 12;
+    return `${d.getDate()} de ${mes}, ${d.getFullYear()} / ${h}:${min} ${ampm}`;
   }
+
+  constructor() {}
 
   ngOnInit() {
     // Ancho de pagina segun configuracion (58 o 80mm)
@@ -62,8 +85,12 @@ export class TicketComponent implements OnInit {
     this.whatsapp.cargar();
 
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    // Permite abrir directo el ticket de producciÃ³n con /ticket/:id?tipo=produccion
+    if ((this.route.snapshot.queryParamMap.get('tipo') ?? '').toUpperCase() === 'PRODUCCION') {
+      this.tipoTicket.set('PRODUCCION');
+    }
     if (!id) {
-      this.error.set('ID de pedido inválido.');
+      this.error.set('ID de pedido invÃ¡lido.');
       this.cargando.set(false);
       return;
     }
@@ -73,8 +100,11 @@ export class TicketComponent implements OnInit {
         this.pedido.set(p);
         this.celularEnvio.set(p.clienteCelular ?? '');
         this.cargando.set(false);
-        // Auto lanzar el dialogo de imprimir despues de que se pinte todo
-        setTimeout(() => this.imprimir(), 400);
+        // Auto lanzar el dialogo de imprimir despues de que se pinte todo.
+        // Con ?print=0 se abre el ticket solo para previsualizar (sin dialogo).
+        if (this.route.snapshot.queryParamMap.get('print') !== '0') {
+          setTimeout(() => this.imprimir(), 400);
+        }
       },
       error: () => {
         this.error.set('No se pudo cargar el pedido.');
@@ -84,32 +114,6 @@ export class TicketComponent implements OnInit {
   }
 
   imprimir() { window.print(); }
-
-  // Permite escanear el N° de pedido con un lector de codigo de barras USB en vez de
-  // teclearlo en la busqueda rapida del listado de pedidos (esos lectores solo "tipean"
-  // el numero + Enter, como un teclado — no requieren cambios adicionales en el sistema).
-  //
-  // El <svg> vive dentro de un @if(pedido()) del template, asi que no hay garantia de que
-  // ya este en el DOM en el mismo tick en que el signal se actualiza. Reintenta en varios
-  // frames en vez de asumir un timing exacto de Angular.
-  private renderizarCodigoBarrasCuandoExista(numero: number, intentos = 20) {
-    const el = document.getElementById('ticket-barcode');
-    if (!el) {
-      if (intentos > 0) requestAnimationFrame(() => this.renderizarCodigoBarrasCuandoExista(numero, intentos - 1));
-      return;
-    }
-    try {
-      JsBarcode(el, String(numero), {
-        format: 'CODE128',
-        displayValue: true,
-        fontSize: 14,
-        height: 40,
-        margin: 4
-      });
-    } catch {
-      // Si el numero no es codificable (no debería pasar), simplemente no se muestra.
-    }
-  }
 
   enviarWhatsapp() {
     const p = this.pedido();
@@ -201,7 +205,8 @@ export class TicketComponent implements OnInit {
   private async generarPdfTicket() {
     const canvas = await this.generarCanvasTicket();
     const { jsPDF } = await import('jspdf');
-    const anchoMm = this.negocio().anchoTicketMm || 80;
+    // Mismo ancho útil que al imprimir, para que el PDF salga igual si lo mandan a la térmica.
+    const anchoMm = TicketComponent.anchoUtilMm(this.negocio().anchoTicketMm || 80);
     const altoMm = Math.max(1, (canvas.height * anchoMm) / canvas.width);
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -222,13 +227,29 @@ export class TicketComponent implements OnInit {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  /**
+   * Ancho imprimible REAL del cabezal termico (para el PDF/imagen que se genera):
+   * un papel de 80mm imprime ~72mm y uno de 58mm ~48mm. El PDF se dimensiona con
+   * este ancho para que, si se manda a la termica, entre completo sin recortarse.
+   * Nota: al IMPRIMIR por navegador (RawBT) el @page usa el ancho del papel real
+   * (ver aplicarAncho) porque el navegador no respeta un @page mas angosto; ahi la
+   * columna de montos se protege con el padding derecho del @media print.
+   */
+  static anchoUtilMm(anchoPapelMm: number): number {
+    return anchoPapelMm <= 60 ? 48 : 72;
+  }
+
   private aplicarAncho(mm: number) {
-    // Inyectar la regla @page dinamica
+    // @page con el ancho del PAPEL real (80 o 58mm). El navegador/RawBT ignora un
+    // @page mas angosto y maqueta al ancho del papel de todos modos, asi que aqui
+    // somos honestos con la medida y dejamos que el padding derecho del @media print
+    // mantenga el contenido dentro de la zona imprimible del cabezal.
+    const anchoPapel = mm <= 60 ? 58 : 80;
     const styleId = 'ticket-page-size';
     document.getElementById(styleId)?.remove();
     const style = document.createElement('style');
     style.id = styleId;
-    style.textContent = `@page { size: ${mm}mm auto; margin: 0; }`;
+    style.textContent = `@page { size: ${anchoPapel}mm auto; margin: 0; }`;
     document.head.appendChild(style);
   }
 }

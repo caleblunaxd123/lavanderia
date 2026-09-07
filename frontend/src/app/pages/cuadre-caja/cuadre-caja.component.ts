@@ -2,10 +2,11 @@ import { Component, DestroyRef, HostListener, OnDestroy, OnInit, computed, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CajaService, UsuarioDelDia } from '../../core/services/caja.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
+import { fechaLocalIso } from '../../core/util/fecha-local';
 import { MovimientoCaja, TipoGasto } from '../../core/models/models';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
@@ -17,16 +18,9 @@ interface Denominacion {
   cantidad: number;
 }
 
-function fechaLocalIso(fecha: Date): string {
-  const anio = fecha.getFullYear();
-  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-  const dia = String(fecha.getDate()).padStart(2, '0');
-  return `${anio}-${mes}-${dia}`;
-}
-
 @Component({
   selector: 'app-cuadre-caja',
-  imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterLink, IconComponent, PageHeaderComponent],
   templateUrl: './cuadre-caja.component.html',
   styleUrl: './cuadre-caja.component.scss'
 })
@@ -40,6 +34,8 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   private timerActualizacion?: ReturnType<typeof setInterval>;
   private versionMovimientos = 0;
   private versionUsuarios = 0;
+  /** Solo se elige colaborador solo en la carga inicial y al cambiar de fecha. */
+  private autoSeleccionPendiente = true;
 
   fecha = fechaLocalIso(new Date());
   readonly fechaMaxima = fechaLocalIso(new Date());
@@ -73,6 +69,10 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   // lo más ágil); 'detallado' = cuentas billete por billete y el total se calcula solo.
   readonly modoConteo = signal<'rapido' | 'detallado'>('rapido');
   readonly totalContadoManual = signal(0);
+  // Total con el que se CERRÓ este turno (si ya estaba guardado). Se usa para avisar en el
+  // modo "billete por billete": como solo se guarda el total (no el desglose de billetes),
+  // al reabrir un cierre en ese modo la tabla sale en 0 y parecía que no se había grabado.
+  readonly totalCerradoGuardado = signal<number | null>(null);
   // false = solo los movimientos del colaborador seleccionado; true = toda la caja del día (todos).
   readonly verTodos = signal(false);
   readonly sugerenciaCajaInicial = signal<{ monto: number; usuarioNombre?: string; fecha: string } | null>(null);
@@ -136,6 +136,7 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     }
     this.fecha = fecha;
     this.reiniciarConteo();
+    this.autoSeleccionPendiente = true;
     this.cargarUsuariosDelDia();
     this.cargarMovimientos();
     this.cargarSugerenciaCajaInicial();
@@ -150,14 +151,35 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
         if (version !== this.versionUsuarios) return;
         this.usuariosDelDia.set(list);
         this.cargandoUsuarios.set(false);
-        // Asegura que el usuario seleccionado esté en la lista; si no, elige el actual
-        const sel = this.usuarioSeleccionadoId();
-        if (sel && !list.some(u => u.id === sel)) {
-          this.usuarioSeleccionadoId.set(this.auth.usuario()?.id ?? (list[0]?.id ?? null));
-        }
+        this.resolverUsuarioSeleccionado(list);
       },
       error: () => { if (version === this.versionUsuarios) this.cargandoUsuarios.set(false); }
     });
+  }
+
+  /**
+   * Decide de quién se muestra el turno. Prefiere al usuario logueado, pero SOLO si tuvo
+   * movimientos o cuadre ese día; si no (caso típico: el dueño revisando el turno de una
+   * trabajadora), cae al primer colaborador de la lista.
+   *
+   * Antes, cuando el seleccionado no estaba en la lista se reasignaba el id del propio
+   * usuario logueado — el mismo que ya no estaba — así que la pantalla quedaba filtrada
+   * por alguien sin movimientos y TODO salía en S/ 0.00, aunque el turno de la
+   * trabajadora estuviera cerrado y con dinero. La reselección automática solo corre en
+   * la carga inicial y al cambiar de fecha, para no arrebatarle la pantalla a quien está
+   * contando la caja cuando el refresco de 15s trae la lista.
+   */
+  private resolverUsuarioSeleccionado(list: UsuarioDelDia[]) {
+    const sel = this.usuarioSeleccionadoId();
+    if (sel && list.some(u => u.id === sel)) { this.autoSeleccionPendiente = false; return; }
+    if (!this.autoSeleccionPendiente) return;
+
+    const yo = this.auth.usuario()?.id ?? null;
+    const destino = yo != null && list.some(u => u.id === yo) ? yo : (list[0]?.id ?? null);
+    if (destino == null) return;
+
+    this.autoSeleccionPendiente = false;
+    this.seleccionarUsuario(destino);
   }
 
   seleccionarUsuario(id: number) {
@@ -179,9 +201,27 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
         this.cajaInicial.set(c.cajaInicial);
         this.corte = c.corte ?? 0;
         this.nota = c.nota ?? '';
+        // Recupera también lo que se contó al cerrar. Sin esto, al reabrir un turno ya
+        // cuadrado el campo "¿Cuánto contaste en la caja?" volvía a 0 y el cierre parecía
+        // vacío, aunque en la base estuviera guardado el monto real.
+        // Si el cierre se guardó billete por billete, reconstruye el desglose exacto para
+        // mostrarlo igual (cualquier día). Si se guardó por total directo, abre en modo rápido.
+        this.totalContadoManual.set(c.totalContado ?? 0);
+        this.totalCerradoGuardado.set(c.totalContado ?? 0);
+        let mapa: Record<string, number> | null = null;
+        if (c.detalleConteo) {
+          try { mapa = JSON.parse(c.detalleConteo) as Record<string, number>; } catch { mapa = null; }
+        }
+        if (mapa) {
+          const m = mapa;
+          this.denominaciones.update(list => list.map(d => ({ ...d, cantidad: m[String(d.valor)] ?? 0 })));
+          this.modoConteo.set('detallado');
+        } else {
+          this.modoConteo.set('rapido');
+        }
         this.guardado = true;
       },
-      error: () => { this.guardado = false; }
+      error: () => { this.guardado = false; this.totalCerradoGuardado.set(null); }
     });
   }
 
@@ -422,6 +462,14 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   private procederGuardado() {
     this.guardando.set(true);
 
+    // Si se contó billete por billete, guarda el desglose para poder mostrarlo al reabrir.
+    const detalleConteo = (this.modoConteo() === 'detallado' && this.totalDenominaciones() > 0)
+      ? JSON.stringify(this.denominaciones().reduce((o, d) => {
+          if (d.cantidad > 0) o[String(d.valor)] = d.cantidad;
+          return o;
+        }, {} as Record<string, number>))
+      : undefined;
+
     this.cajaSvc.guardarCuadre({
       fecha: this.fecha,
       usuarioId: this.usuarioSeleccionadoId() ?? undefined,
@@ -436,6 +484,7 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
       ingresosTarjeta: this.ingresosTarjeta(),
       nota: this.nota.trim() || undefined,
       observaciones: undefined,
+      detalleConteo,
     }).subscribe({
       next: guardado => {
         this.guardando.set(false);
@@ -458,6 +507,7 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     this.corte = 0;
     this.nota = '';
     this.guardado = false;
+    this.totalCerradoGuardado.set(null);
     this.confirmarRegrabar.set(false);
   }
 }

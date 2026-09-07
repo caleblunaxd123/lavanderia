@@ -8,6 +8,7 @@ import { NegociosPlataformaService } from '../../core/services/negocios-platafor
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { ErroresCampo } from '../../core/util/errores-campo';
 
 @Component({
   selector: 'app-plataforma-negocio-crear',
@@ -22,6 +23,7 @@ export class PlataformaNegocioCrearComponent {
 
   form: CrearNegocioRequest = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
   slugEditadoManualmente = false;
 
@@ -67,30 +69,20 @@ export class PlataformaNegocioCrearComponent {
       adminEmail: this.normalizarOpcional(this.form.adminEmail)
     };
 
-    if (!this.form.nombre || !this.form.sedeNombre || !this.form.adminUsuario || !this.form.adminNombreCompleto) {
-      this.errorForm.set('Nombre, sede, usuario y nombre del administrador son obligatorios.');
-      return;
-    }
-    if (!/^[a-z0-9][a-z0-9-]{1,49}$/i.test(this.form.slug)) {
-      this.errorForm.set('El slug debe tener solo letras, números y guiones (2 a 50 caracteres).');
-      return;
-    }
-    if (this.form.rucEmpresa && !/^\d{11}$/.test(this.form.rucEmpresa)) {
-      this.errorForm.set('El RUC debe tener 11 digitos.');
-      return;
-    }
-    if (!/^[a-z0-9._-]{3,50}$/i.test(this.form.adminUsuario)) {
-      this.errorForm.set('El usuario administrador solo puede usar letras, numeros, punto, guion y guion bajo.');
-      return;
-    }
-    if (!this.emailValido(this.form.titularEmail) || !this.emailValido(this.form.adminEmail)) {
-      this.errorForm.set('El email ingresado no tiene un formato valido.');
-      return;
-    }
-    if (!this.form.adminPassword || this.form.adminPassword.length < 8) {
-      this.errorForm.set('La contraseña del administrador debe tener al menos 8 caracteres.');
-      return;
-    }
+    const errs: Record<string, string> = {};
+    if (!this.form.nombre?.trim()) errs['nombre'] = 'Ingresa el nombre del negocio.';
+    if (!/^[a-z0-9][a-z0-9-]{1,49}$/i.test(this.form.slug)) errs['slug'] = 'Solo letras, números y guiones (2 a 50 caracteres).';
+    if (!this.form.sedeNombre?.trim()) errs['sedeNombre'] = 'Ingresa el nombre de la sede.';
+    if (this.form.rucEmpresa && !/^\d{11}$/.test(this.form.rucEmpresa)) errs['rucEmpresa'] = 'El RUC debe tener 11 dígitos (o déjalo vacío).';
+    if (this.form.titularEmail && !this.emailValido(this.form.titularEmail)) errs['titularEmail'] = 'Correo no válido (o déjalo vacío).';
+    if (!this.form.adminNombreCompleto?.trim()) errs['adminNombreCompleto'] = 'Ingresa el nombre del administrador.';
+    if (!this.form.adminUsuario?.trim()) errs['adminUsuario'] = 'Ingresa el usuario del administrador.';
+    else if (!/^[a-z0-9._-]{3,50}$/i.test(this.form.adminUsuario)) errs['adminUsuario'] = 'Solo letras, números, punto, guion y guion bajo (3 a 50).';
+    if (this.form.adminEmail && !this.emailValido(this.form.adminEmail)) errs['adminEmail'] = 'Correo no válido (o déjalo vacío).';
+    if (!this.form.adminPassword || this.form.adminPassword.length < 8) errs['adminPassword'] = 'Mínimo 8 caracteres.';
+
+    this.err.set(errs);
+    if (this.err.hay) { this.errorForm.set('Revisa los campos marcados en rojo.'); return; }
 
     this.guardando.set(true);
     this.errorForm.set(null);

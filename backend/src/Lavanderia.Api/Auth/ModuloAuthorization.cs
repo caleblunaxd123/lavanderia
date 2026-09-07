@@ -11,9 +11,10 @@ public static class ModuloPolicies
 
 public sealed class ModuloRequirement : IAuthorizationRequirement
 {
-    public ModuloRequirement(string modulo) => Modulo = modulo;
+    // Acepta uno o varios módulos: el acceso se concede si el usuario tiene CUALQUIERA de ellos.
+    public ModuloRequirement(params string[] modulos) => Modulos = modulos;
 
-    public string Modulo { get; }
+    public IReadOnlyList<string> Modulos { get; }
 }
 
 public sealed class ModuloAuthorizationHandler : AuthorizationHandler<ModuloRequirement>
@@ -26,8 +27,8 @@ public sealed class ModuloAuthorizationHandler : AuthorizationHandler<ModuloRequ
             return Task.CompletedTask;
         }
 
-        var modulos = context.User.FindAll("mod").Select(c => c.Value);
-        if (modulos.Contains(requirement.Modulo, StringComparer.OrdinalIgnoreCase))
+        var modulos = context.User.FindAll("mod").Select(c => c.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (requirement.Modulos.Any(m => modulos.Contains(m)))
             context.Succeed(requirement);
 
         return Task.CompletedTask;

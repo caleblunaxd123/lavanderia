@@ -52,6 +52,10 @@ export interface ConfiguracionNegocio {
   valorPuntoCanje: number;
   maxDescuentoPct: number;
   servicioDeliveryId?: number | null;
+  // Cobro por Yape/Plin del negocio (mensaje de delivery + QR para el repartidor).
+  yapeNumero?: string | null;
+  yapeTitular?: string | null;
+  yapeQrUrl?: string | null;
 }
 
 export interface Cliente {

@@ -1,3 +1,10 @@
+@if (versionCheck.hayNuevaVersion()) {
+  <div class="update-banner" role="alert">
+    <span class="update-banner__dot"></span>
+    <span class="update-banner__text">Hay una nueva versión del sistema disponible.</span>
+    <button type="button" class="update-banner__btn" (click)="versionCheck.recargar()">Actualizar ahora</button>
+  </div>
+}
 @if (mostrarHeader()) {
   <app-header />
 }

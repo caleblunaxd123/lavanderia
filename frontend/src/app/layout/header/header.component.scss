@@ -45,7 +45,7 @@ $mtop-h: 56px;
     strong { font-size: 15px; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
 
-  &__logo { width: 30px; height: 30px; object-fit: contain; background: #fff; border-radius: 7px; padding: 3px; flex-shrink: 0; }
+  &__logo { height: 30px; width: auto; max-width: 160px; object-fit: contain; flex-shrink: 0; }
 
   &__logout {
     border: none; background: rgba(255,255,255,.16); color: #fff;

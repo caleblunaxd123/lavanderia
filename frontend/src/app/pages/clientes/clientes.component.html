@@ -198,17 +198,24 @@
     </div>
     <form class="modal__body" (submit)="guardar(); $event.preventDefault()">
       <label>Nombre *</label>
-      <input type="text" [(ngModel)]="nuevoCliente.nombre" name="nombre" placeholder="Nombre completo" />
+      <input type="text" [(ngModel)]="nuevoCliente.nombre" name="nombre" placeholder="Nombre completo"
+             [class.invalid]="err.get('nombre')" (ngModelChange)="err.limpiar('nombre')" />
+      @if (err.get('nombre')) { <small class="campo-error">{{ err.get('nombre') }}</small> }
 
       <label>Celular</label>
-      <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
-             [(ngModel)]="nuevoCliente.celular" name="celular" placeholder="9XXXXXXXX" />
+      <app-telefono-pais [(ngModel)]="nuevoCliente.celular" name="celular" inputId="celular"
+             [class.invalid]="!!err.get('celular')" (ngModelChange)="err.limpiar('celular')"></app-telefono-pais>
+      @if (err.get('celular')) { <small class="campo-error">{{ err.get('celular') }}</small> }
 
       <label>DNI</label>
-      <input type="text" [(ngModel)]="nuevoCliente.dni" name="dni" placeholder="DNI" />
+      <input type="text" [(ngModel)]="nuevoCliente.dni" name="dni" placeholder="DNI"
+             [class.invalid]="err.get('dni')" (ngModelChange)="err.limpiar('dni')" />
+      @if (err.get('dni')) { <small class="campo-error">{{ err.get('dni') }}</small> }
 
       <label>Documento Fiscal (RUC)</label>
-      <input type="text" [(ngModel)]="nuevoCliente.documentoFiscal" name="ruc" placeholder="RUC (opcional)" />
+      <input type="text" inputmode="numeric" maxlength="11" pattern="[0-9]{11}" [(ngModel)]="nuevoCliente.documentoFiscal" name="ruc" placeholder="RUC de 11 dígitos (opcional)"
+             [class.invalid]="err.get('ruc')" (ngModelChange)="err.limpiar('ruc')" />
+      @if (err.get('ruc')) { <small class="campo-error">{{ err.get('ruc') }}</small> }
 
       <label>Dirección</label>
       <input type="text" [(ngModel)]="nuevoCliente.direccion" name="direccion" placeholder="Dirección (opcional)" />

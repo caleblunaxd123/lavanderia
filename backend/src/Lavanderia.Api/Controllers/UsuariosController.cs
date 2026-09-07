@@ -39,8 +39,7 @@ public class UsuariosController : ControllerBase
 
     [HttpGet("roles")]
     public async Task<ActionResult<List<RolDto>>> Roles(CancellationToken ct)
-        => Ok((await _roles.ListarTodosAsync(ct))
-            .Where(r => r.Codigo != "PROPIETARIO")
+        => Ok((await _roles.ListarPorNegocioAsync(NegocioIdActual, ct))
             .Select(r => new RolDto(r.Id, r.Codigo, r.Nombre)).ToList());
 
     [HttpPost]
@@ -183,8 +182,9 @@ public class UsuariosController : ControllerBase
 
     private async Task<bool> RolAdministrableAsync(int rolId, CancellationToken ct)
     {
-        var rol = (await _roles.ListarTodosAsync(ct)).FirstOrDefault(r => r.Id == rolId);
-        return rol is not null && rol.Codigo != "PROPIETARIO";
+        // Asignable = ADMIN (sistema) o un rol propio de este negocio.
+        var roles = await _roles.ListarPorNegocioAsync(NegocioIdActual, ct);
+        return roles.Any(r => r.Id == rolId);
     }
 
     private static bool PasswordValida(string? password)

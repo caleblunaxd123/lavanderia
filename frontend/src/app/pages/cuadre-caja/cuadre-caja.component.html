@@ -6,6 +6,10 @@
     <span class="estado-pill" [class]="'estado-pill--' + guardado">
       {{ guardado ? 'Cerrado' : 'Sin cerrar' }}
     </span>
+    <!-- Atajo al historial: nadie encontraba el reporte diario dentro de Reportes. -->
+    <a class="btn btn--secundario" routerLink="/reportes/cuadres-caja">
+      <app-icon name="calendar" [size]="16"></app-icon> Ver cierres de días anteriores
+    </a>
   </app-page-header>
 
   <!-- Colaborador + alcance del día -->
@@ -98,6 +102,13 @@
             o contar billete por billete
           </button>
         } @else {
+          @if (guardado && (totalCerradoGuardado() ?? 0) > 0 && totalDenominaciones() === 0) {
+            <p class="conteo__aviso-guardado">
+              Este turno ya se cerró con <strong>S/ {{ totalCerradoGuardado()! | number:'1.2-2' }}</strong> contado.
+              El detalle billete por billete no se guarda; usa
+              <b>«← volver a escribir el total directo»</b> para ver el monto registrado.
+            </p>
+          }
           <table class="tabla-denominaciones">
             <thead><tr><th>Billete / moneda</th><th>Cantidad</th><th class="num">Subtotal</th></tr></thead>
             <tbody>

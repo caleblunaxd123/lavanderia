@@ -85,6 +85,40 @@
         </table>
       </div>
 
+      <!-- Vista de tarjetas (solo móvil) -->
+      <div class="cards-rep">
+        @for (dia of rep.dias; track dia.fecha) {
+          @if (dia.sinInformacion) {
+            <div class="rep-card">
+              <div class="rep-card__titulo">{{ dia.fecha | date:'dd/MM/yyyy' }}</div>
+              <div class="rep-card__row"><span>Sin información</span><strong>—</strong></div>
+              @if (dia.noCuadradoIngresos > 0 || dia.noCuadradoEgresos > 0) {
+                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verDia(dia)">Hay movimientos sin cuadrar (ver)</button>
+              }
+            </div>
+          } @else {
+            @for (c of dia.cuadres; track c.id) {
+              <div class="rep-card">
+                <div class="rep-card__top">
+                  <div class="rep-card__titulo">{{ dia.fecha | date:'dd/MM/yyyy' }} · {{ c.usuarioNombre }}</div>
+                  <span [class]="claseEstado(c.estado)">{{ c.estado === 'CUADRA' ? 'Cuadró' : (c.estado === 'SOBRA' ? 'Sobra' : 'Falta') }}</span>
+                </div>
+                <div class="rep-card__row"><span>Caja inicial</span><strong>S/ {{ c.cajaInicial | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Ingresos (efectivo)</span><strong>S/ {{ c.ingresosEfectivo | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Egresos</span><strong>S/ {{ c.egresos | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Monto en caja</span><strong>S/ {{ c.montoEnCaja | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Corte</span><strong>S/ {{ c.corte | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Caja final</span><strong>S/ {{ c.cajaFinal | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Transf. móvil</span><strong>S/ {{ c.ingresosDigital | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Tarjeta</span><strong>S/ {{ c.ingresosTarjeta | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Margen de error</span><strong>S/ {{ c.margenError | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Nota</span><strong>{{ c.nota || '—' }}</strong></div>
+              </div>
+            }
+          }
+        }
+      </div>
+
       <!-- Panel lateral: montos no cuadrados -->
       <aside class="card panel-nocuadrado">
         <h3>Montos no cuadrados</h3>

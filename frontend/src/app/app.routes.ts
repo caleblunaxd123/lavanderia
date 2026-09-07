@@ -131,7 +131,7 @@ export const routes: Routes = [
       {
         // Pantalla dedicada de cuadres diarios (antes de 'reportes/:key').
         path: 'reportes/cuadres-caja',
-        canActivate: [moduloGuard('REPORTES')],
+        canActivate: [moduloGuard(['CAJA', 'REPORTES'])],
         loadComponent: () => import('./pages/reporte-cuadres-diarios/reporte-cuadres-diarios.component').then(m => m.ReporteCuadresDiariosComponent)
       },
       {
@@ -236,7 +236,7 @@ export const routes: Routes = [
       },
       {
         path: 'facturacion/comprobantes',
-        canActivate: [moduloGuard('AJUSTES')],
+        canActivate: [moduloGuard('PEDIDOS')],
         loadComponent: () => import('./pages/comprobantes-list/comprobantes-list.component').then(m => m.ComprobantesListComponent)
       },
     ]

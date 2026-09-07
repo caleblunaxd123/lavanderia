@@ -10,6 +10,7 @@ import { TenantContextService } from './core/services/tenant-context.service';
 import { ToasterComponent } from './shared/toaster/toaster.component';
 import { AlertasGlobalesComponent } from './shared/alertas-globales/alertas-globales.component';
 import { TourOverlayComponent } from './shared/tour/tour-overlay.component';
+import { VersionCheckService } from './core/services/version-check.service';
 
 const SEGMENTOS_RUTA_APP = new Set([
   'login', 'ticket', 'cuadre-caja', 'seleccionar-sede', 'inicio', 'pedidos', 'registrar',
@@ -28,6 +29,7 @@ export class AppComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly config = inject(ConfiguracionService);
   private readonly tenant = inject(TenantContextService);
+  readonly versionCheck = inject(VersionCheckService);
 
   private readonly rutaActual = signal<string | null>(null);
   readonly esPlataforma = computed(() => this.rutaActual()?.startsWith('/plataforma') ?? false);
@@ -59,6 +61,9 @@ export class AppComponent implements OnInit {
   });
 
   ngOnInit() {
+    // Vigila si el sistema fue actualizado en el servidor para ofrecer recargar.
+    this.versionCheck.iniciar();
+
     // La primera navegacion es la que hace que TenantUrlSerializer.parse() fije el slug;
     // si se lee tenant.slug() antes de eso (fuera de este subscribe) puede llegar en null
     // y cargar la marca generica por error. Por eso la carga de marca va DESPUES del primer

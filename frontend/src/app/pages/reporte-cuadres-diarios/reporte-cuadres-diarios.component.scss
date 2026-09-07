@@ -207,3 +207,8 @@
   .cab__acciones { flex-direction: column; }
   .btn, .campo-mes input { width: 100%; }
 }
+
+@media (max-width: 720px) {
+  .card.tabla-wrap { display: none; }
+  .cards-rep { display: flex; }
+}

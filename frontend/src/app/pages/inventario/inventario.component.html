@@ -236,7 +236,9 @@
       <div class="modal__body">
         <label for="insumo-nombre">Nombre *</label>
         <input id="insumo-nombre" type="text" required minlength="2" maxlength="80"
-          [(ngModel)]="formInsumo.nombre" name="nombre" placeholder="Ej: Detergente en polvo" />
+          [(ngModel)]="formInsumo.nombre" name="nombre" placeholder="Ej: Detergente en polvo"
+          [class.invalid]="err.get('nombre')" (ngModelChange)="err.limpiar('nombre')" />
+        @if (err.get('nombre')) { <small class="campo-error">{{ err.get('nombre') }}</small> }
 
         <label for="insumo-clase">Clase *</label>
         <select id="insumo-clase" name="clase" [(ngModel)]="formInsumo.clase" required>
@@ -247,12 +249,16 @@
           <div>
             <label for="insumo-unidad">¿Cómo lo cuentas? (unidad) *</label>
             <input id="insumo-unidad" type="text" required maxlength="20"
-              [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: bidón, bolsa, unidad, kg" />
+              [(ngModel)]="formInsumo.unidadMedida" name="unidad" placeholder="Ej: bidón, bolsa, unidad, kg"
+              [class.invalid]="err.get('unidad')" (ngModelChange)="err.limpiar('unidad')" />
+            @if (err.get('unidad')) { <small class="campo-error">{{ err.get('unidad') }}</small> }
           </div>
           <div>
             <label for="insumo-minimo">Stock mínimo</label>
             <input id="insumo-minimo" type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
-              [(ngModel)]="formInsumo.stockMinimo" name="stockMinimo" />
+              [(ngModel)]="formInsumo.stockMinimo" name="stockMinimo"
+              [class.invalid]="err.get('stockMinimo')" (ngModelChange)="err.limpiar('stockMinimo')" />
+            @if (err.get('stockMinimo')) { <small class="campo-error">{{ err.get('stockMinimo') }}</small> }
           </div>
         </div>
 
@@ -272,7 +278,9 @@
         @if (!editandoInsumo()) {
           <label for="insumo-inicial">Stock inicial</label>
           <input id="insumo-inicial" type="number" min="0" max="1000000" step="0.01" inputmode="decimal"
-            [(ngModel)]="formInsumo.stockActual" name="stockActual" />
+            [(ngModel)]="formInsumo.stockActual" name="stockActual"
+            [class.invalid]="err.get('stockActual')" (ngModelChange)="err.limpiar('stockActual')" />
+          @if (err.get('stockActual')) { <small class="campo-error">{{ err.get('stockActual') }}</small> }
         }
 
         <label class="checkbox-row">

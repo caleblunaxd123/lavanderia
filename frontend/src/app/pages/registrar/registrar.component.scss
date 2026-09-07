@@ -239,6 +239,13 @@
     color: var(--gris-texto);
     border: 1px solid var(--gris-borde);
   }
+
+  // WhatsApp: verde fijo del sistema, distinto del color de marca del tenant,
+  // para que el boton de "enviar seguimiento" se lea siempre como accion de WhatsApp.
+  &--wsp {
+    background: var(--verde);
+    color: #fff;
+  }
 }
 
 .presets {
@@ -513,8 +520,64 @@
 .row-agregar {
   display: flex;
   gap: 8px;
+  align-items: flex-start;
 
   select { flex: 1; }
+}
+
+// Buscador de servicios (Paso 2)
+.combo-servicio {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+
+  &__input {
+    width: 100%;
+  }
+
+  &__lista {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+  }
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 10px 11px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:hover { background: #eff6ff; }
+  }
+
+  &__nombre { font-weight: 600; color: #1f2937; }
+  &__precio { color: #64748b; white-space: nowrap; font-size: 13px; }
+
+  &__vacio {
+    padding: 12px 11px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.4;
+  }
 }
 
 .tabla-items {
@@ -552,6 +615,21 @@
 .input-cantidad {
   width: 50px !important;
   padding: 4px !important;
+}
+
+// Precio editable por ítem (el del catálogo es solo referencial)
+.input-precio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  span { color: #64748b; font-size: 13px; }
+
+  input {
+    width: 72px !important;
+    padding: 4px 6px !important;
+    text-align: right;
+  }
 }
 
 .input-nota {

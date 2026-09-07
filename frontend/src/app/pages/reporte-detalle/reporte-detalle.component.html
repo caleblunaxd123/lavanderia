@@ -67,6 +67,28 @@
       </table>
     </div>
 
+    <!-- Vista de tarjetas (solo móvil) -->
+    <div class="cards-rep">
+      @for (fila of filasPaginadas(); track $index) {
+        <div class="rep-card">
+          <div class="rep-card__titulo">{{ fila[resultado()!.columnas[0]] }}</div>
+          @for (c of resultado()!.columnas; track c; let first = $first) {
+            @if (!first) {
+              <div class="rep-card__row"><span>{{ c }}</span><strong>{{ fila[c] }}</strong></div>
+            }
+          }
+          @if (accion()) {
+            <button class="btn btn--outline-primary btn--sm rep-card__accion"
+                    [class.btn--donar]="accion() === 'donar'"
+                    [disabled]="ejecutandoAccion()"
+                    (click)="onAccion(fila)">
+              {{ accionLabel() }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+
     <div class="card paginacion-wrap">
       <app-paginacion
         [pagina]="pagina()"

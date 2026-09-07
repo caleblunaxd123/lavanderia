@@ -1,0 +1,366 @@
+{"kind":"deck","id":"pr/4fz1tv","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"","type":"master"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"DEFAULT"}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"LAVIXA","textShapes":6}
+{"kind":"shape","id":"sh/547294r6","slide":1,"name":"Shape 0","bbox":[0,0,1279.68,720]}
+{"kind":"shape","id":"sh/k3yl0zql","slide":1,"name":"Shape 1","bbox":[921.6,-211.2,624,624]}
+{"kind":"shape","id":"sh/7qp4be9c","slide":1,"name":"Shape 2","bbox":[1075.2,364.8,432,432]}
+{"kind":"shape","id":"sh/65g3298r","slide":1,"name":"Shape 3","bbox":[57.6,52.8,52.8,52.8]}
+{"kind":"textbox","id":"sh/ts7md4r2","slide":1,"name":"Text 4","text":"LAVIXA","textPreview":"LAVIXA","textChars":6,"textLines":1,"bbox":[129.6,48,384,38.4]}
+{"kind":"textbox","id":"sh/sryl4zqx","slide":1,"name":"Text 5","text":"Lavandería","textPreview":"Lavandería","textChars":10,"textLines":1,"bbox":[131.52,86.4,384,28.8]}
+{"kind":"textbox","id":"sh/fu94fe98","slide":1,"name":"Text 6","text":"MANUAL DE USO","textPreview":"MANUAL DE USO","textChars":13,"textLines":1,"bbox":[57.6,259.2,864,48]}
+{"kind":"textbox","id":"sh/utg3698n","slide":1,"name":"Text 7","text":"Guía del Trabajador","textPreview":"Guía del Trabajador","textChars":19,"textLines":1,"bbox":[57.6,307.2,1008,105.6]}
+{"kind":"textbox","id":"sh/wn6dc7eh","slide":1,"name":"Text 8","text":"Cómo registrar pedidos, hacer seguimiento, cobrar en caja y emitir comprobantes en el sistema LaviSystem.","textPreview":"Cómo registrar pedidos, hacer seguimiento, cobrar en caja y emitir comprobantes en el sistema LaviSystem.","textChars":105,"textLines":1,"bbox":[57.6,432,883.2,86.4]}
+{"kind":"textbox","id":"sh/hofulsf2","slide":1,"name":"Text 9","text":"Lavandería Lavixa · Comas","textPreview":"Lavandería Lavixa · Comas","textChars":25,"textLines":1,"bbox":[57.6,624.42,768,38.4]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":"Portada. Da la bienvenida: \"Hoy vamos a aprender a usar el sistema de la lavandería, paso a paso. No te preocupes si es tu primera vez: es fácil y lo haremos juntas.\""}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"CONTENIDO","textShapes":33}
+{"kind":"textbox","id":"sh/9072xkry","slide":2,"name":"Text 0","text":"CONTENIDO","textPreview":"CONTENIDO","textChars":9,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/ozy1ofad","slide":2,"name":"Text 1","text":"Lo que verás en este manual","textPreview":"Lo que verás en este manual","textChars":27,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/b29kza94","slide":2,"name":"Shape 2","bbox":[57.6,163.2,563.04,88.32]}
+{"kind":"shape","id":"sh/a10jqpsj","slide":2,"name":"Shape 3","bbox":[74.88,183.36,48,48]}
+{"kind":"textbox","id":"sh/x4r21kru","slide":2,"name":"Text 4","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[74.88,183.36,48,48]}
+{"kind":"textbox","id":"sh/w3i1sfa9","slide":2,"name":"Text 5","text":"Tu rol","textPreview":"Tu rol","textChars":6,"textLines":1,"bbox":[139.2,176.64,467.04,38.4]}
+{"kind":"textbox","id":"sh/r65knqtk","slide":2,"name":"Text 6","text":"Qué tareas harás cada día","textPreview":"Qué tareas harás cada día","textChars":25,"textLines":1,"bbox":[139.2,211.2,467.04,33.6]}
+{"kind":"shape","id":"sh/q5wjelsz","slide":2,"name":"Shape 7","bbox":[659.04,163.2,563.04,88.32]}
+{"kind":"shape","id":"sh/ove9o7yd","slide":2,"name":"Shape 8","bbox":[676.32,183.36,48,48]}
+{"kind":"textbox","id":"sh/9wnqhczy","slide":2,"name":"Text 9","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[676.32,183.36,48,48]}
+{"kind":"textbox","id":"sh/mtwrmxg7","slide":2,"name":"Text 10","text":"Ingresar al sistema","textPreview":"Ingresar al sistema","textChars":19,"textLines":1,"bbox":[740.64,176.64,467.04,38.4]}
+{"kind":"textbox","id":"sh/nu58f2hs","slide":2,"name":"Text 11","text":"Usuario, clave y elegir sede","textPreview":"Usuario, clave y elegir sede","textChars":28,"textLines":1,"bbox":[740.64,211.2,467.04,33.6]}
+{"kind":"shape","id":"sh/wjy9sry9","slide":2,"name":"Shape 12","bbox":[57.6,264.96,563.04,88.32]}
+{"kind":"shape","id":"sh/xk7qlczu","slide":2,"name":"Shape 13","bbox":[74.88,285.12,48,48]}
+{"kind":"textbox","id":"sh/ahwrqhgj","slide":2,"name":"Text 14","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[74.88,285.12,48,48]}
+{"kind":"textbox","id":"sh/bip8jmho","slide":2,"name":"Text 15","text":"Tu pantalla de inicio","textPreview":"Tu pantalla de inicio","textChars":21,"textLines":1,"bbox":[139.2,278.4,467.04,38.4]}
+{"kind":"textbox","id":"sh/cnupgny5","slide":2,"name":"Text 16","text":"Los módulos que verás","textPreview":"Los módulos que verás","textChars":21,"textLines":1,"bbox":[139.2,312.96,467.04,33.6]}
+{"kind":"shape","id":"sh/do3q9szq","slide":2,"name":"Shape 17","bbox":[659.04,264.96,563.04,88.32]}
+{"kind":"shape","id":"sh/t8byxkn2","slide":2,"name":"Shape 18","bbox":[676.32,285.12,48,48]}
+{"kind":"textbox","id":"sh/s72xofmh","slide":2,"name":"Text 19","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[676.32,285.12,48,48]}
+{"kind":"textbox","id":"sh/76twva5c","slide":2,"name":"Text 20","text":"Registrar un pedido","textPreview":"Registrar un pedido","textChars":19,"textLines":1,"bbox":[740.64,278.4,467.04,38.4]}
+{"kind":"textbox","id":"sh/65kfmpor","slide":2,"name":"Text 21","text":"Los 5 pasos + Tienda/Recojo/Delivery","textPreview":"Los 5 pasos + Tienda/Recojo/Delivery","textChars":36,"textLines":1,"bbox":[740.64,312.96,467.04,33.6]}
+{"kind":"shape","id":"sh/hcvy14ne","slide":2,"name":"Shape 22","bbox":[57.6,366.72,563.04,88.32]}
+{"kind":"shape","id":"sh/gbmxszmt","slide":2,"name":"Shape 23","bbox":[74.88,386.88,48,48]}
+{"kind":"textbox","id":"sh/fadgzu58","slide":2,"name":"Text 24","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[74.88,386.88,48,48]}
+{"kind":"textbox","id":"sh/u94fqp4n","slide":2,"name":"Text 25","text":"El ticket","textPreview":"El ticket","textChars":9,"textLines":1,"bbox":[139.2,380.16,467.04,38.4]}
+{"kind":"textbox","id":"sh/p0vy54na","slide":2,"name":"Text 26","text":"Imprimir y entregar al cliente","textPreview":"Imprimir y entregar al cliente","textChars":30,"textLines":1,"bbox":[139.2,414.72,467.04,33.6]}
+{"kind":"shape","id":"sh/4zmxwzmp","slide":2,"name":"Shape 27","bbox":[659.04,366.72,563.04,88.32]}
+{"kind":"shape","id":"sh/mlgvq147","slide":2,"name":"Shape 28","bbox":[676.32,386.88,48,48]}
+{"kind":"textbox","id":"sh/nmpcj6ls","slide":2,"name":"Text 29","text":"6","textPreview":"6","textChars":1,"textLines":1,"bbox":[676.32,386.88,48,48]}
+{"kind":"textbox","id":"sh/onydsbmd","slide":2,"name":"Text 30","text":"Seguimiento por áreas","textPreview":"Seguimiento por áreas","textChars":21,"textLines":1,"bbox":[740.64,380.16,467.04,38.4]}
+{"kind":"textbox","id":"sh/9o7ulg3y","slide":2,"name":"Text 31","text":"Avanzar el pedido hasta la entrega","textPreview":"Avanzar el pedido hasta la entrega","textChars":34,"textLines":1,"bbox":[740.64,414.72,467.04,33.6]}
+{"kind":"shape","id":"sh/a9gvulkj","slide":2,"name":"Shape 32","bbox":[57.6,468.48,563.04,88.32]}
+{"kind":"shape","id":"sh/ba9cn6l4","slide":2,"name":"Shape 33","bbox":[74.88,488.64,48,48]}
+{"kind":"textbox","id":"sh/wbidwb29","slide":2,"name":"Text 34","text":"7","textPreview":"7","textChars":1,"textLines":1,"bbox":[74.88,488.64,48,48]}
+{"kind":"textbox","id":"sh/xcrupg3u","slide":2,"name":"Text 35","text":"Cobrar","textPreview":"Cobrar","textChars":6,"textLines":1,"bbox":[139.2,481.92,467.04,38.4]}
+{"kind":"textbox","id":"sh/id0vylkf","slide":2,"name":"Text 36","text":"Registrar el pago del cliente","textPreview":"Registrar el pago del cliente","textChars":29,"textLines":1,"bbox":[139.2,516.48,467.04,33.6]}
+{"kind":"shape","id":"sh/je9crql0","slide":2,"name":"Shape 37","bbox":[659.04,468.48,563.04,88.32]}
+{"kind":"shape","id":"sh/ru5cbqd4","slide":2,"name":"Shape 38","bbox":[676.32,488.64,48,48]}
+{"kind":"textbox","id":"sh/69wbilcj","slide":2,"name":"Text 39","text":"8","textPreview":"8","textChars":1,"textLines":1,"bbox":[676.32,488.64,48,48]}
+{"kind":"textbox","id":"sh/tw7ud0va","slide":2,"name":"Text 40","text":"Cuadre de caja","textPreview":"Cuadre de caja","textChars":14,"textLines":1,"bbox":[740.64,481.92,467.04,38.4]}
+{"kind":"textbox","id":"sh/svedkvup","slide":2,"name":"Text 41","text":"Cerrar el día en 3 pasos","textPreview":"Cerrar el día en 3 pasos","textChars":24,"textLines":1,"bbox":[740.64,516.48,467.04,33.6]}
+{"kind":"shape","id":"sh/fypcfqdg","slide":2,"name":"Shape 42","bbox":[57.6,570.24,563.04,88.32]}
+{"kind":"shape","id":"sh/exgvmlcv","slide":2,"name":"Shape 43","bbox":[74.88,590.4,48,48]}
+{"kind":"textbox","id":"sh/107uh0v6","slide":2,"name":"Text 44","text":"9","textPreview":"9","textChars":1,"textLines":1,"bbox":[74.88,590.4,48,48]}
+{"kind":"textbox","id":"sh/gzydovul","slide":2,"name":"Text 45","text":"Boletas y facturas","textPreview":"Boletas y facturas","textChars":18,"textLines":1,"bbox":[139.2,583.68,467.04,38.4]}
+{"kind":"textbox","id":"sh/v2lc36dw","slide":2,"name":"Text 46","text":"Consultar comprobantes emitidos","textPreview":"Consultar comprobantes emitidos","textChars":31,"textLines":1,"bbox":[139.2,618.24,467.04,33.6]}
+{"kind":"shape","id":"sh/a1cba1wb","slide":2,"name":"Shape 47","bbox":[659.04,570.24,563.04,88.32]}
+{"kind":"shape","id":"sh/0vq1o36x","slide":2,"name":"Shape 48","bbox":[676.32,590.4,48,48]}
+{"kind":"textbox","id":"sh/1wzix87i","slide":2,"name":"Text 49","text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[676.32,590.4,48,48]}
+{"kind":"textbox","id":"sh/et8zmto7","slide":2,"name":"Text 50","text":"Preguntas frecuentes","textPreview":"Preguntas frecuentes","textChars":20,"textLines":1,"bbox":[740.64,583.68,467.04,38.4]}
+{"kind":"textbox","id":"sh/zuh0vypc","slide":2,"name":"Text 51","text":"Dudas comunes con respuesta","textPreview":"Dudas comunes con respuesta","textChars":27,"textLines":1,"bbox":[740.64,618.24,467.04,33.6]}
+{"kind":"textbox","id":"sh/c76hk361","slide":2,"name":"Text 52","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":2,"text":"Presenta el recorrido: \"Vamos a ver estos 10 temas. Al final tendrás claro todo tu trabajo del día en el sistema.\""}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"TU ROL","textShapes":22}
+{"kind":"textbox","id":"sh/cza94vmx","slide":3,"name":"Text 0","text":"TU ROL","textPreview":"TU ROL","textChars":6,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"name":"Text 1","text":"¿Qué harás con el sistema?","textPreview":"¿Qué harás con el sistema?","textChars":26,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/298ryl4v","slide":3,"name":"Text 2","text":"Como trabajador de Lavixa, el sistema te acompaña en 6 tareas del día a día:","textPreview":"Como trabajador de Lavixa, el sistema te acompaña en 6 tareas del día a día:","textChars":76,"textLines":1,"bbox":[57.6,148.8,1164.48,38.4]}
+{"kind":"shape","id":"sh/3ah8rqlg","slide":3,"name":"Shape 3","bbox":[57.6,206.4,368.96,192]}
+{"kind":"shape","id":"sh/obq90bml","slide":3,"name":"Shape 4","bbox":[84.48,233.28,48,48]}
+{"kind":"textbox","id":"sh/pcjqtg36","slide":3,"name":"Text 5","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[84.48,233.28,48,48]}
+{"kind":"textbox","id":"sh/m5cra54z","slide":3,"name":"Text 6","text":"Registrar pedidos","textPreview":"Registrar pedidos","textChars":17,"textLines":1,"bbox":[84.48,292.8,315.2,38.4]}
+{"kind":"textbox","id":"sh/n6ls3alk","slide":3,"name":"Text 7","text":"Anotar lo que trae el cliente, el precio y cuándo lo recoge.","textPreview":"Anotar lo que trae el cliente, el precio y cuándo lo recoge.","textChars":60,"textLines":1,"bbox":[84.48,329.28,315.2,57.6]}
+{"kind":"shape","id":"sh/n2l4fq98","slide":3,"name":"Shape 8","bbox":[455.36,206.4,368.96,192]}
+{"kind":"shape","id":"sh/m1c3mlsn","slide":3,"name":"Shape 9","bbox":[482.24,233.28,48,48]}
+{"kind":"textbox","id":"sh/943mhgre","slide":3,"name":"Text 10","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[482.24,233.28,48,48]}
+{"kind":"textbox","id":"sh/83ulovat","slide":3,"name":"Text 11","text":"Seguir el avance","textPreview":"Seguir el avance","textChars":16,"textLines":1,"bbox":[482.24,292.8,315.2,38.4]}
+{"kind":"textbox","id":"sh/v6l4jq94","slide":3,"name":"Text 12","text":"Mover el pedido por las áreas (lavado, secado…) hasta la entrega.","textPreview":"Mover el pedido por las áreas (lavado, secado…) hasta la entrega.","textChars":65,"textLines":1,"bbox":[482.24,329.28,315.2,57.6]}
+{"kind":"shape","id":"sh/a5c3ql8z","slide":3,"name":"Shape 13","bbox":[853.12,206.4,368.96,192]}
+{"kind":"shape","id":"sh/x8nml0ra","slide":3,"name":"Shape 14","bbox":[880,233.28,48,48]}
+{"kind":"textbox","id":"sh/w7ulsvqp","slide":3,"name":"Text 15","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[880,233.28,48,48]}
+{"kind":"textbox","id":"sh/ja54na9g","slide":3,"name":"Text 16","text":"Entregar y cobrar","textPreview":"Entregar y cobrar","textChars":17,"textLines":1,"bbox":[880,292.8,315.2,38.4]}
+{"kind":"textbox","id":"sh/i9w3u58v","slide":3,"name":"Text 17","text":"Cobrar el saldo y entregar la ropa al cliente.","textPreview":"Cobrar el saldo y entregar la ropa al cliente.","textChars":46,"textLines":1,"bbox":[880,329.28,315.2,57.6]}
+{"kind":"shape","id":"sh/e10f2twf","slide":3,"name":"Shape 18","bbox":[57.6,422.4,368.96,192]}
+{"kind":"shape","id":"sh/f29gbyx0","slide":3,"name":"Shape 19","bbox":[84.48,449.28,48,48]}
+{"kind":"textbox","id":"sh/03ix43e5","slide":3,"name":"Text 20","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[84.48,449.28,48,48]}
+{"kind":"textbox","id":"sh/14ryd8fq","slide":3,"name":"Text 21","text":"Recojo y delivery","textPreview":"Recojo y delivery","textChars":17,"textLines":1,"bbox":[84.48,508.8,315.2,38.4]}
+{"kind":"textbox","id":"sh/6d0fytg3","slide":3,"name":"Text 22","text":"Coordinar retiros y entregas a domicilio por WhatsApp.","textPreview":"Coordinar retiros y entregas a domicilio por WhatsApp.","textChars":54,"textLines":1,"bbox":[84.48,545.28,315.2,57.6]}
+{"kind":"shape","id":"sh/re9g7yxo","slide":3,"name":"Shape 23","bbox":[455.36,422.4,368.96,192]}
+{"kind":"shape","id":"sh/sfix03y9","slide":3,"name":"Shape 24","bbox":[482.24,449.28,48,48]}
+{"kind":"textbox","id":"sh/tgry9ofu","slide":3,"name":"Text 25","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[482.24,449.28,48,48]}
+{"kind":"textbox","id":"sh/a9kfadwn","slide":3,"name":"Text 26","text":"Cuadre de caja","textPreview":"Cuadre de caja","textChars":14,"textLines":1,"bbox":[482.24,508.8,315.2,38.4]}
+{"kind":"textbox","id":"sh/batgjixs","slide":3,"name":"Text 27","text":"Cerrar la caja al final del día.","textPreview":"Cerrar la caja al final del día.","textChars":32,"textLines":1,"bbox":[482.24,545.28,315.2,57.6]}
+{"kind":"shape","id":"sh/l4fi9cza","slide":3,"name":"Shape 28","bbox":[853.12,422.4,368.96,192]}
+{"kind":"shape","id":"sh/k3m1g7yp","slide":3,"name":"Shape 29","bbox":[880,449.28,48,48]}
+{"kind":"textbox","id":"sh/z2d07mh4","slide":3,"name":"Text 30","text":"6","textPreview":"6","textChars":1,"textLines":1,"bbox":[880,449.28,48,48]}
+{"kind":"textbox","id":"sh/y14jehgj","slide":3,"name":"Text 31","text":"Boletas y facturas","textPreview":"Boletas y facturas","textChars":18,"textLines":1,"bbox":[880,508.8,315.2,38.4]}
+{"kind":"textbox","id":"sh/x0vi5czy","slide":3,"name":"Text 32","text":"Emitir el comprobante electrónico del pedido.","textPreview":"Emitir el comprobante electrónico del pedido.","textChars":45,"textLines":1,"bbox":[880,545.28,315.2,57.6]}
+{"kind":"textbox","id":"sh/czmhc7id","slide":3,"name":"Text 33","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/ofy9wn61","slide":3,"text":"Explica el rol completo. Aclara: \"El sistema NO cambia tu trabajo, solo lo ordena: todo queda registrado y el cliente puede seguir su pedido.\""}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"PASO A PASO","textShapes":12}
+{"kind":"textbox","id":"sh/1cj2d8b6","slide":4,"name":"Text 0","text":"PASO A PASO","textPreview":"PASO A PASO","textChars":11,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/0ba143al","slide":4,"name":"Text 1","text":"1. Ingresar con tu usuario","textPreview":"1. Ingresar con tu usuario","textChars":26,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/rm1k7yt4","slide":4,"name":"Shape 2","bbox":[57.6,182.4,710.4,110.4]}
+{"kind":"shape","id":"sh/ql8jytsj","slide":4,"name":"Shape 3","bbox":[81.6,213.12,52.8,52.8]}
+{"kind":"textbox","id":"sh/doj29oba","slide":4,"name":"Text 4","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[81.6,213.12,52.8,52.8]}
+{"kind":"textbox","id":"sh/sna103ap","slide":4,"name":"Text 5","text":"Abre el enlace","textPreview":"Abre el enlace","textChars":14,"textLines":1,"bbox":[158.4,197.76,585.6,38.4]}
+{"kind":"textbox","id":"sh/3ihk3et8","slide":4,"name":"Text 6","text":"Entra al enlace del sistema en el navegador (Chrome). Guárdalo en favoritos.","textPreview":"Entra al enlace del sistema en el navegador (Chrome). Guárdalo en favoritos.","textChars":76,"textLines":1,"bbox":[158.4,235.2,585.6,48]}
+{"kind":"shape","id":"sh/ih8ju9sn","slide":4,"name":"Shape 7","bbox":[57.6,312,710.4,110.4]}
+{"kind":"shape","id":"sh/kbm987y5","slide":4,"name":"Shape 8","bbox":[81.6,342.72,52.8,52.8]}
+{"kind":"textbox","id":"sh/5cva1cfq","slide":4,"name":"Text 9","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[81.6,342.72,52.8,52.8]}
+{"kind":"textbox","id":"sh/i94r6xgz","slide":4,"name":"Text 10","text":"Escribe tu usuario y clave","textPreview":"Escribe tu usuario y clave","textChars":26,"textLines":1,"bbox":[158.4,327.36,585.6,38.4]}
+{"kind":"textbox","id":"sh/jadsz2xk","slide":4,"name":"Text 11","text":"Usa el usuario y contraseña que te dio el administrador. El ojo 👁 te deja ver la clave.","textPreview":"Usa el usuario y contraseña que te dio el administrador. El ojo 👁 te deja ver la clave.","textChars":88,"textLines":1,"bbox":[158.4,364.8,585.6,48]}
+{"kind":"shape","id":"sh/w72947yt","slide":4,"name":"Shape 12","bbox":[57.6,441.6,710.4,110.4]}
+{"kind":"shape","id":"sh/x8vaxsfe","slide":4,"name":"Shape 13","bbox":[81.6,472.32,52.8,52.8]}
+{"kind":"textbox","id":"sh/a5kr2xg3","slide":4,"name":"Text 14","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[81.6,472.32,52.8,52.8]}
+{"kind":"textbox","id":"sh/v6tsv2xo","slide":4,"name":"Text 15","text":"Elige la sede","textPreview":"Elige la sede","textChars":13,"textLines":1,"bbox":[158.4,456.96,585.6,38.4]}
+{"kind":"textbox","id":"sh/g36tgryd","slide":4,"name":"Text 16","text":"Selecciona \"Sede Principal\". Con eso entras a tu pantalla de inicio.","textPreview":"Selecciona \"Sede Principal\". Con eso entras a tu pantalla de inicio.","textChars":68,"textLines":1,"bbox":[158.4,494.4,585.6,48]}
+{"kind":"textbox","id":"sh/3ytsrmpw","slide":4,"name":"Text 20","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/94jq9oju","slide":4,"name":"","geometry":"roundRect","alt":"Formulario real de inicio de sesión de LaviSystem","bbox":[878,182,268,370]}
+{"kind":"notes","id":"nt/jyx0ra1s","slide":4,"text":"Muestra el formulario real. La clave es personal. El ojo permite verla; si la olvida, el administrador debe restablecerla. Si solo tiene una sede, ingresará directamente al tablero.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/01-login-panel.png"}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"TU PANTALLA","textShapes":4}
+{"kind":"textbox","id":"sh/dgbulwnm","slide":5,"name":"Text 0","text":"TU PANTALLA","textPreview":"TU PANTALLA","textChars":11,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/cf2tcr61","slide":5,"name":"Text 1","text":"2. Tu inicio y tus módulos","textPreview":"2. Tu inicio y tus módulos","textChars":26,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/z2tcnm5s","slide":5,"name":"Text 2","text":"Al entrar verás tu tablero. En el menú de la izquierda solo aparecen TUS módulos:","textPreview":"Al entrar verás tu tablero. En el menú de la izquierda solo aparecen TUS módulos:","textChars":81,"textLines":1,"bbox":[57.6,148.8,1164.48,38.4]}
+{"kind":"textbox","id":"sh/kjelony9","slide":5,"name":"Text 34","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/6hozip87","slide":5,"name":"","geometry":"roundRect","alt":"Tablero y menú visibles para el rol Trabajador","bbox":[240,195,800,450]}
+{"kind":"notes","id":"nt/i107q5of","slide":5,"text":"Señala el menú real: Dashboard, Pedidos, Registrar, Caja, Clientes y Comprobantes. Explica que los avisos son prioridades del turno. Ajustes, Inventario y Reportes administrativos no aparecen para este rol.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/02-inicio-trabajador.png"}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"PASO A PASO","textShapes":15}
+{"kind":"textbox","id":"sh/yhg7epsj","slide":6,"name":"Text 0","text":"PASO A PASO","textPreview":"PASO A PASO","textChars":11,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/zi98nu94","slide":6,"name":"Text 1","text":"3. Registrar un pedido","textPreview":"3. Registrar un pedido","textChars":22,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/87ipkzal","slide":6,"name":"Text 2","text":"Entra a \"Registrar\". La pantalla te guía en 5 pasos, de arriba hacia abajo:","textPreview":"Entra a \"Registrar\". La pantalla te guía en 5 pasos, de arriba hacia abajo:","textChars":75,"textLines":1,"bbox":[57.6,148.8,1164.48,38.4]}
+{"kind":"shape","id":"sh/98rqt4r6","slide":6,"name":"Shape 3","bbox":[57.6,201.6,48,48]}
+{"kind":"textbox","id":"sh/ml07i9sv","slide":6,"name":"Text 4","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[57.6,201.6,48,48]}
+{"kind":"textbox","id":"sh/7m98ru9g","slide":6,"name":"Text 5","text":"Datos del cliente.  Busca al cliente por nombre/celular o escríbelo nuevo (nombre y celular). El celular sirve para avisarle por WhatsApp.","textPreview":"Datos del cliente.  Busca al cliente por nombre/celular o escríbelo nuevo (nombre y celular). El celular sirve para avisarle por WhatsApp.","textChars":138,"textLines":1,"bbox":[124.8,195.84,1097.28,59.52]}
+{"kind":"shape","id":"sh/oryp8fah","slide":6,"name":"Shape 6","bbox":[57.6,270.72,48,48]}
+{"kind":"textbox","id":"sh/pc76hkr2","slide":6,"name":"Text 7","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[57.6,270.72,48,48]}
+{"kind":"textbox","id":"sh/h4bupgn6","slide":6,"name":"Text 8","text":"Servicios y prendas.  Elige el servicio y pulsa \"Agregar\". Repite por cada prenda; al recibirla, verifica cantidades y toma fotos si está manchada o delicada.","textPreview":"Servicios y prendas.  Elige el servicio y pulsa \"Agregar\". Repite por cada prenda; al recibirla, verifica cantidades y toma fotos si está...","textChars":158,"textLines":1,"bbox":[124.8,264.96,1097.28,59.52]}
+{"kind":"shape","id":"sh/w32twb6l","slide":6,"name":"Shape 9","bbox":[57.6,339.84,48,48]}
+{"kind":"textbox","id":"sh/v2tcn650","slide":6,"name":"Text 10","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[57.6,339.84,48,48]}
+{"kind":"textbox","id":"sh/u1kbu1ov","slide":6,"name":"Text 11","text":"¿Cuándo estará listo?.  Pon la fecha y hora de entrega (o usa los botones rápidos: En 24h, 48h…).","textPreview":"¿Cuándo estará listo?.  Pon la fecha y hora de entrega (o usa los botones rápidos: En 24h, 48h…).","textChars":97,"textLines":1,"bbox":[124.8,334.08,1097.28,59.52]}
+{"kind":"shape","id":"sh/5svutgni","slide":6,"name":"Shape 12","bbox":[57.6,408.96,48,48]}
+{"kind":"textbox","id":"sh/47mt0b6x","slide":6,"name":"Text 13","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[57.6,408.96,48,48]}
+{"kind":"textbox","id":"sh/j6dcr65c","slide":6,"name":"Text 14","text":"Descuento (si aplica).  Aplica un código de promoción o marca \"urgente\" solo si corresponde.","textPreview":"Descuento (si aplica).  Aplica un código de promoción o marca \"urgente\" solo si corresponde.","textChars":92,"textLines":1,"bbox":[124.8,403.2,1097.28,59.52]}
+{"kind":"shape","id":"sh/i54bylor","slide":6,"name":"Shape 15","bbox":[57.6,478.08,48,48]}
+{"kind":"textbox","id":"sh/twfux0ne","slide":6,"name":"Text 16","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[57.6,478.08,48,48]}
+{"kind":"textbox","id":"sh/svmt4v6t","slide":6,"name":"Text 17","text":"Pago.  Anota cuánto paga ahora (puede ser a cuenta). Deja marcado \"Enviar confirmación por WhatsApp\".","textPreview":"Pago.  Anota cuánto paga ahora (puede ser a cuenta). Deja marcado \"Enviar confirmación por WhatsApp\".","textChars":101,"textLines":1,"bbox":[124.8,472.32,1097.28,59.52]}
+{"kind":"shape","id":"sh/cbe5g3ih","slide":6,"name":"Shape 18","bbox":[57.6,549.12,1164.48,59.52]}
+{"kind":"textbox","id":"sh/dcnm98zm","slide":6,"name":"Text 19","text":"Para terminar:  pulsa \"Registrar pedido\" (arriba a la derecha). Se genera el pedido y su ticket.","textPreview":"Para terminar:  pulsa \"Registrar pedido\" (arriba a la derecha). Se genera el pedido y su ticket.","textChars":96,"textLines":1,"bbox":[81.6,549.12,1116.48,59.52]}
+{"kind":"textbox","id":"sh/qpwnet0b","slide":6,"name":"Text 20","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/x8f69ofe","slide":6,"text":"Recorre los 5 pasos en vivo registrando un pedido de ejemplo. Enfatiza: nombre + celular del cliente, agregar cada servicio, fecha de entrega, y el pago (puede ser parcial)."}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"AL REGISTRAR","textShapes":11}
+{"kind":"textbox","id":"sh/cb2tkvap","slide":7,"name":"Text 0","text":"AL REGISTRAR","textPreview":"AL REGISTRAR","textChars":12,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/dcbud0ra","slide":7,"name":"Text 1","text":"Tienda, Recojo o Delivery","textPreview":"Tienda, Recojo o Delivery","textChars":25,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/ydkbm5sv","slide":7,"name":"Text 2","text":"Elige según quién mueve las prendas entre el cliente y la lavandería:","textPreview":"Elige según quién mueve las prendas entre el cliente y la lavandería:","textChars":69,"textLines":1,"bbox":[57.6,148.8,1164.48,38.4]}
+{"kind":"shape","id":"sh/zedcfa9g","slide":7,"name":"Shape 3","bbox":[57.6,211.2,368.96,288]}
+{"kind":"shape","id":"sh/kzmdova1","slide":7,"name":"Shape 4","bbox":[84.48,240,315.2,57.6]}
+{"kind":"textbox","id":"sh/l0vuh0rm","slide":7,"name":"Text 5","text":"Tienda","textPreview":"Tienda","textChars":6,"textLines":1,"bbox":[84.48,240,315.2,57.6]}
+{"kind":"textbox","id":"sh/eh0ba1sr","slide":7,"name":"Text 6","text":"El cliente deja y recoge en la tienda. Es lo más común.","textPreview":"El cliente deja y recoge en la tienda. Es lo más común.","textChars":55,"textLines":1,"bbox":[86.4,321.6,311.36,163.2]}
+{"kind":"shape","id":"sh/fi9c369c","slide":7,"name":"Shape 7","bbox":[455.36,211.2,368.96,288]}
+{"kind":"shape","id":"sh/baxkjqlk","slide":7,"name":"Shape 8","bbox":[482.24,240,315.2,57.6]}
+{"kind":"textbox","id":"sh/a9ojq5kz","slide":7,"name":"Text 9","text":"Recojo","textPreview":"Recojo","textChars":6,"textLines":1,"bbox":[482.24,240,315.2,57.6]}
+{"kind":"textbox","id":"sh/xcz2l03q","slide":7,"name":"Text 10","text":"Lavixa recoge las prendas en el domicilio. Exige celular, dirección habitual y una tarifa de recojo.","textPreview":"Lavixa recoge las prendas en el domicilio. Exige celular, dirección habitual y una tarifa de recojo.","textChars":100,"textLines":1,"bbox":[484.16,321.6,311.36,163.2]}
+{"kind":"shape","id":"sh/cbq1sv25","slide":7,"name":"Shape 11","bbox":[853.12,211.2,368.96,288]}
+{"kind":"shape","id":"sh/n6x0fqlo","slide":7,"name":"Shape 12","bbox":[880,240,315.2,57.6]}
+{"kind":"textbox","id":"sh/25ojml43","slide":7,"name":"Text 13","text":"Delivery","textPreview":"Delivery","textChars":8,"textLines":1,"bbox":[880,240,315.2,57.6]}
+{"kind":"textbox","id":"sh/p8fih03e","slide":7,"name":"Text 14","text":"Lavixa entrega el pedido terminado. Exige dirección exacta, distrito, punto en el mapa y tarifa de delivery.","textPreview":"Lavixa entrega el pedido terminado. Exige dirección exacta, distrito, punto en el mapa y tarifa de delivery.","textChars":108,"textLines":1,"bbox":[881.92,321.6,311.36,163.2]}
+{"kind":"shape","id":"sh/o761ov2t","slide":7,"name":"Shape 15","bbox":[57.6,532.8,1164.48,91.2]}
+{"kind":"textbox","id":"sh/f2d0b6lc","slide":7,"name":"Text 16","text":"Ojo: en Tienda, “fecha de recojo” es cuándo vuelve el cliente. No es la modalidad Recojo, que significa retiro a domicilio.","textPreview":"Ojo: en Tienda, “fecha de recojo” es cuándo vuelve el cliente. No es la modalidad Recojo, que significa retiro a domicilio.","textChars":123,"textLines":1,"bbox":[81.6,547.2,1116.48,62.4]}
+{"kind":"textbox","id":"sh/eh4jil4r","slide":7,"name":"Text 17","text":"6","textPreview":"6","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/gnmp4jqx","slide":7,"text":"Haz la pregunta de decisión: ¿quién lleva la ropa desde el cliente a Lavixa y quién devuelve el pedido terminado? Tienda: el cliente hace ambos traslados. Recojo: Lavixa realiza el retiro inicial. Delivery: Lavixa hace la entrega final."}
+{"kind":"slide","id":"sl/fu1gfa1s","slide":8,"title":"MODALIDAD RECOJO","textShapes":9}
+{"kind":"textbox","id":"sh/18byd4zy","slide":8,"name":"Text 0","text":"MODALIDAD RECOJO","textPreview":"MODALIDAD RECOJO","textChars":16,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/g72x4zyd","slide":8,"name":"Text 1","text":"Lavixa retira las prendas del domicilio","textPreview":"Lavixa retira las prendas del domicilio","textChars":39,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/ri9g7uhw","slide":8,"name":"Shape 2","bbox":[57.6,182.4,48,48]}
+{"kind":"textbox","id":"sh/6h0fypgb","slide":8,"name":"Text 3","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[57.6,182.4,48,48]}
+{"kind":"textbox","id":"sh/tkby9kzm","slide":8,"name":"Text 4","text":"Cliente y celular.  Sirven para coordinar el retiro por WhatsApp.","textPreview":"Cliente y celular.  Sirven para coordinar el retiro por WhatsApp.","textChars":65,"textLines":1,"bbox":[124.8,177.6,500,86.4]}
+{"kind":"shape","id":"sh/sjix0zy1","slide":8,"name":"Shape 5","bbox":[57.6,292.8,48,48]}
+{"kind":"textbox","id":"sh/je9g3ahk","slide":8,"name":"Text 6","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[57.6,292.8,48,48]}
+{"kind":"textbox","id":"sh/id0fu50z","slide":8,"name":"Text 7","text":"Dirección habitual.  Es obligatoria: allí recogeremos las prendas.","textPreview":"Dirección habitual.  Es obligatoria: allí recogeremos las prendas.","textChars":66,"textLines":1,"bbox":[124.8,288,500,86.4]}
+{"kind":"shape","id":"sh/o7ydoret","slide":8,"name":"Shape 8","bbox":[57.6,403.2,48,48]}
+{"kind":"textbox","id":"sh/98rehwve","slide":8,"name":"Text 9","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[57.6,403.2,48,48]}
+{"kind":"textbox","id":"sh/m5gvmhwn","slide":8,"name":"Text 10","text":"Costo y devolución.  Ajusta la tarifa. Si el pedido terminado vuelve a domicilio, conviértelo a Delivery.","textPreview":"Costo y devolución.  Ajusta la tarifa. Si el pedido terminado vuelve a domicilio, conviértelo a Delivery.","textChars":105,"textLines":1,"bbox":[124.8,398.4,500,86.4]}
+{"kind":"textbox","id":"sh/svydgb65","slide":8,"name":"Text 19","text":"7","textPreview":"7","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/krqtkn2x","slide":8,"name":"","geometry":"roundRect","alt":"Formulario de pedido con modalidad Recojo activa","bbox":[680,180,530,298]}
+{"kind":"notes","id":"nt/fu1gfa1s","slide":8,"text":"Ejemplo: el cliente llama y pide que Lavixa retire su ropa. Selecciona Recojo, confirma el celular, escribe la dirección donde recoger, registra los servicios declarados y ajusta el costo. Cuando la ropa llegue, verifica cantidades y observaciones. Recojo no significa que el cliente vendrá a la tienda.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/04-registro-recojo-top.png"}
+{"kind":"slide","id":"sl/udsvah03","slide":9,"title":"MODALIDAD DELIVERY","textShapes":9}
+{"kind":"textbox","id":"sh/1cfmhgne","slide":9,"name":"Text 0","text":"MODALIDAD DELIVERY","textPreview":"MODALIDAD DELIVERY","textChars":18,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/0b65obm9","slide":9,"name":"Text 1","text":"Lavixa devuelve el pedido a domicilio","textPreview":"Lavixa devuelve el pedido a domicilio","textChars":37,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/nex4jq5k","slide":9,"name":"Shape 2","bbox":[57.6,182.4,48,48]}
+{"kind":"textbox","id":"sh/mdonql4z","slide":9,"name":"Text 3","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[57.6,182.4,48,48]}
+{"kind":"textbox","id":"sh/9gzml0nq","slide":9,"name":"Text 4","text":"Dirección exacta.  Escribe calle, número, distrito y una referencia útil.","textPreview":"Dirección exacta.  Escribe calle, número, distrito y una referencia útil.","textChars":73,"textLines":1,"bbox":[124.8,177.6,500,86.4]}
+{"kind":"shape","id":"sh/ofq5svm5","slide":9,"name":"Shape 5","bbox":[57.6,292.8,48,48]}
+{"kind":"textbox","id":"sh/bih4na5w","slide":9,"name":"Text 6","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[57.6,292.8,48,48]}
+{"kind":"textbox","id":"sh/ah8nu54b","slide":9,"name":"Text 7","text":"Punto en el mapa.  Debe coincidir con la dirección escrita antes de registrar.","textPreview":"Punto en el mapa.  Debe coincidir con la dirección escrita antes de registrar.","textChars":78,"textLines":1,"bbox":[124.8,288,500,86.4]}
+{"kind":"shape","id":"sh/oza1gfyh","slide":9,"name":"Shape 8","bbox":[57.6,403.2,48,48]}
+{"kind":"textbox","id":"sh/p0ji9kf2","slide":9,"name":"Text 9","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[57.6,403.2,48,48]}
+{"kind":"textbox","id":"sh/2xsjepgb","slide":9,"name":"Text 10","text":"Tarifa y despacho.  Ajusta el costo y, al salir, envía el seguimiento por WhatsApp.","textPreview":"Tarifa y despacho.  Ajusta el costo y, al salir, envía el seguimiento por WhatsApp.","textChars":83,"textLines":1,"bbox":[124.8,398.4,500,86.4]}
+{"kind":"textbox","id":"sh/87a18zqt","slide":9,"name":"Text 19","text":"8","textPreview":"8","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/ofmpgve5","slide":9,"name":"","geometry":"roundRect","alt":"Destino de Delivery con dirección, distrito y mapa","bbox":[680,180,530,298]}
+{"kind":"notes","id":"nt/udsvah03","slide":9,"text":"No registres Delivery si el mapa no coincide con la dirección. Usa Buscar dirección o marca el punto exacto, confirma distrito y referencia, revisa la tarifa y la fecha. Cuando el repartidor salga, envía el enlace de seguimiento por WhatsApp.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/07-registro-delivery-mapa.png"}
+{"kind":"slide","id":"sl/m90b6t0r","slide":10,"title":"DESPUÉS DE REGISTRAR","textShapes":14}
+{"kind":"textbox","id":"sh/xc3mho32","slide":10,"name":"Text 0","text":"DESPUÉS DE REGISTRAR","textPreview":"DESPUÉS DE REGISTRAR","textChars":20,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/cbu58j2h","slide":10,"name":"Text 1","text":"4. El ticket del pedido","textPreview":"4. El ticket del pedido","textChars":23,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/zelojyl8","slide":10,"name":"Shape 2","bbox":[57.6,182.4,48,48]}
+{"kind":"textbox","id":"sh/ydcnatkn","slide":10,"name":"Text 3","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[57.6,182.4,48,48]}
+{"kind":"textbox","id":"sh/l036l83y","slide":10,"name":"Text 4","text":"Imprime el ticket.  Al registrar se abre el ticket. Pulsa \"Imprimir ticket\" en tu impresora térmica.","textPreview":"Imprime el ticket.  Al registrar se abre el ticket. Pulsa \"Imprimir ticket\" en tu impresora térmica.","textChars":100,"textLines":1,"bbox":[124.8,177.6,614.4,86.4]}
+{"kind":"shape","id":"sh/kzu5c32t","slide":10,"name":"Shape 5","bbox":[57.6,292.8,48,48]}
+{"kind":"textbox","id":"sh/725onyl4","slide":10,"name":"Text 6","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[57.6,292.8,48,48]}
+{"kind":"textbox","id":"sh/m1cnetkj","slide":10,"name":"Text 7","text":"Entrégaselo al cliente.  Es su comprobante para recoger. Cualquier persona que lo presente puede recoger.","textPreview":"Entrégaselo al cliente.  Es su comprobante para recoger. Cualquier persona que lo presente puede recoger.","textChars":105,"textLines":1,"bbox":[124.8,288,614.4,86.4]}
+{"kind":"shape","id":"sh/s7yt4b21","slide":10,"name":"Shape 8","bbox":[57.6,403.2,48,48]}
+{"kind":"textbox","id":"sh/d87uxg3m","slide":10,"name":"Text 9","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[57.6,403.2,48,48]}
+{"kind":"textbox","id":"sh/q5gb21kb","slide":10,"name":"Text 10","text":"¿Necesitas otra copia?.  Abre el pedido y usa \"Reimprimir ticket\".","textPreview":"¿Necesitas otra copia?.  Abre el pedido y usa \"Reimprimir ticket\".","textChars":66,"textLines":1,"bbox":[124.8,398.4,614.4,86.4]}
+{"kind":"shape","id":"sh/r6pcv6lw","slide":10,"name":"Shape 11","bbox":[835.2,177.6,374.4,432]}
+{"kind":"textbox","id":"sh/0bit8b2d","slide":10,"name":"Text 12","text":"ORDEN DE SERVICIO","textPreview":"ORDEN DE SERVICIO","textChars":17,"textLines":1,"bbox":[835.2,201.6,374.4,28.8]}
+{"kind":"textbox","id":"sh/1cru1g3y","slide":10,"name":"Text 13","text":"N° 50","textPreview":"N° 50","textChars":5,"textLines":1,"bbox":[835.2,225.6,374.4,57.6]}
+{"kind":"shape","id":"sh/e9gb61k7","slide":10,"name":"Shape 14","bbox":[864,292.8,316.8,0]}
+{"kind":"textbox","id":"sh/fapcz6ls","slide":10,"name":"Text 15","text":"Ingreso : 24 de agosto, 10:11 am\nEntrega : 24 de agosto, 06:00 pm\nCliente : Yolanda Jaime\nLavado al agua por kilo   3.5   12.25","textPreview":"Ingreso : 24 de agosto, 10:11 am | Entrega : 24 de agosto, 06:00 pm | Cliente : Yolanda Jaime | Lavado al agua por kilo   3.5   12.25","textChars":127,"textLines":4,"bbox":[864,302.4,316.8,192]}
+{"kind":"shape","id":"sh/ozitcv29","slide":10,"name":"Shape 16","bbox":[864,504,316.8,0]}
+{"kind":"textbox","id":"sh/p0ru503u","slide":10,"name":"Text 17","text":"PAGO PENDIENTE","textPreview":"PAGO PENDIENTE","textChars":14,"textLines":1,"bbox":[835.2,518.4,374.4,33.6]}
+{"kind":"textbox","id":"sh/xwnupgvy","slide":10,"name":"Text 18","text":"S/ 12.30","textPreview":"S/ 12.30","textChars":8,"textLines":1,"bbox":[835.2,552,374.4,38.4]}
+{"kind":"textbox","id":"sh/wvetgbud","slide":10,"name":"Text 19","text":"9","textPreview":"9","textChars":1,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/m90b6t0r","slide":10,"text":"Muestra un ticket real impreso. Explica que es el comprobante de recojo del cliente y cómo reimprimir si se pierde."}
+{"kind":"slide","id":"sl/jetc3ut0","slide":11,"title":"SEGUIMIENTO","textShapes":20}
+{"kind":"textbox","id":"sh/xcryxg7y","slide":11,"name":"Text 0","text":"SEGUIMIENTO","textPreview":"SEGUIMIENTO","textChars":11,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/wbih4b6d","slide":11,"name":"Text 1","text":"5. El avance por áreas","textPreview":"5. El avance por áreas","textChars":22,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/n69grmpw","slide":11,"name":"Text 2","text":"Cada pedido pasa por áreas hasta la entrega. En el pedido verás esta barra de avance:","textPreview":"Cada pedido pasa por áreas hasta la entrega. En el pedido verás esta barra de avance:","textChars":85,"textLines":1,"bbox":[57.6,148.8,1164.48,38.4]}
+{"kind":"shape","id":"sh/250zy18b","slide":11,"name":"Shape 3","bbox":[140.78,293.76,998.13,0]}
+{"kind":"shape","id":"sh/98rytw72","slide":11,"name":"Shape 4","bbox":[111.02,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/o7ih0r6h","slide":11,"name":"Text 5","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[111.02,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/72t03qp0","slide":11,"name":"Text 6","text":"Recepción","textPreview":"Recepción","textChars":9,"textLines":1,"bbox":[57.6,331.2,166.35,48]}
+{"kind":"shape","id":"sh/61kzalof","slide":11,"name":"Shape 7","bbox":[277.37,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/ofqtgnyt","slide":11,"name":"Text 8","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[277.37,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/9gza9sze","slide":11,"name":"Text 9","text":"Lavado","textPreview":"Lavado","textChars":6,"textLines":1,"bbox":[223.95,331.2,166.35,48]}
+{"kind":"shape","id":"sh/mdobedg3","slide":11,"name":"Shape 10","bbox":[443.73,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/nehs7iho","slide":11,"name":"Text 11","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[443.73,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/0b6tc3yx","slide":11,"name":"Text 12","text":"Secado","textPreview":"Secado","textChars":6,"textLines":1,"bbox":[390.31,331.2,166.35,48]}
+{"kind":"shape","id":"sh/1cfa58zi","slide":11,"name":"Shape 13","bbox":[610.08,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/epobatgr","slide":11,"name":"Text 14","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[610.08,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/zaxs3yhc","slide":11,"name":"Text 15","text":"Doblado","textPreview":"Doblado","textChars":7,"textLines":1,"bbox":[556.66,331.2,166.35,48]}
+{"kind":"shape","id":"sh/cn6t83y1","slide":11,"name":"Shape 16","bbox":[776.43,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/dofa18z6","slide":11,"name":"Text 17","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[776.43,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/tsnip0ny","slide":11,"name":"Text 18","text":"Control","textPreview":"Control","textChars":7,"textLines":1,"bbox":[723.02,331.2,166.35,48]}
+{"kind":"shape","id":"sh/87ehgv6d","slide":11,"name":"Shape 19","bbox":[942.79,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/7650nq5s","slide":11,"name":"Text 20","text":"6","textPreview":"6","textChars":1,"textLines":1,"bbox":[942.79,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/65wzelo7","slide":11,"name":"Text 21","text":"Embolsado","textPreview":"Embolsado","textChars":9,"textLines":1,"bbox":[889.37,331.2,166.35,48]}
+{"kind":"shape","id":"sh/l43ilgn2","slide":11,"name":"Shape 22","bbox":[1109.14,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/k3uhcb6h","slide":11,"name":"Text 23","text":"7","textPreview":"7","textChars":1,"textLines":1,"bbox":[1109.14,264,59.52,59.52]}
+{"kind":"textbox","id":"sh/j2lgjq5w","slide":11,"name":"Text 24","text":"Entrega","textPreview":"Entrega","textChars":7,"textLines":1,"bbox":[1055.73,331.2,166.35,48]}
+{"kind":"shape","id":"sh/y1czalob","slide":11,"name":"Shape 25","bbox":[57.6,412.8,1164.48,192]}
+{"kind":"textbox","id":"sh/p07ixkn6","slide":11,"name":"Text 26","text":"¿Cómo funciona?","textPreview":"¿Cómo funciona?","textChars":15,"textLines":1,"bbox":[86.4,432,768,38.4]}
+{"kind":"textbox","id":"sh/4zyhofml","slide":11,"name":"Text 27","text":"Todo pedido empieza en Recepción.\nTú lo vas moviendo al área siguiente conforme avanza el trabajo real (lo lavaste → pásalo a Secado, etc.).\nCuando llega a Entrega, el pedido está listo para darlo al cliente.","textPreview":"Todo pedido empieza en Recepción. | Tú lo vas moviendo al área siguiente conforme avanza el trabajo real (lo lavaste → pásalo a Secado, e...","textChars":208,"textLines":3,"bbox":[86.4,475.2,1106.88,120]}
+{"kind":"textbox","id":"sh/m58fih43","slide":11,"name":"Text 28","text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/jetc3ut0","slide":11,"text":"Explica el concepto de áreas con la barra. La idea: el sistema refleja dónde está físicamente la ropa. Así todos saben en qué va cada pedido."}
+{"kind":"slide","id":"sl/8f2psfyx","slide":12,"title":"SEGUIMIENTO","textShapes":3}
+{"kind":"textbox","id":"sh/1gbm9s3a","slide":12,"name":"Text 0","text":"SEGUIMIENTO","textPreview":"SEGUIMIENTO","textChars":11,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/0f2lgnmp","slide":12,"name":"Text 1","text":"6. Avanzar, cobrar y entregar","textPreview":"6. Avanzar, cobrar y entregar","textChars":29,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/tgrm1wzy","slide":12,"name":"Text 22","text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/bqhs3u5w","slide":12,"name":"","geometry":"roundRect","alt":"Detalle real de un pedido listo con saldo pendiente","bbox":[187,150,906,510]}
+{"kind":"notes","id":"nt/8f2psfyx","slide":12,"text":"Señala la barra de áreas, el saldo y el botón verde. En este ejemplo el pedido está listo, pero debe S/39: usa “Cobrar S/39 y entregar”. No entregues sin verificar el ticket, la identidad acordada y el pago. Cobrar y avanzar son acciones diferentes.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/09-detalle-pedido.png"}
+{"kind":"slide","id":"sl/hgzapcr6","slide":13,"title":"DELIVERY","textShapes":12}
+{"kind":"textbox","id":"sh/q50nydsj","slide":13,"name":"Text 0","text":"DELIVERY","textPreview":"DELIVERY","textChars":8,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/bq9orito","slide":13,"name":"Text 1","text":"7. Avisar al cliente (WhatsApp)","textPreview":"7. Avisar al cliente (WhatsApp)","textChars":31,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/o3i5w3ad","slide":13,"name":"Shape 2","bbox":[57.6,187.2,1164.48,122.88]}
+{"kind":"shape","id":"sh/p4r6p8by","slide":13,"name":"Shape 3","bbox":[84.48,221.76,52.8,52.8]}
+{"kind":"textbox","id":"sh/21gnuts7","slide":13,"name":"Text 4","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[84.48,221.76,52.8,52.8]}
+{"kind":"textbox","id":"sh/32ponyts","slide":13,"name":"Text 5","text":"Enviar seguimiento","textPreview":"Enviar seguimiento","textChars":18,"textLines":1,"bbox":[158.4,206.4,1039.68,38.4]}
+{"kind":"textbox","id":"sh/gzy5s3a1","slide":13,"name":"Text 6","text":"En un pedido delivery, el botón verde de WhatsApp envía al cliente un mensaje \"va en camino\" con el enlace para seguir su pedido.","textPreview":"En un pedido delivery, el botón verde de WhatsApp envía al cliente un mensaje \"va en camino\" con el enlace para seguir su pedido.","textChars":129,"textLines":1,"bbox":[158.4,244.8,1039.68,57.6]}
+{"kind":"shape","id":"sh/1076lobm","slide":13,"name":"Shape 7","bbox":[57.6,326.4,1164.48,122.88]}
+{"kind":"shape","id":"sh/hcfy9k3u","slide":13,"name":"Shape 8","bbox":[84.48,360.96,52.8,52.8]}
+{"kind":"textbox","id":"sh/gb6x0zm9","slide":13,"name":"Text 9","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[84.48,360.96,52.8,52.8]}
+{"kind":"textbox","id":"sh/vaxg7ulo","slide":13,"name":"Text 10","text":"Cobro por Yape / Plin","textPreview":"Cobro por Yape / Plin","textChars":21,"textLines":1,"bbox":[158.4,345.6,1039.68,38.4]}
+{"kind":"textbox","id":"sh/u9ofyp43","slide":13,"name":"Text 11","text":"El mensaje incluye el saldo pendiente y el número de Yape/Plin. En la puerta puedes mostrar el QR de Yape al cliente.","textPreview":"El mensaje incluye el saldo pendiente y el número de Yape/Plin. En la puerta puedes mostrar el QR de Yape al cliente.","textChars":117,"textLines":1,"bbox":[158.4,384,1039.68,57.6]}
+{"kind":"shape","id":"sh/t8fy5k3i","slide":13,"name":"Shape 12","bbox":[57.6,465.6,1164.48,122.88]}
+{"kind":"shape","id":"sh/876xwfmx","slide":13,"name":"Shape 13","bbox":[84.48,500.16,52.8,52.8]}
+{"kind":"textbox","id":"sh/7mdg3als","slide":13,"name":"Text 14","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[84.48,500.16,52.8,52.8]}
+{"kind":"textbox","id":"sh/6l4fu547","slide":13,"name":"Text 15","text":"Confirma la entrega","textPreview":"Confirma la entrega","textChars":19,"textLines":1,"bbox":[158.4,484.8,1039.68,38.4]}
+{"kind":"textbox","id":"sh/lkvy103m","slide":13,"name":"Text 16","text":"Cuando se entrega, marca el pedido como entregado igual que en tienda.","textPreview":"Cuando se entrega, marca el pedido como entregado igual que en tienda.","textChars":70,"textLines":1,"bbox":[158.4,523.2,1039.68,57.6]}
+{"kind":"textbox","id":"sh/kjmxsfm1","slide":13,"name":"Text 17","text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/hgzapcr6","slide":13,"text":"Para delivery: el botón de WhatsApp manda el \"en camino\" con link y datos de Yape. Muestra dónde está. El repartidor puede mostrar el QR de Yape al cobrar."}
+{"kind":"slide","id":"sl/6lsnupw7","slide":14,"title":"FIN DEL DÍA","textShapes":3}
+{"kind":"textbox","id":"sh/xc7eds76","slide":14,"name":"Text 0","text":"FIN DEL DÍA","textPreview":"FIN DEL DÍA","textChars":11,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/wbydknq1","slide":14,"name":"Text 1","text":"8. Cuadre de caja en pantalla","textPreview":"8. Cuadre de caja en pantalla","textChars":29,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/2t4fyl8z","slide":14,"name":"Text 25","text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/apwfy94f","slide":14,"name":"","geometry":"roundRect","alt":"Pantalla real de cierre de caja","bbox":[187,150,906,510]}
+{"kind":"notes","id":"nt/6lsnupw7","slide":14,"text":"Recorre los tres bloques: 1) cuenta solo el efectivo; 2) revisa ventas por método y registra gastos; 3) indica retiro, saldo que queda y cierra. Yape, Plin, transferencia y tarjeta se ven en Ventas del día, pero no se suman al efectivo físico.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/10-cuadre-caja.png"}
+{"kind":"slide","id":"sl/vaxsvy10","slide":15,"title":"COMPROBANTES","textShapes":4}
+{"kind":"textbox","id":"sh/547mhg3m","slide":15,"name":"Text 0","text":"COMPROBANTES","textPreview":"COMPROBANTES","textChars":12,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/k3y5ov21","slide":15,"name":"Text 1","text":"9. Comprobantes electrónicos","textPreview":"9. Comprobantes electrónicos","textChars":28,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"textbox","id":"sh/76p4jqls","slide":15,"name":"Text 2","text":"Consulta los comprobantes emitidos y descarga el PDF. “SIMULADO” significa que es un dato de práctica.","textPreview":"Consulta los comprobantes emitidos y descarga el PDF. “SIMULADO” significa que es un dato de práctica.","textChars":102,"textLines":1,"bbox":[57.6,148.8,1164.48,38.4]}
+{"kind":"textbox","id":"sh/0z29cbyh","slide":15,"name":"Text 16","text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"image","id":"im/yh8369s3","slide":15,"name":"","geometry":"roundRect","alt":"Bandeja real de comprobantes electrónicos","bbox":[213,185,853,480]}
+{"kind":"notes","id":"nt/vaxsvy10","slide":15,"text":"La trabajadora consulta la bandeja y descarga el PDF cuando corresponda. No uses los comprobantes marcados SIMULADO como documentos reales. Para factura se necesita RUC de 11 dígitos; la configuración del proveedor y SUNAT corresponde al administrador.\n\n[Sources]\n- Captura propia del sistema local LaviSystem, rol TRABAJADOR, 31/08/2026: Capacitacion/capturas/11-comprobantes.png"}
+{"kind":"slide","id":"sl/gny5sjyp","slide":16,"title":"RECUERDA","textShapes":7}
+{"kind":"textbox","id":"sh/8z2h8bq1","slide":16,"name":"Text 0","text":"RECUERDA","textPreview":"RECUERDA","textChars":8,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/9kby1g7m","slide":16,"name":"Text 1","text":"Buenas prácticas","textPreview":"Buenas prácticas","textChars":16,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/ytkf2h8j","slide":16,"name":"Shape 2","bbox":[57.6,172.8,563.04,422.4]}
+{"kind":"textbox","id":"sh/zutgvm94","slide":16,"name":"Text 3","text":"✔  Haz esto","textPreview":"✔  Haz esto","textChars":11,"textLines":1,"bbox":[86.4,192,505.44,43.2]}
+{"kind":"textbox","id":"sh/kv2h4rqp","slide":16,"name":"Text 4","text":"Pide siempre nombre y celular del cliente: sirve para avisarle.\nRegistra al confirmar; al recibir, verifica prendas y cantidades.\nToma foto de prendas manchadas o delicadas (evita reclamos).\nMueve el pedido de área conforme avanza el trabajo real.\nCobra y luego emite la boleta/factura.","textPreview":"Pide siempre nombre y celular del cliente: sirve para avisarle. | Registra al confirmar; al recibir, verifica prendas y cantidades. | Tom...","textChars":286,"textLines":5,"bbox":[86.4,249.6,505.44,326.4]}
+{"kind":"shape","id":"sh/lwbyxwra","slide":16,"name":"Shape 5","bbox":[659.04,172.8,563.04,422.4]}
+{"kind":"textbox","id":"sh/ip4zel83","slide":16,"name":"Text 6","text":"✘  Evita esto","textPreview":"✘  Evita esto","textChars":13,"textLines":1,"bbox":[687.84,192,505.44,43.2]}
+{"kind":"textbox","id":"sh/3qdg7qpo","slide":16,"name":"Text 7","text":"No dejes pedidos sin registrar \"para después\".\nNo compartas tu usuario/clave.\nNo cierres la caja sin contar el efectivo.\nNo entregues sin verificar el ticket y el pago.","textPreview":"No dejes pedidos sin registrar \"para después\". | No compartas tu usuario/clave. | No cierres la caja sin contar el efectivo. | No entregu...","textChars":168,"textLines":4,"bbox":[687.84,249.6,505.44,326.4]}
+{"kind":"textbox","id":"sh/fm1gzq5o","slide":16,"name":"Text 8","text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/gny5sjyp","slide":16,"text":"Cierra la parte operativa con las reglas de oro. Refuerza registrar a tiempo, fotos de evidencia, y contar el efectivo en el cuadre."}
+{"kind":"slide","id":"sl/14bup87q","slide":17,"title":"PREGUNTAS FRECUENTES","textShapes":15}
+{"kind":"textbox","id":"sh/1c7e50ni","slide":17,"name":"Text 0","text":"PREGUNTAS FRECUENTES","textPreview":"PREGUNTAS FRECUENTES","textChars":20,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/gbedwfmx","slide":17,"name":"Text 1","text":"Dudas comunes (1 de 2)","textPreview":"Dudas comunes (1 de 2)","textChars":22,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/rm5czq50","slide":17,"name":"Shape 2","bbox":[57.6,168,1164.48,96]}
+{"kind":"shape","id":"sh/6lwvql4v","slide":17,"name":"Shape 3","bbox":[81.6,187.2,40.32,40.32]}
+{"kind":"textbox","id":"sh/t8ne10n6","slide":17,"name":"Text 4","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,187.2,40.32,40.32]}
+{"kind":"textbox","id":"sh/snedsvml","slide":17,"name":"Text 5","text":"El cliente no tiene DNI ni RUC, ¿le puedo emitir comprobante?","textPreview":"El cliente no tiene DNI ni RUC, ¿le puedo emitir comprobante?","textChars":61,"textLines":1,"bbox":[139.2,183.36,1058.88,38.4]}
+{"kind":"textbox","id":"sh/jilcvq54","slide":17,"name":"Text 6","text":"R:  Para BOLETA puede emitirse sin documento; desde S/ 700 el DNI es obligatorio. Para FACTURA siempre necesitas RUC de 11 dígitos.","textPreview":"R:  Para BOLETA puede emitirse sin documento; desde S/ 700 el DNI es obligatorio. Para FACTURA siempre necesitas RUC de 11 dígitos.","textChars":131,"textLines":1,"bbox":[139.2,217.92,1058.88,38.4]}
+{"kind":"shape","id":"sh/ihcvml4j","slide":17,"name":"Shape 7","bbox":[57.6,279.36,1164.48,91.2]}
+{"kind":"shape","id":"sh/4by9or6l","slide":17,"name":"Shape 8","bbox":[81.6,298.56,40.32,40.32]}
+{"kind":"textbox","id":"sh/pc7qhwn6","slide":17,"name":"Text 9","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,298.56,40.32,40.32]}
+{"kind":"textbox","id":"sh/29grm1of","slide":17,"name":"Text 10","text":"¿Emito la boleta antes o después de cobrar?","textPreview":"¿Emito la boleta antes o después de cobrar?","textChars":43,"textLines":1,"bbox":[139.2,294.72,1058.88,38.4]}
+{"kind":"textbox","id":"sh/3ap8fm50","slide":17,"name":"Text 11","text":"R:  Después. El botón \"Emitir Boleta/Factura\" aparece cuando el pedido ya está PAGADO. Primero cobra, luego emite.","textPreview":"R:  Después. El botón \"Emitir Boleta/Factura\" aparece cuando el pedido ya está PAGADO. Primero cobra, luego emite.","textChars":114,"textLines":1,"bbox":[139.2,329.28,1058.88,33.6]}
+{"kind":"shape","id":"sh/gnepkr69","slide":17,"name":"Shape 12","bbox":[57.6,385.92,1164.48,91.2]}
+{"kind":"shape","id":"sh/honqdwnu","slide":17,"name":"Shape 13","bbox":[81.6,405.12,40.32,40.32]}
+{"kind":"textbox","id":"sh/ulw7ihoj","slide":17,"name":"Text 14","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,405.12,40.32,40.32]}
+{"kind":"textbox","id":"sh/fm58bm54","slide":17,"name":"Text 15","text":"Me equivoqué al registrar un pedido, ¿qué hago?","textPreview":"Me equivoqué al registrar un pedido, ¿qué hago?","textChars":47,"textLines":1,"bbox":[139.2,401.28,1058.88,38.4]}
+{"kind":"textbox","id":"sh/0ji9wb6t","slide":17,"name":"Text 16","text":"R:  Puedes abrirlo y corregir (agregar ítem, cambiar fecha). Si está muy mal, usa \"Anular pedido\" y regístralo de nuevo. Avisa al encargado.","textPreview":"R:  Puedes abrirlo y corregir (agregar ítem, cambiar fecha). Si está muy mal, usa \"Anular pedido\" y regístralo de nuevo. Avisa al encargado.","textChars":140,"textLines":1,"bbox":[139.2,435.84,1058.88,33.6]}
+{"kind":"shape","id":"sh/14rqpgne","slide":17,"name":"Shape 17","bbox":[57.6,492.48,1164.48,91.2]}
+{"kind":"shape","id":"sh/90nq9gfi","slide":17,"name":"Shape 18","bbox":[81.6,511.68,40.32,40.32]}
+{"kind":"textbox","id":"sh/8ze9gbyx","slide":17,"name":"Text 19","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,511.68,40.32,40.32]}
+{"kind":"textbox","id":"sh/ny5876xc","slide":17,"name":"Text 20","text":"¿Cómo paso el pedido de un área a otra?","textPreview":"¿Cómo paso el pedido de un área a otra?","textChars":39,"textLines":1,"bbox":[139.2,507.84,1058.88,38.4]}
+{"kind":"textbox","id":"sh/mxw7e1gr","slide":17,"name":"Text 21","text":"R:  Abre el pedido y pulsa \"Avanzar a [área siguiente]\" (o el botón verde en la lista). Repite hasta llegar a Entrega.","textPreview":"R:  Abre el pedido y pulsa \"Avanzar a [área siguiente]\" (o el botón verde en la lista). Repite hasta llegar a Entrega.","textChars":118,"textLines":1,"bbox":[139.2,542.4,1058.88,33.6]}
+{"kind":"textbox","id":"sh/lwnq5gf6","slide":17,"name":"Text 22","text":"16","textPreview":"16","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/14bup87q","slide":17,"text":""}
+{"kind":"slide","id":"sl/y5wne50z","slide":18,"title":"PREGUNTAS FRECUENTES","textShapes":15}
+{"kind":"textbox","id":"sh/wrelszu9","slide":18,"name":"Text 0","text":"PREGUNTAS FRECUENTES","textPreview":"PREGUNTAS FRECUENTES","textChars":20,"textLines":1,"bbox":[57.6,40.32,1164.48,28.8]}
+{"kind":"textbox","id":"sh/hsn2l4bu","slide":18,"name":"Text 1","text":"Dudas comunes (2 de 2)","textPreview":"Dudas comunes (2 de 2)","textChars":22,"textLines":1,"bbox":[57.6,67.2,1164.48,67.2]}
+{"kind":"shape","id":"sh/itw3upcf","slide":18,"name":"Shape 2","bbox":[57.6,168,1164.48,91.2]}
+{"kind":"shape","id":"sh/je5knut0","slide":18,"name":"Shape 3","bbox":[81.6,187.2,40.32,40.32]}
+{"kind":"textbox","id":"sh/4felwzu5","slide":18,"name":"Text 4","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,187.2,40.32,40.32]}
+{"kind":"textbox","id":"sh/5gnmp4bq","slide":18,"name":"Text 5","text":"¿“Recojo” y “fecha de recojo” significan lo mismo?","textPreview":"¿“Recojo” y “fecha de recojo” significan lo mismo?","textChars":50,"textLines":1,"bbox":[139.2,183.36,1058.88,38.4]}
+{"kind":"textbox","id":"sh/6hw3y9sb","slide":18,"name":"Text 6","text":"R:  No. Recojo = Lavixa retira prendas en el domicilio. En Tienda, fecha de recojo = cuándo vuelve el cliente por su ropa.","textPreview":"R:  No. Recojo = Lavixa retira prendas en el domicilio. En Tienda, fecha de recojo = cuándo vuelve el cliente por su ropa.","textChars":122,"textLines":1,"bbox":[139.2,217.92,1058.88,33.6]}
+{"kind":"shape","id":"sh/rip4retw","slide":18,"name":"Shape 7","bbox":[57.6,274.56,1164.48,100.8]}
+{"kind":"shape","id":"sh/fapkr6pw","slide":18,"name":"Shape 8","bbox":[81.6,293.76,40.32,40.32]}
+{"kind":"textbox","id":"sh/upg3i18r","slide":18,"name":"Text 9","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,293.76,40.32,40.32]}
+{"kind":"textbox","id":"sh/1cr2tg72","slide":18,"name":"Text 10","text":"La caja no cuadra (sobra o falta), ¿qué hago?","textPreview":"La caja no cuadra (sobra o falta), ¿qué hago?","textChars":45,"textLines":1,"bbox":[139.2,289.92,1058.88,38.4]}
+{"kind":"textbox","id":"sh/gbylkbqh","slide":18,"name":"Text 11","text":"R:  Cuenta el efectivo de nuevo y revisa cobros y gastos en efectivo del día (Yape/tarjeta no cuentan aquí). Si sigue sin cuadrar, anota la diferencia y avisa al encargado.","textPreview":"R:  Cuenta el efectivo de nuevo y revisa cobros y gastos en efectivo del día (Yape/tarjeta no cuentan aquí). Si sigue sin cuadrar, anota ...","textChars":172,"textLines":1,"bbox":[139.2,324.48,1058.88,43.2]}
+{"kind":"shape","id":"sh/7mpknmp0","slide":18,"name":"Shape 12","bbox":[57.6,390.72,1164.48,86.4]}
+{"kind":"shape","id":"sh/6lg3e18f","slide":18,"name":"Shape 13","bbox":[81.6,409.92,40.32,40.32]}
+{"kind":"textbox","id":"sh/to72pw76","slide":18,"name":"Text 14","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,409.92,40.32,40.32]}
+{"kind":"textbox","id":"sh/snylgrql","slide":18,"name":"Text 15","text":"Olvidé mi contraseña / no puedo entrar.","textPreview":"Olvidé mi contraseña / no puedo entrar.","textChars":39,"textLines":1,"bbox":[139.2,406.08,1058.88,38.4]}
+{"kind":"textbox","id":"sh/bi94zqp4","slide":18,"name":"Text 16","text":"R:  Pídele al administrador que te la restablezca desde Usuarios. Nunca uses la cuenta de otra persona.","textPreview":"R:  Pídele al administrador que te la restablezca desde Usuarios. Nunca uses la cuenta de otra persona.","textChars":103,"textLines":1,"bbox":[139.2,440.64,1058.88,28.8]}
+{"kind":"shape","id":"sh/qh03ql8j","slide":18,"name":"Shape 17","bbox":[57.6,492.48,1164.48,86.4]}
+{"kind":"shape","id":"sh/md4nipsr","slide":18,"name":"Shape 18","bbox":[81.6,511.68,40.32,40.32]}
+{"kind":"textbox","id":"sh/nedoru9c","slide":18,"name":"Text 19","text":"?","textPreview":"?","textChars":1,"textLines":1,"bbox":[81.6,511.68,40.32,40.32]}
+{"kind":"textbox","id":"sh/8zm5kzax","slide":18,"name":"Text 20","text":"No veo Reportes ni puedo cambiar precios.","textPreview":"No veo Reportes ni puedo cambiar precios.","textChars":41,"textLines":1,"bbox":[139.2,507.84,1058.88,38.4]}
+{"kind":"textbox","id":"sh/90v6t4ri","slide":18,"name":"Text 21","text":"R:  Es normal: tu usuario solo tiene tus módulos. Los precios, servicios y reportes los maneja el administrador.","textPreview":"R:  Es normal: tu usuario solo tiene tus módulos. Los precios, servicios y reportes los maneja el administrador.","textChars":112,"textLines":1,"bbox":[139.2,542.4,1058.88,28.8]}
+{"kind":"textbox","id":"sh/a14nm9s3","slide":18,"name":"Text 22","text":"17","textPreview":"17","textChars":2,"textLines":1,"bbox":[1202.88,676.8,48,28.8]}
+{"kind":"notes","id":"nt/y5wne50z","slide":18,"text":"Pide a la trabajadora que explique la diferencia con sus propias palabras. Si puede dar un ejemplo de cada caso, el concepto quedó claro."}
+{"kind":"slide","id":"sl/nid43ytk","slide":19,"title":"¡Estás lista! 🎉","textShapes":3}
+{"kind":"shape","id":"sh/9gb6xgbi","slide":19,"name":"Shape 0","bbox":[-192,403.2,576,576]}
+{"kind":"textbox","id":"sh/8v2pobax","slide":19,"name":"Text 1","text":"¡Estás lista! 🎉","textPreview":"¡Estás lista! 🎉","textChars":16,"textLines":1,"bbox":[57.6,240,1056,86.4]}
+{"kind":"textbox","id":"sh/vitozqt8","slide":19,"name":"Text 2","text":"Practica ahora: registra un pedido Tienda, uno Recojo y uno Delivery; luego abre un pedido, avánzalo y ubica el cuadre de caja.","textPreview":"Practica ahora: registra un pedido Tienda, uno Recojo y uno Delivery; luego abre un pedido, avánzalo y ubica el cuadre de caja.","textChars":127,"textLines":1,"bbox":[57.6,336,1008,96]}
+{"kind":"textbox","id":"sh/ahk7qls3","slide":19,"name":"Text 3","text":"Lavandería Lavixa · Sistema LaviSystem","textPreview":"Lavandería Lavixa · Sistema LaviSystem","textChars":38,"textLines":1,"bbox":[57.6,614.4,768,38.4]}
+{"kind":"notes","id":"nt/nid43ytk","slide":19,"text":"Cierra con ánimo. Ofrece resolver dudas y recuerda que puede repasar este manual cuando quiera."}

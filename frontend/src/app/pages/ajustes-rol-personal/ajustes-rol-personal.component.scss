@@ -249,3 +249,13 @@
   .tabla-wrap { display: none; }
   .cards { display: flex; }
 }
+
+/* Aviso: los cargos no dan acceso (evita confusión con roles de acceso). */
+.aviso-cargos {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 15px; margin-bottom: 14px;
+  background: #eef4ff; border: 1px solid #d4e0f2; border-left: 4px solid var(--azul-claro, #06B0BD);
+  color: #33475b;
+  app-icon { color: var(--azul-oscuro, #053465); flex-shrink: 0; margin-top: 1px; }
+  p { font-size: 13px; line-height: 1.5; margin: 0; }
+}

@@ -29,7 +29,7 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
             SELECT TOP 1 Id, NombreNegocio, LogoUrl, ColorPrimario, ColorSecundario, ColorAcento,
                          Direccion, Telefono, Ruc, HorarioAtencion, Igv, MetaMensual, SolesPorPunto,
                          AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery,
-                         ValorPuntoCanje, MaxDescuentoPct
+                         ValorPuntoCanje, MaxDescuentoPct, YapeNumero, YapeTitular, YapeQrUrl
             FROM dbo.ConfiguracionNegocio
             {whereNegocio}
             ORDER BY Id";
@@ -55,7 +55,10 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
             NotasProduccion = r.GetNullableString("NotasProduccion"),
             CostoDelivery = r.GetDecimal(r.GetOrdinal("CostoDelivery")),
             ValorPuntoCanje = r.GetDecimal(r.GetOrdinal("ValorPuntoCanje")),
-            MaxDescuentoPct = r.GetDecimal(r.GetOrdinal("MaxDescuentoPct"))
+            MaxDescuentoPct = r.GetDecimal(r.GetOrdinal("MaxDescuentoPct")),
+            YapeNumero = r.GetNullableString("YapeNumero"),
+            YapeTitular = r.GetNullableString("YapeTitular"),
+            YapeQrUrl = r.GetNullableString("YapeQrUrl")
         }, ct);
     }
 
@@ -89,17 +92,20 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
                 CostoDelivery = @CostoDelivery,
                 ValorPuntoCanje = @ValorPuntoCanje,
                 MaxDescuentoPct = @MaxDescuentoPct,
+                YapeNumero = @YapeNumero,
+                YapeTitular = @YapeTitular,
+                YapeQrUrl = @YapeQrUrl,
                 FechaActualizacion = SYSDATETIME()
             WHEN NOT MATCHED THEN INSERT
                 (NegocioId, NombreNegocio, LogoUrl, ColorPrimario, ColorSecundario, ColorAcento,
                  Direccion, Telefono, Ruc, HorarioAtencion, Igv, MetaMensual, SolesPorPunto,
                  AnchoTicketMm, MensajePieTicket, CondicionesServicio, NotasProduccion, CostoDelivery,
-                 ValorPuntoCanje, MaxDescuentoPct)
+                 ValorPuntoCanje, MaxDescuentoPct, YapeNumero, YapeTitular, YapeQrUrl)
                 VALUES
                 (@NegocioId, @NombreNegocio, @LogoUrl, @ColorPrimario, @ColorSecundario, @ColorAcento,
                  @Direccion, @Telefono, @Ruc, @HorarioAtencion, @Igv, @MetaMensual, @SolesPorPunto,
                  @AnchoTicketMm, @MensajePieTicket, @CondicionesServicio, @NotasProduccion, @CostoDelivery,
-                 @ValorPuntoCanje, @MaxDescuentoPct);";
+                 @ValorPuntoCanje, @MaxDescuentoPct, @YapeNumero, @YapeTitular, @YapeQrUrl);";
         cmd.AddParam("@NegocioId", negocioId);
         cmd.AddParam("@NombreNegocio", c.NombreNegocio);
         cmd.AddParam("@LogoUrl", c.LogoUrl);
@@ -120,6 +126,9 @@ public class ConfiguracionNegocioRepository : IConfiguracionNegocioRepository
         cmd.AddParam("@CostoDelivery", c.CostoDelivery);
         cmd.AddParam("@ValorPuntoCanje", c.ValorPuntoCanje);
         cmd.AddParam("@MaxDescuentoPct", c.MaxDescuentoPct);
+        cmd.AddParam("@YapeNumero", c.YapeNumero);
+        cmd.AddParam("@YapeTitular", c.YapeTitular);
+        cmd.AddParam("@YapeQrUrl", c.YapeQrUrl);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 }

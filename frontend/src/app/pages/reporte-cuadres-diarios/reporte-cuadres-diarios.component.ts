@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CuadreDiarioDia, CuadresDiariosReporte, ReportesService } from '../../core/services/reportes.service';
+import { mesLocalIso } from '../../core/util/fecha-local';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
@@ -19,7 +20,7 @@ export class ReporteCuadresDiariosComponent implements OnInit {
   private readonly router = inject(Router);
 
   // Filtro por mes: input type="month" → 'YYYY-MM'
-  mesFiltro = new Date().toISOString().slice(0, 7);
+  mesFiltro = mesLocalIso();
 
   readonly data = signal<CuadresDiariosReporte | null>(null);
   readonly cargando = signal(false);

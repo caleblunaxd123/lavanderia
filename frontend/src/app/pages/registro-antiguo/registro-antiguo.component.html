@@ -57,8 +57,7 @@
       <input type="text" placeholder="Nombre completo" [(ngModel)]="nombre" />
 
       <label>Celular *</label>
-      <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
-             placeholder="9XXXXXXXX" [(ngModel)]="celular" />
+      <app-telefono-pais [(ngModel)]="celular" inputId="celular"></app-telefono-pais>
 
       <label>Dirección</label>
       <input type="text" placeholder="Dirección" [(ngModel)]="direccion" />

@@ -11,9 +11,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const token = auth.obtenerToken();
 
-  const clonado = token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
-    : req;
+  // ngrok-skip-browser-warning: cuando el sistema se sirve tras un túnel ngrok gratuito,
+  // ngrok intercala una pantalla de advertencia. Sin este header, las llamadas XHR reciben
+  // ese HTML en vez del JSON de la API y el login/datos se rompen. Es inofensivo fuera de ngrok.
+  const headers: Record<string, string> = { 'ngrok-skip-browser-warning': 'true' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const clonado = req.clone({ setHeaders: headers });
 
   const esRutaAuth = RUTAS_SIN_REINTENTO.some(r => req.url.includes(r));
 
@@ -28,7 +32,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // /auth/refresh y se reintenta esta misma request una sola vez con el token nuevo.
       return auth.refrescarToken().pipe(
         switchMap(res => {
-          const reintento = req.clone({ setHeaders: { Authorization: `Bearer ${res.accessToken}` } });
+          const reintento = req.clone({ setHeaders: { 'ngrok-skip-browser-warning': 'true', Authorization: `Bearer ${res.accessToken}` } });
           return next(reintento);
         }),
         catchError(errorRefresh => {

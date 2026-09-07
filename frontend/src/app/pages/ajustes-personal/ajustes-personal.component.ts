@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -10,11 +11,13 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
+import { esCelularValido } from '../../core/util/telefono';
 
 @Component({
   selector: 'app-ajustes-personal',
-  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, SoloDigitosDirective],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, SoloDigitosDirective, TelefonoPaisComponent],
   templateUrl: './ajustes-personal.component.html',
   styleUrl: './ajustes-personal.component.scss'
 })
@@ -27,11 +30,23 @@ export class AjustesPersonalComponent implements OnInit {
   readonly empleados = signal<Empleado[]>([]);
   readonly rolesDisponibles = signal<RolPersonal[]>([]);
 
+  readonly busqueda = signal('');
+  readonly empleadosFiltrados = computed(() => {
+    const t = this.busqueda().trim().toLowerCase();
+    if (!t) return this.empleados();
+    return this.empleados().filter(e =>
+      (e.nombre ?? '').toLowerCase().includes(t) ||
+      (e.dni ?? '').toLowerCase().includes(t) ||
+      (e.celular ?? '').toLowerCase().includes(t) ||
+      (e.cargo ?? '').toLowerCase().includes(t));
+  });
+  actualizarBusqueda(v: string) { this.busqueda.set(v); this.pagina.set(1); }
+
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
   readonly empleadosPaginados = computed(() => {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
-    return this.empleados().slice(inicio, inicio + this.tamanoPagina());
+    return this.empleadosFiltrados().slice(inicio, inicio + this.tamanoPagina());
   });
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
@@ -44,6 +59,7 @@ export class AjustesPersonalComponent implements OnInit {
   readonly confirmarDesactivar = signal<Empleado | null>(null);
   form: Partial<Empleado> = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   ngOnInit() {
@@ -70,6 +86,7 @@ export class AjustesPersonalComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -77,16 +94,21 @@ export class AjustesPersonalComponent implements OnInit {
     this.editando.set(e);
     this.form = { ...e };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
   cerrar() { this.modalAbierto.set(false); }
 
   guardar() {
-    if (!this.form.nombre?.trim()) {
-      this.errorForm.set('El nombre es obligatorio.');
-      return;
-    }
+    const dni = (this.form.dni ?? '').toString().trim();
+    const celular = (this.form.celular ?? '').toString().trim();
+    const errs: Record<string, string> = {};
+    if (!this.form.nombre?.trim()) errs['nombre'] = 'Ingresa el nombre.';
+    if (dni && !/^\d{8}$/.test(dni)) errs['dni'] = 'El DNI debe tener 8 dígitos (o déjalo vacío).';
+    if (celular && !esCelularValido(celular)) errs['celular'] = 'Revisa el celular: 9 dígitos para Perú, o elige el país para un número extranjero (o déjalo vacío).';
+    this.err.set(errs);
+    if (this.err.hay) { this.errorForm.set('Revisa los campos marcados en rojo.'); return; }
     this.guardando.set(true);
     this.errorForm.set(null);
 

@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
+import { numeroWhatsapp } from '../../core/util/telefono';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Cliente, Servicio } from '../../core/models/models';
@@ -46,6 +48,7 @@ export class PromocionesComponent implements OnInit {
   readonly confirmarDesactivar = signal<Promocion | null>(null);
   form: FormPromocion = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   readonly tipos = [
@@ -78,6 +81,7 @@ export class PromocionesComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -85,28 +89,26 @@ export class PromocionesComponent implements OnInit {
     this.editando.set(p);
     this.form = { ...p };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
   cerrar() { this.modalAbierto.set(false); }
 
   guardar() {
-    if (!this.form.descripcion?.trim()) {
-      this.errorForm.set('La descripción es obligatoria.');
-      return;
-    }
+    const errs: Record<string, string> = {};
+    if (!this.form.descripcion?.trim()) errs['descripcion'] = 'Ingresa la descripción de la promoción.';
     if (!this.form.descuentoPct && !this.form.descuentoMonto) {
-      this.errorForm.set('Debes indicar un descuento en % o en soles.');
-      return;
+      errs['descuentoPct'] = 'Indica un descuento en % o en soles.';
+    } else if (this.form.descuentoPct && this.form.descuentoMonto) {
+      errs['descuentoPct'] = 'Usa solo un tipo: porcentaje o monto fijo.';
+      errs['descuentoMonto'] = 'Usa solo un tipo: porcentaje o monto fijo.';
     }
-    if (this.form.descuentoPct && this.form.descuentoMonto) {
-      this.errorForm.set('Usa solo un tipo de descuento: porcentaje o monto fijo.');
-      return;
-    }
-    if (this.form.fechaInicio && this.form.fechaFin && this.form.fechaFin < this.form.fechaInicio) {
-      this.errorForm.set('La fecha final no puede ser anterior a la fecha inicial.');
-      return;
-    }
+    if (this.form.fechaInicio && this.form.fechaFin && this.form.fechaFin < this.form.fechaInicio)
+      errs['fechaFin'] = 'La fecha final no puede ser anterior a la inicial.';
+
+    this.err.set(errs);
+    if (this.err.hay) { this.errorForm.set('Revisa los campos marcados en rojo.'); return; }
     this.guardando.set(true);
     this.errorForm.set(null);
 
@@ -315,8 +317,8 @@ export class PromocionesComponent implements OnInit {
   enviarWhatsappCodigo() {
     const res = this.codigoGenerado();
     if (!res) return;
-    const tel = (res.celular ?? '').replace(/\D/g, '');
-    const base = tel ? `https://wa.me/51${tel}` : 'https://wa.me/';
+    const numero = numeroWhatsapp(res.celular);
+    const base = numero ? `https://wa.me/${numero}` : 'https://wa.me/';
     window.open(`${base}?text=${encodeURIComponent(res.mensajeWhatsapp)}`, '_blank');
   }
 

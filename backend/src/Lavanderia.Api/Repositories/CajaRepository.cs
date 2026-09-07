@@ -237,11 +237,12 @@ public class CajaRepository : ICajaRepository
                 IngresosDigital = @IngresosDigital,
                 IngresosTarjeta = @IngresosTarjeta,
                 Nota = @Nota,
-                Observaciones = @Observaciones
+                Observaciones = @Observaciones,
+                DetalleConteo = @DetalleConteo
             WHEN NOT MATCHED THEN INSERT
-                (SedeId, Fecha, UsuarioId, CajaInicial, PedidosPagadosEfect, Gastos, TotalContado, Diferencia, CajaFinal, Corte, IngresosDigital, IngresosTarjeta, Nota, Observaciones)
+                (SedeId, Fecha, UsuarioId, CajaInicial, PedidosPagadosEfect, Gastos, TotalContado, Diferencia, CajaFinal, Corte, IngresosDigital, IngresosTarjeta, Nota, Observaciones, DetalleConteo)
                 VALUES
-                (@SedeId, @Fecha, @UsuarioId, @CajaInicial, @PedidosPagadosEfect, @Gastos, @TotalContado, @Diferencia, @CajaFinal, @Corte, @IngresosDigital, @IngresosTarjeta, @Nota, @Observaciones)
+                (@SedeId, @Fecha, @UsuarioId, @CajaInicial, @PedidosPagadosEfect, @Gastos, @TotalContado, @Diferencia, @CajaFinal, @Corte, @IngresosDigital, @IngresosTarjeta, @Nota, @Observaciones, @DetalleConteo)
             OUTPUT INSERTED.Id;";
         cmd.AddParam("@SedeId", c.SedeId);
         cmd.AddParam("@Fecha", c.Fecha.Date);
@@ -257,6 +258,7 @@ public class CajaRepository : ICajaRepository
         cmd.AddParam("@IngresosTarjeta", c.IngresosTarjeta);
         cmd.AddParam("@Nota", c.Nota);
         cmd.AddParam("@Observaciones", c.Observaciones);
+        cmd.AddParam("@DetalleConteo", c.DetalleConteo);
         return await cmd.ReadScalarAsync<int>(ct);
     }
 
@@ -268,7 +270,7 @@ public class CajaRepository : ICajaRepository
         cmd.CommandText = @"
             SELECT c.Id, c.Fecha, c.UsuarioId, u.NombreCompleto AS UsuarioNombre,
                    c.CajaInicial, c.PedidosPagadosEfect, c.Gastos, c.TotalContado,
-                   c.Diferencia, c.CajaFinal, c.Corte, c.IngresosDigital, c.IngresosTarjeta, c.Nota, c.Observaciones, c.FechaCreacion
+                   c.Diferencia, c.CajaFinal, c.Corte, c.IngresosDigital, c.IngresosTarjeta, c.Nota, c.Observaciones, c.DetalleConteo, c.FechaCreacion
             FROM dbo.CuadreCaja c
             INNER JOIN dbo.Usuario u ON u.Id = c.UsuarioId
             WHERE c.Id = @Id AND c.SedeId = @SedeId";
@@ -291,6 +293,7 @@ public class CajaRepository : ICajaRepository
             IngresosTarjeta = r.GetDecimal(r.GetOrdinal("IngresosTarjeta")),
             Nota = r.GetNullableString("Nota"),
             Observaciones = r.GetNullableString("Observaciones"),
+            DetalleConteo = r.GetNullableString("DetalleConteo"),
             FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion"))
         }, ct);
     }
@@ -336,7 +339,7 @@ public class CajaRepository : ICajaRepository
         cmd.CommandText = @"
             SELECT c.Id, c.Fecha, c.UsuarioId, u.NombreCompleto AS UsuarioNombre,
                    c.CajaInicial, c.PedidosPagadosEfect, c.Gastos, c.TotalContado,
-                   c.Diferencia, c.CajaFinal, c.Corte, c.IngresosDigital, c.IngresosTarjeta, c.Nota, c.Observaciones, c.FechaCreacion
+                   c.Diferencia, c.CajaFinal, c.Corte, c.IngresosDigital, c.IngresosTarjeta, c.Nota, c.Observaciones, c.DetalleConteo, c.FechaCreacion
             FROM dbo.CuadreCaja c
             INNER JOIN dbo.Usuario u ON u.Id = c.UsuarioId
             WHERE c.Fecha = @Fecha AND c.UsuarioId = @UsuarioId AND c.SedeId = @SedeId";
@@ -360,6 +363,7 @@ public class CajaRepository : ICajaRepository
             IngresosTarjeta = r.GetDecimal(r.GetOrdinal("IngresosTarjeta")),
             Nota = r.GetNullableString("Nota"),
             Observaciones = r.GetNullableString("Observaciones"),
+            DetalleConteo = r.GetNullableString("DetalleConteo"),
             FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion"))
         }, ct);
     }
@@ -372,7 +376,7 @@ public class CajaRepository : ICajaRepository
         cmd.CommandText = @"
             SELECT TOP 1 c.Id, c.Fecha, c.UsuarioId, u.NombreCompleto AS UsuarioNombre,
                    c.CajaInicial, c.PedidosPagadosEfect, c.Gastos, c.TotalContado,
-                   c.Diferencia, c.CajaFinal, c.Corte, c.IngresosDigital, c.IngresosTarjeta, c.Nota, c.Observaciones, c.FechaCreacion
+                   c.Diferencia, c.CajaFinal, c.Corte, c.IngresosDigital, c.IngresosTarjeta, c.Nota, c.Observaciones, c.DetalleConteo, c.FechaCreacion
             FROM dbo.CuadreCaja c
             INNER JOIN dbo.Usuario u ON u.Id = c.UsuarioId
             WHERE c.Fecha < @Fecha AND c.SedeId = @SedeId
@@ -396,6 +400,7 @@ public class CajaRepository : ICajaRepository
             IngresosTarjeta = r.GetDecimal(r.GetOrdinal("IngresosTarjeta")),
             Nota = r.GetNullableString("Nota"),
             Observaciones = r.GetNullableString("Observaciones"),
+            DetalleConteo = r.GetNullableString("DetalleConteo"),
             FechaCreacion = r.GetDateTime(r.GetOrdinal("FechaCreacion"))
         }, ct);
     }

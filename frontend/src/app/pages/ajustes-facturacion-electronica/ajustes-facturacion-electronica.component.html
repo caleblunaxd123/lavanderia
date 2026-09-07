@@ -1,6 +1,6 @@
 <div class="page">
   <app-page-header icono="note" color="azul" titulo="Facturación Electrónica"
-    subtitulo="Emite boletas y facturas electrónicas ante SUNAT directamente desde el sistema."
+    subtitulo="Emite boletas y facturas electrónicas mediante el proveedor configurado para tu negocio."
     volverTexto="Ajustes" (volver)="volver()"></app-page-header>
 
   @if (cargando()) {
@@ -16,6 +16,15 @@
 
     <div class="secciones">
       <div class="card seccion">
+        <h3>Proveedor de emisión</h3>
+        <label>Proveedor</label>
+        <select [ngModel]="form().proveedor" (ngModelChange)="actualizarCampo('proveedor', $event)">
+          <option value="APISUNAT">APISUNAT (nube)</option>
+          <option value="SUNAT_DIRECTO">SUNAT directo</option>
+        </select>
+        <p class="hint">Las credenciales se guardan cifradas e independientes para este negocio.</p>
+      </div>
+      <div class="card seccion">
         <h3>Datos del emisor</h3>
 
         <label>Razón social *</label>
@@ -27,6 +36,20 @@
         <input type="text" [ngModel]="form().rucEmisor"
                (ngModelChange)="actualizarCampo('rucEmisor', $event)"
                maxlength="11" placeholder="20123456789" />
+
+        <label>Dirección fiscal *</label>
+        <input type="text" [ngModel]="form().direccionFiscal"
+               (ngModelChange)="actualizarCampo('direccionFiscal', $event)" maxlength="250" />
+
+        <div class="field-row">
+          <div><label>Ubigeo *</label><input type="text" inputmode="numeric" maxlength="6"
+            [ngModel]="form().ubigeo" (ngModelChange)="actualizarCampo('ubigeo', $event)" placeholder="150110" /></div>
+          <div><label>Establecimiento</label><input type="text" maxlength="4"
+            [ngModel]="form().codigoEstablecimiento" (ngModelChange)="actualizarCampo('codigoEstablecimiento', $event)" /></div>
+        </div>
+
+        <label>Correo del emisor</label>
+        <input type="email" [ngModel]="form().emailEmisor" (ngModelChange)="actualizarCampo('emailEmisor', $event)" />
 
         <label>Ambiente <app-info-tooltip texto="Pruebas (Beta): para practicar, los comprobantes NO valen legalmente. Producción: los comprobantes emitidos son reales y válidos ante SUNAT."></app-info-tooltip></label>
         <div class="switch-ambiente">
@@ -51,9 +74,29 @@
         <input type="text" [ngModel]="form().serieFactura"
                (ngModelChange)="actualizarCampo('serieFactura', $event)"
                maxlength="4" placeholder="F001" />
+        <div class="correlativos" aria-label="Correlativos actuales">
+          <span>Próxima boleta <strong>{{ form().serieBoleta }}-{{ form().correlativoBoleta + 1 }}</strong></span>
+          <span>Próxima factura <strong>{{ form().serieFactura }}-{{ form().correlativoFactura + 1 }}</strong></span>
+        </div>
         <p class="hint">El correlativo de cada serie avanza automáticamente con cada comprobante emitido.</p>
       </div>
 
+      @if (form().proveedor === 'APISUNAT') {
+        <div class="card seccion">
+          <h3>Credenciales APISUNAT</h3>
+          @if (form().tieneCredencialesApiSunat) { <p class="ok-badge">Credenciales configuradas para este negocio.</p> }
+          <label>Persona ID *</label>
+          <input type="text" [ngModel]="form().apiSunatPersonaId" (ngModelChange)="actualizarCampo('apiSunatPersonaId', $event)" />
+          <label>Token {{ form().tieneCredencialesApiSunat ? '(solo para reemplazar)' : '*' }}</label>
+          <input type="password" autocomplete="new-password" [ngModel]="form().apiSunatTokenNuevo"
+            (ngModelChange)="actualizarCampo('apiSunatTokenNuevo', $event)" />
+          <button type="button" class="btn btn--ghost probar-conexion" [disabled]="probandoConexion()" (click)="probarConexion()">
+            {{ probandoConexion() ? 'Verificando…' : 'Probar conexión' }}
+          </button>
+        </div>
+      }
+
+      @if (form().proveedor === 'SUNAT_DIRECTO') {
       <div class="card seccion">
         <h3>Certificado digital <app-info-tooltip texto="Un archivo especial (.pfx) que SUNAT usa para verificar que tú emitiste el comprobante, como una firma digital. Te lo entrega SUNAT o tu proveedor de facturación electrónica."></app-info-tooltip></h3>
 
@@ -91,6 +134,7 @@
                placeholder="Solo si cambias la clave" />
         <p class="hint">Para probar en Beta, SUNAT publica credenciales fijas: usuario MODDATOS, clave moddatos, RUC 20000000001.</p>
       </div>
+      }
     </div>
 
     <div class="card seccion activar">

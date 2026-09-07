@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { ConfiguracionNegocio, Pedido } from '../models/models';
+import { numeroWhatsapp } from '../util/telefono';
 
 export interface PlantillaWhatsappActiva {
   evento: string;
@@ -88,10 +89,35 @@ export class WhatsappService {
     return texto;
   }
 
-  enviar(celular: string, mensaje: string) {
-    const digitos = celular.replace(/\D/g, '');
-    const numero = digitos.startsWith('51') && digitos.length >= 11 ? digitos : `51${digitos}`;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
+  /**
+   * Mensaje "en camino" para el botón de seguimiento de un pedido Delivery: avisa al cliente
+   * que el repartidor va en camino, con el link de seguimiento en vivo, el saldo pendiente y
+   * los datos de Yape/Plin del negocio para que pueda pagar.
+   */
+  mensajeEnCamino(pedido: Pedido, negocio: ConfiguracionNegocio, seguimientoUrl?: string): string {
+    const cliente = (pedido.clienteNombre || 'Cliente').trim();
+    const marca = (negocio.nombreNegocio || 'Lavixa').trim();
+    const saldo = Math.max(0, pedido.total - pedido.montoPagado);
+    const yapeNumero = (negocio.yapeNumero || negocio.telefono || '').trim();
+    const yapeTitular = (negocio.yapeTitular || '').trim();
+
+    let texto = `¡Hola ${cliente}! Tu pedido #${pedido.numero} de ${marca} ya va en camino a tu dirección.`;
+    if (seguimientoUrl) texto += ` Sigue al repartidor en tiempo real aquí:\n${seguimientoUrl}`;
+    if (saldo > 0.009) texto += `\n\nRecuerda que tienes un monto pendiente: S/.${saldo.toFixed(2)} .`;
+    if (yapeNumero) texto += `\n\nSi vas a pagar por Yape/Plin a este número: ${yapeNumero}${yapeTitular ? ` - ${yapeTitular}` : ''}`;
+    return texto;
+  }
+
+  /**
+   * Abre WhatsApp con el mensaje listo para enviar. Si se pasa `ventana` (una pestaña abierta
+   * durante el clic del usuario), se reutiliza para evitar el bloqueo de pop-ups que ocurre al
+   * abrir ventanas después de una operación asíncrona (ej. crear el pedido).
+   */
+  enviar(celular: string, mensaje: string, ventana?: Window | null) {
+    const numero = numeroWhatsapp(celular);
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
+    if (ventana && !ventana.closed) ventana.location.href = url;
+    else window.open(url, '_blank');
   }
 
   private formatearCantidad(valor: number): string {

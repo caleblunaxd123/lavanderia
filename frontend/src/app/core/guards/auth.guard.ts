@@ -34,7 +34,7 @@ export const rolGuard = (rolesPermitidos: string[]): CanActivateFn => () => {
   return false;
 };
 
-export const moduloGuard = (modulo: string): CanActivateFn => () => {
+export const moduloGuard = (modulo: string | string[]): CanActivateFn => () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   if (!auth.autenticado()) {
@@ -54,8 +54,10 @@ export const moduloGuard = (modulo: string): CanActivateFn => () => {
     router.navigate(['/seleccionar-sede']);
     return false;
   }
-  if (modulos.includes(modulo)) return true;
-  if (modulo !== 'INICIO') {
+  // Acepta uno o varios módulos: pasa si el usuario tiene CUALQUIERA de ellos.
+  const requeridos = Array.isArray(modulo) ? modulo : [modulo];
+  if (usuario?.rol === 'ADMIN' || requeridos.some(m => modulos.includes(m))) return true;
+  if (!requeridos.includes('INICIO')) {
     router.navigate(['/inicio']);
   } else {
     auth.logout();

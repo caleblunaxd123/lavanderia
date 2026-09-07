@@ -32,11 +32,22 @@ export class AjustesUsuariosComponent implements OnInit {
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
 
+  readonly busqueda = signal('');
+  readonly usuariosFiltrados = computed(() => {
+    const t = this.busqueda().trim().toLowerCase();
+    if (!t) return this.usuarios();
+    return this.usuarios().filter(u =>
+      (u.usuario ?? '').toLowerCase().includes(t) ||
+      (u.nombreCompleto ?? '').toLowerCase().includes(t) ||
+      (u.email ?? '').toLowerCase().includes(t));
+  });
+  actualizarBusqueda(v: string) { this.busqueda.set(v); this.pagina.set(1); }
+
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
   readonly usuariosPaginados = computed(() => {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
-    return this.usuarios().slice(inicio, inicio + this.tamanoPagina());
+    return this.usuariosFiltrados().slice(inicio, inicio + this.tamanoPagina());
   });
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
@@ -47,6 +58,21 @@ export class AjustesUsuariosComponent implements OnInit {
   form: Partial<UsuarioAdmin> = this.formVacio();
   errorForm = signal<string | null>(null);
   guardando = signal(false);
+  // Ojo de mostrar/ocultar contraseña (mismo patrón que el login).
+  mostrarPassword = signal(false);
+  // Validación por campo: mensajes claros debajo de cada input.
+  erroresCampo = signal<Record<string, string>>({});
+
+  // Mismas reglas que el backend (UsuariosController) para que el aviso coincida.
+  private static readonly RE_USUARIO = /^[A-Za-z0-9._-]{3,50}$/;
+  private static readonly RE_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  private static readonly RE_PASSWORD = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+
+  campoError(campo: string): string | undefined { return this.erroresCampo()[campo]; }
+  limpiarCampo(campo: string) {
+    const e = this.erroresCampo();
+    if (e[campo]) { const { [campo]: _, ...resto } = e; this.erroresCampo.set(resto); }
+  }
 
   // --- Restablecer contraseña ---
   // Las claves se guardan hasheadas (BCrypt): no se pueden consultar, solo reemplazar.
@@ -83,6 +109,8 @@ export class AjustesUsuariosComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.erroresCampo.set({});
+    this.mostrarPassword.set(false);
     this.modalAbierto.set(true);
   }
 
@@ -90,23 +118,42 @@ export class AjustesUsuariosComponent implements OnInit {
     this.editando.set(u);
     this.form = { ...u, password: '' };
     this.errorForm.set(null);
+    this.erroresCampo.set({});
+    this.mostrarPassword.set(false);
     this.modalAbierto.set(true);
   }
 
   cerrar() { this.modalAbierto.set(false); }
 
   guardar() {
-    if (!this.form.usuario?.trim() || !this.form.nombreCompleto?.trim() || !this.form.rolId) {
-      this.errorForm.set('Usuario, nombre completo y rol son obligatorios.');
-      return;
-    }
-    if (!this.rolSeleccionadoEsAdmin() && !this.form.sedeId) {
-      this.errorForm.set('Los usuarios no administradores deben estar asignados a una sede.');
-      return;
-    }
     const edit = this.editando();
-    if (!edit && !this.form.password?.trim()) {
-      this.errorForm.set('Debes definir una contraseña para el nuevo usuario.');
+    const usuario = this.form.usuario?.trim() ?? '';
+    const nombre = this.form.nombreCompleto?.trim() ?? '';
+    const email = this.form.email?.trim() ?? '';
+    const pass = this.form.password?.trim() ?? '';
+    const errs: Record<string, string> = {};
+
+    if (!usuario) errs['usuario'] = 'Ingresa el usuario de acceso.';
+    else if (!AjustesUsuariosComponent.RE_USUARIO.test(usuario))
+      errs['usuario'] = 'Solo letras, números, punto, guion y guion bajo (3 a 50 caracteres). Sin espacios ni tildes.';
+
+    if (!nombre) errs['nombreCompleto'] = 'Ingresa el nombre completo.';
+
+    if (email && !AjustesUsuariosComponent.RE_EMAIL.test(email))
+      errs['email'] = 'Correo no válido (ej: nombre@correo.com). Si no tienes, deja este campo vacío.';
+
+    if (!this.form.rolId) errs['rolId'] = 'Elige un rol.';
+
+    if (!edit && !pass) errs['password'] = 'Define una contraseña para el nuevo usuario.';
+    else if (pass && !AjustesUsuariosComponent.RE_PASSWORD.test(pass))
+      errs['password'] = 'Mínimo 8 caracteres, con al menos una letra y un número.';
+
+    if (!this.rolSeleccionadoEsAdmin() && !this.form.sedeId)
+      errs['sedeId'] = 'Asigna una sede (obligatoria para roles que no sean Administrador).';
+
+    this.erroresCampo.set(errs);
+    if (Object.keys(errs).length) {
+      this.errorForm.set('Revisa los campos marcados en rojo.');
       return;
     }
     this.guardando.set(true);
@@ -121,13 +168,22 @@ export class AjustesUsuariosComponent implements OnInit {
       next: () => {
         this.guardando.set(false);
         this.modalAbierto.set(false);
+        this.erroresCampo.set({});
         this.toast.exito(edit ? 'Usuario actualizado' : 'Usuario creado');
         this.cargar();
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
-        const msg = err.error?.mensaje ?? 'No se pudo guardar el usuario.';
-        this.errorForm.set(msg);
+        const msg = err.error?.mensaje ?? 'No se pudo guardar el usuario. Revisa los datos e inténtalo de nuevo.';
+        // Si el backend señala un campo concreto, lo mostramos debajo de ese campo.
+        const low = msg.toLowerCase();
+        const campo = low.includes('email') || low.includes('correo') ? 'email'
+          : low.includes('contrase') ? 'password'
+          : low.includes('usuario') ? 'usuario'
+          : low.includes('sede') ? 'sedeId'
+          : null;
+        if (campo) { this.erroresCampo.set({ ...this.erroresCampo(), [campo]: msg }); this.errorForm.set('Revisa los campos marcados en rojo.'); }
+        else this.errorForm.set(msg);
         this.toast.desdeHttp(err, msg);
       }
     });

@@ -85,3 +85,8 @@
   .page { padding: 14px; }
   .kpis { grid-template-columns: 1fr 1fr; }
 }
+
+@media (max-width: 720px) {
+  .card.tabla-wrap { display: none; }
+  .cards-rep { display: flex; }
+}

@@ -73,6 +73,17 @@ export class ConfiguracionService {
     );
   }
 
+  /**
+   * Variante del logo optimizada para impresión: monocroma sobre fondo transparente,
+   * que se funde con el papel blanco del ticket/cuadre. El logo de marca con fondo de
+   * color se reserva para el sidebar/login oscuros. Si el negocio no tiene variante de
+   * impresión, cae a su logo normal (multi-tenant seguro).
+   */
+  static logoImpresion(logoUrl: string | null | undefined): string | null {
+    if (!logoUrl) return null;
+    return logoUrl.replace('lavixa-logo.png', 'lavixa-logo-ticket.png');
+  }
+
   private aplicarTema(c: ConfiguracionNegocio) {
     const root = document.documentElement;
     root.style.setProperty('--azul-oscuro', c.colorPrimario);

@@ -45,6 +45,11 @@ public class UsuarioAdminDto
 }
 
 public record RolDto(int Id, string Codigo, string Nombre);
+
+// Gestión de roles de acceso propios del negocio (CRUD flexible).
+public record RolAccesoDto(int Id, string Nombre, bool EsSistema, bool EnUso);
+public record CrearRolRequest(string Nombre);
+public record RenombrarRolRequest(string Nombre);
 public record CambiarEstadoUsuarioRequest(bool Activo);
 
 // ---------- Permisos ----------
@@ -81,6 +86,10 @@ public class ConfiguracionNegocioDto
     [Range(0, 1000)] public decimal CostoDelivery { get; set; }
     [Range(0, 100)] public decimal ValorPuntoCanje { get; set; }   // S/ que vale 1 punto al canjear (0 = off)
     [Range(0, 100)] public decimal MaxDescuentoPct { get; set; }    // tope de descuento manual (0 = sin tope)
+    // Cobro por Yape/Plin del negocio. YapeQrUrl acepta la ruta que devuelve POST /configuracion/yape-qr.
+    [StringLength(30)] public string? YapeNumero { get; set; }
+    [StringLength(120)] public string? YapeTitular { get; set; }
+    [StringLength(500)] public string? YapeQrUrl { get; set; }
     // Solo lectura: id del servicio de sistema al que Registrar debe apuntar al agregar
     // automaticamente el cargo de delivery al carrito (ver 022_costo_delivery.sql). Se ignora
     // si viene en el body de un PUT.
@@ -94,12 +103,14 @@ public class ClienteDto
     [Required, StringLength(120, MinimumLength = 2)]
     public string Nombre { get; set; } = "";
     [StringLength(20)]
-    [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
+    [RegularExpression(@"^(9\d{8}|\+\d{7,15})$", ErrorMessage = "Celular inválido: 9 dígitos (Perú) o + con código de país (ej. +573001234567).")]
     public string? Celular { get; set; }
     [StringLength(8, MinimumLength = 8)]
     [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 digitos.")]
     public string? Dni { get; set; }
-    [StringLength(20)] public string? DocumentoFiscal { get; set; }
+    [StringLength(11, MinimumLength = 11)]
+    [RegularExpression(@"^\d{11}$", ErrorMessage = "El RUC debe tener 11 digitos.")]
+    public string? DocumentoFiscal { get; set; }
     [StringLength(200)] public string? Direccion { get; set; }
     public int Puntos { get; set; }
     public DateTime? FechaCreacion { get; set; }
@@ -410,6 +421,7 @@ public class ImportarInsumoFila
     public string? UnidadMedida { get; set; }
     public decimal StockActual { get; set; }
     public decimal StockMinimo { get; set; }
+    public string? Clase { get; set; }   // EQUIPO | MATERIAL | INSUMO (opcional; por defecto INSUMO)
 }
 
 public class ImportarInsumosResultado
@@ -489,7 +501,7 @@ public class MotorizadoDto
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
     [StringLength(20)]
-    [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
+    [RegularExpression(@"^(9\d{8}|\+\d{7,15})$", ErrorMessage = "Celular inválido: 9 dígitos (Perú) o + con código de país (ej. +573001234567).")]
     public string? Celular { get; set; }
     public bool Activo { get; set; } = true;
 }
@@ -513,7 +525,7 @@ public class EmpleadoDto
     [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 digitos.")]
     public string? Dni { get; set; }
     [StringLength(20)]
-    [RegularExpression(@"^9\d{8}$", ErrorMessage = "El celular debe tener 9 dígitos y empezar con 9.")]
+    [RegularExpression(@"^(9\d{8}|\+\d{7,15})$", ErrorMessage = "Celular inválido: 9 dígitos (Perú) o + con código de país (ej. +573001234567).")]
     public string? Celular { get; set; }
     [StringLength(60)] public string? Cargo { get; set; }
     public DateOnly? FechaIngreso { get; set; }
@@ -677,6 +689,12 @@ public class PromocionValidaDto
 
 // ---------- Catalogos ----------
 public record ServicioDto(int Id, string Nombre, decimal Precio, string Unidad, int? CategoriaId);
+
+/// <summary>Alta rápida de un servicio desde el registro de pedido (accesible al módulo PEDIDOS).</summary>
+public record ServicioRapidoRequest(
+    [Required, StringLength(120, MinimumLength = 2)] string Nombre,
+    [Range(0.01, 10000)] decimal Precio,
+    [Required, StringLength(20, MinimumLength = 1)] string Unidad);
 public record AreaLavadoDto(int Id, string Nombre, int Orden, int TiempoEstMinutos);
 
 // ---------- Caja ----------
@@ -705,6 +723,17 @@ public class MovimientoCajaDto
     public string? TipoGastoNombre { get; set; }
 }
 
+/// <summary>Un cobro concreto del pedido (adelanto, saldo o pago total), con su metodo.</summary>
+public class PagoPedidoDto
+{
+    public int Id { get; set; }
+    public DateTime Fecha { get; set; }
+    public string MetodoPago { get; set; } = "";
+    public decimal Monto { get; set; }
+    public string? Descripcion { get; set; }
+    public string? UsuarioNombre { get; set; }
+}
+
 public class GuardarCuadreRequest
 {
     [Required] public DateTime Fecha { get; set; }
@@ -724,6 +753,8 @@ public class GuardarCuadreRequest
     public decimal IngresosTarjeta { get; set; }
     [StringLength(300)] public string? Nota { get; set; }
     [StringLength(400)] public string? Observaciones { get; set; }
+    /// <summary>Desglose del conteo billete por billete, como JSON {"100":2,...}. Opcional.</summary>
+    [StringLength(500)] public string? DetalleConteo { get; set; }
 }
 
 public class CuadreCajaDto
@@ -743,6 +774,7 @@ public class CuadreCajaDto
     public decimal IngresosTarjeta { get; set; }
     public string? Nota { get; set; }
     public string? Observaciones { get; set; }
+    public string? DetalleConteo { get; set; }
     public DateTime FechaCreacion { get; set; }
 }
 
@@ -790,9 +822,59 @@ public class ConfiguracionFacturacionDto
     public bool Activo { get; set; }
     public bool TieneCertificado { get; set; }
     public bool TieneCredencialesSol { get; set; }
+    public string Proveedor { get; set; } = "SUNAT_DIRECTO";
+    [StringLength(100)] public string? ApiSunatPersonaId { get; set; }
+    [StringLength(1000)] public string? ApiSunatTokenNuevo { get; set; }
+    public bool TieneCredencialesApiSunat { get; set; }
+    [StringLength(250)] public string? DireccionFiscal { get; set; }
+    [StringLength(6, MinimumLength = 6)] public string? Ubigeo { get; set; }
+    [StringLength(4, MinimumLength = 4)] public string CodigoEstablecimiento { get; set; } = "0000";
+    [EmailAddress, StringLength(150)] public string? EmailEmisor { get; set; }
+    public int CorrelativoBoleta { get; set; }
+    public int CorrelativoFactura { get; set; }
+    public bool RequiereCertificadoLocal { get; set; }
 }
 
-public record EmitirComprobanteRequest(string Tipo); // BOLETA | FACTURA
+public record EmitirComprobanteRequest([Required] string Tipo); // BOLETA | FACTURA
+public record AnularComprobanteRequest(
+    [Required, StringLength(100, MinimumLength = 3)] string Motivo);
+
+/// <summary>Solicitud de Nota de Crédito sobre un comprobante aceptado. MotivoCodigo es del
+/// catálogo 09 de SUNAT (01 anulación de la operación, 02 anulación por error en el RUC,
+/// 03 corrección por error en la descripción, 06 devolución total…).</summary>
+public record NotaCreditoRequest(
+    [Required, StringLength(2, MinimumLength = 2)] string MotivoCodigo,
+    [Required, StringLength(250, MinimumLength = 3)] string Motivo);
+
+public record NotaDebitoRequest(
+    [Required, StringLength(2, MinimumLength = 2)] string MotivoCodigo,
+    [Required, StringLength(250, MinimumLength = 3)] string Motivo);
+
+/// <summary>Datos de traslado para emitir una Guía de Remisión Remitente (GRE) desde un comprobante.</summary>
+public record GuiaRemisionRequest(
+    [Required] string MotivoCodigo,                 // catálogo 20
+    string? MotivoDescripcion,
+    [Range(0.001, 999999)] decimal PesoBrutoTotal,
+    string? UnidadPeso,                             // KGM por defecto
+    int? NumeroBultos,
+    [Required] DateTime FechaInicioTraslado,
+    [Required] string ModalidadTransporte,          // 01 público / 02 privado
+    [Required] string PartidaUbigeo,
+    [Required] string PartidaDireccion,
+    [Required] string LlegadaUbigeo,
+    [Required] string LlegadaDireccion,
+    // Transporte público (01)
+    string? TransportistaNumDoc,
+    string? TransportistaRazonSocial,
+    // Transporte privado (02)
+    string? VehiculoPlaca,
+    string? ConductorTipoDoc,
+    string? ConductorNumDoc,
+    string? ConductorNombres,
+    string? ConductorLicencia);
+
+public record ResultadoConexionFacturacionDto(
+    bool Exitoso, string Mensaje, bool? Produccion, string? UltimoNumero, string? NumeroSugerido);
 
 public class ComprobanteDto
 {
@@ -812,7 +894,42 @@ public class ComprobanteDto
     public string Estado { get; set; } = "";
     public string? DescripcionRespuestaSunat { get; set; }
     public DateTime FechaEmision { get; set; }
+    public string Proveedor { get; set; } = "";
+    public string Ambiente { get; set; } = "";
+    public string? ExternalId { get; set; }
+    public string? CodigoRespuestaSunat { get; set; }
+    public DateTime? FechaEnvio { get; set; }
+    public DateTime? FechaRespuesta { get; set; }
+    public bool EsSimulado { get; set; }
+    public bool TieneXml { get; set; }
+    public bool TieneCdr { get; set; }
+    public string? EstadoAnulacion { get; set; }
+    public string? MotivoAnulacion { get; set; }
+    public DateTime? FechaAnulacion { get; set; }
+    // Nota de Crédito: documento que corrige/anula y motivo (catálogo 09).
+    public string? DocRefSerieNumero { get; set; }
+    public string? MotivoNotaCodigo { get; set; }
+    public string? MotivoNotaDescripcion { get; set; }
+    // Guía de Remisión: datos de traslado (null en los demás tipos).
+    public GuiaRemisionDto? Guia { get; set; }
+    public List<ComprobanteDetalleDto> Detalles { get; set; } = [];
+    public List<ComprobanteIntentoDto> Intentos { get; set; } = [];
 }
+
+public record GuiaRemisionDto(
+    string MotivoTrasladoCodigo, string? MotivoTrasladoDescripcion, decimal PesoBrutoTotal, string UnidadPeso,
+    int? NumeroBultos, DateTime FechaInicioTraslado, string ModalidadTransporte,
+    string PartidaUbigeo, string PartidaDireccion, string LlegadaUbigeo, string LlegadaDireccion,
+    string? TransportistaNumDoc, string? TransportistaRazonSocial, string? VehiculoPlaca,
+    string? ConductorTipoDoc, string? ConductorNumDoc, string? ConductorNombres, string? ConductorLicencia);
+
+public record ComprobanteDetalleDto(
+    int NumeroLinea, string Descripcion, string UnidadMedida, decimal Cantidad,
+    decimal PrecioUnitarioIgv, decimal ValorVenta, decimal Igv, decimal Total);
+
+public record ComprobanteIntentoDto(
+    long Id, string Accion, string Estado, string? Codigo, string? Descripcion,
+    DateTime Fecha, int? UsuarioId);
 
 /// <summary>KPI mensual de comprobantes: boletas y facturas emitidas por mes (conteo y monto).</summary>
 public class KpiComprobantesMesDto
@@ -826,6 +943,12 @@ public class KpiComprobantesMesDto
     public int TotalCantidad => BoletasCantidad + FacturasCantidad;
     public decimal TotalMonto => BoletasMonto + FacturasMonto;
 }
+
+/// <summary>Info del respaldo local de comprobantes: la carpeta donde se guardan XML+CDR+PDF.</summary>
+public record RespaldoInfoDto(string Carpeta);
+
+/// <summary>Resultado del backfill de respaldo: cuántos comprobantes se respaldaron y en qué carpeta.</summary>
+public record RespaldoResultadoDto(int Respaldados, string Carpeta);
 
 // ---------- Panel de propietario de plataforma (alta de negocios/tenants) ----------
 
@@ -959,6 +1082,9 @@ public class ConvertirDeliveryRequest
     [StringLength(250)] public string? ReferenciaEntrega { get; set; }
     [Range(-90d, 90d)] public decimal? LatitudEntrega { get; set; }
     [Range(-180d, 180d)] public decimal? LongitudEntrega { get; set; }
+    // Tarifa de domicilio a cobrar por convertir a Delivery. Si no llega, se usa la tarifa
+    // configurada por el negocio. Se agrega como ítem "Tarifa de domicilio" y sube el total.
+    [Range(0, 10000)] public decimal? CostoDelivery { get; set; }
 }
 
 public record LinkSeguimientoDto(Guid Token);
@@ -1039,6 +1165,10 @@ public class RepartidorPedidoDto
     public bool Entregado { get; set; }
     public string EstadoRuta { get; set; } = "SIN_RUTA";
     public DateTime? RutaIniciadaEn { get; set; }
+    // Cobro por Yape/Plin del negocio: el repartidor muestra el QR al cliente en la puerta.
+    public string? YapeNumero { get; set; }
+    public string? YapeTitular { get; set; }
+    public string? YapeQrUrl { get; set; }
 }
 
 public class UbicacionRepartidorRequest

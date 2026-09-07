@@ -26,17 +26,21 @@
 
       <label>Nombre de la empresa *</label>
       <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Lavanderia Don Pepe"
-        (ngModelChange)="onNombreChange()" />
+        (ngModelChange)="onNombreChange(); err.limpiar('nombre')" [class.invalid]="err.get('nombre')" />
+      @if (err.get('nombre')) { <small class="campo-error">{{ err.get('nombre') }}</small> }
 
       <label>Slug de acceso (URL) *</label>
       <input type="text" [(ngModel)]="form.slug" name="slug" placeholder="Ej: donpepe"
-        (ngModelChange)="onSlugChange()" />
+        (ngModelChange)="onSlugChange(); err.limpiar('slug')" [class.invalid]="err.get('slug')" />
+      @if (err.get('slug')) { <small class="campo-error">{{ err.get('slug') }}</small> }
       <p class="hint">Sus usuarios entraran por <strong>{{ urlAcceso }}</strong></p>
 
       <div class="row-2">
         <div>
           <label>RUC <small class="hint">(opcional)</small></label>
-          <input type="text" [(ngModel)]="form.rucEmpresa" name="rucEmpresa" placeholder="Ej: 20999888771" inputmode="numeric" maxlength="11" />
+          <input type="text" [(ngModel)]="form.rucEmpresa" name="rucEmpresa" placeholder="Ej: 20999888771" inputmode="numeric" maxlength="11"
+            [class.invalid]="err.get('rucEmpresa')" (ngModelChange)="err.limpiar('rucEmpresa')" />
+          @if (err.get('rucEmpresa')) { <small class="campo-error">{{ err.get('rucEmpresa') }}</small> }
         </div>
         <div>
           <label>Nombre del titular <small class="hint">(opcional)</small></label>
@@ -45,35 +49,47 @@
       </div>
 
       <label>Email del titular <small class="hint">(opcional)</small></label>
-      <input type="email" [(ngModel)]="form.titularEmail" name="titularEmail" placeholder="correo@ejemplo.com" autocomplete="email" />
+      <input type="email" [(ngModel)]="form.titularEmail" name="titularEmail" placeholder="correo@ejemplo.com" autocomplete="email"
+        [class.invalid]="err.get('titularEmail')" (ngModelChange)="err.limpiar('titularEmail')" />
+      @if (err.get('titularEmail')) { <small class="campo-error">{{ err.get('titularEmail') }}</small> }
 
       <label>Celular del titular <small class="hint">(opcional)</small></label>
       <input type="tel" [(ngModel)]="form.titularCelular" name="titularCelular" placeholder="Ej: 999888777" maxlength="20" />
 
       <label>Nombre de la primera sede *</label>
-      <input type="text" [(ngModel)]="form.sedeNombre" name="sedeNombre" placeholder="Ej: Principal" />
+      <input type="text" [(ngModel)]="form.sedeNombre" name="sedeNombre" placeholder="Ej: Principal"
+        [class.invalid]="err.get('sedeNombre')" (ngModelChange)="err.limpiar('sedeNombre')" />
+      @if (err.get('sedeNombre')) { <small class="campo-error">{{ err.get('sedeNombre') }}</small> }
 
       <h3>Usuario administrador</h3>
 
       <div class="row-2">
         <div>
           <label>Usuario (acceso) *</label>
-          <input type="text" [(ngModel)]="form.adminUsuario" name="adminUsuario" placeholder="Ej: admindonpepe" autocomplete="username" />
+          <input type="text" [(ngModel)]="form.adminUsuario" name="adminUsuario" placeholder="Ej: admindonpepe" autocomplete="username"
+            [class.invalid]="err.get('adminUsuario')" (ngModelChange)="err.limpiar('adminUsuario')" />
+          @if (err.get('adminUsuario')) { <small class="campo-error">{{ err.get('adminUsuario') }}</small> }
         </div>
         <div>
           <label>Contraseña *</label>
           <div class="pass-row">
-            <input type="text" [(ngModel)]="form.adminPassword" name="adminPassword" autocomplete="new-password" placeholder="Mín. 8, con números" />
+            <input type="text" [(ngModel)]="form.adminPassword" name="adminPassword" autocomplete="new-password" placeholder="Mín. 8, con números"
+              [class.invalid]="err.get('adminPassword')" (ngModelChange)="err.limpiar('adminPassword')" />
             <button type="button" class="btn btn--ghost btn--sm" (click)="generarPassword()">Generar</button>
           </div>
+          @if (err.get('adminPassword')) { <small class="campo-error">{{ err.get('adminPassword') }}</small> }
         </div>
       </div>
 
       <label>Nombre completo *</label>
-      <input type="text" [(ngModel)]="form.adminNombreCompleto" name="adminNombreCompleto" placeholder="Ej: Pepe Perez" />
+      <input type="text" [(ngModel)]="form.adminNombreCompleto" name="adminNombreCompleto" placeholder="Ej: Pepe Perez"
+        [class.invalid]="err.get('adminNombreCompleto')" (ngModelChange)="err.limpiar('adminNombreCompleto')" />
+      @if (err.get('adminNombreCompleto')) { <small class="campo-error">{{ err.get('adminNombreCompleto') }}</small> }
 
       <label>Email <small class="hint">(opcional)</small></label>
-      <input type="email" [(ngModel)]="form.adminEmail" name="adminEmail" placeholder="correo@ejemplo.com" autocomplete="email" />
+      <input type="email" [(ngModel)]="form.adminEmail" name="adminEmail" placeholder="correo@ejemplo.com" autocomplete="email"
+        [class.invalid]="err.get('adminEmail')" (ngModelChange)="err.limpiar('adminEmail')" />
+      @if (err.get('adminEmail')) { <small class="campo-error">{{ err.get('adminEmail') }}</small> }
 
       @if (errorForm()) {
         <div class="form__error" role="alert">{{ errorForm() }}</div>

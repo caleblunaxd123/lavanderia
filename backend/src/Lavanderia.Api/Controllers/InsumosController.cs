@@ -103,6 +103,7 @@ public class InsumosController : TenantAwareControllerBase
                 UnidadMedida = unidad,
                 StockActual = f.StockActual,
                 StockMinimo = f.StockMinimo,
+                Clase = NormalizarClase(f.Clase),
                 Activo = true
             }, ct);
             resultado.Creados++;

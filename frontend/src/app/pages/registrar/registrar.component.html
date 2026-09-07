@@ -48,12 +48,18 @@
       <p>Cliente: <strong>{{ pedidoCreado()?.clienteNombre }}</strong></p>
       <p>Total: <strong>S/ {{ (pedidoCreado()?.total || 0) | number:'1.2-2' }}</strong></p>
 
-      <button class="btn btn--primario btn--grande" (click)="imprimirTicket()">
-        <app-icon name="printer" [size]="16"></app-icon> Imprimir ticket
+      <!-- Botón principal (celeste): ticket de PRODUCCIÓN, que va con las prendas al taller. -->
+      <button class="btn btn--primario btn--grande" (click)="imprimirTicket('produccion')">
+        <app-icon name="printer" [size]="16"></app-icon> Imprimir ticket de producción
       </button>
 
-      @if (notificarWhatsapp && pedidoCreado()?.clienteCelular) {
-        <button class="btn btn--secundario btn--grande" (click)="enviarWhatsapp()">
+      <button class="btn btn--secundario btn--grande" (click)="imprimirTicket('cliente')">
+        <app-icon name="printer" [size]="16"></app-icon> Imprimir ticket del cliente
+      </button>
+
+      <!-- WhatsApp con seguimiento: solo tiene sentido cuando el pedido es Delivery. -->
+      @if (notificarWhatsapp && pedidoCreado()?.clienteCelular && pedidoCreado()?.modalidad === 'Delivery') {
+        <button class="btn btn--wsp btn--grande" (click)="enviarEnCamino()">
           <app-icon name="whatsapp" [size]="16"></app-icon> Enviar pedido y seguimiento
         </button>
       }
@@ -128,9 +134,8 @@
         <input type="text" placeholder="Nombre completo" [(ngModel)]="nombre" />
 
         <label>Celular *</label>
-        <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
-               placeholder="9XXXXXXXX" [(ngModel)]="celular" />
-        <p class="hint">Necesario para avisar por WhatsApp y compartir el seguimiento del pedido.</p>
+        <app-telefono-pais [(ngModel)]="celular" inputId="celular"></app-telefono-pais>
+        <p class="hint">Necesario para avisar por WhatsApp y compartir el seguimiento del pedido. Para un número extranjero, elige el país en el selector.</p>
 
         <label>Dirección habitual @if (modalidad === 'Recojo') { <small class="hint">*</small> }</label>
         <input type="text" [placeholder]="modalidad === 'Recojo' ? 'Dirección donde recoger el pedido' : 'Dirección habitual (opcional)'" [(ngModel)]="direccion" />
@@ -150,12 +155,30 @@
 
         <label>Productos y servicios</label>
         <div class="row-agregar">
-          <select [(ngModel)]="servicioSeleccionadoId">
-            <option [ngValue]="''" disabled>Escoge un servicio...</option>
-            @for (s of catalogo(); track s.id) {
-              <option [ngValue]="s.id">{{ s.nombre }} — S/ {{ s.precio }} / {{ s.unidad }}</option>
+          <div class="combo-servicio">
+            <input type="text" class="combo-servicio__input" autocomplete="off" inputmode="search"
+              [value]="busquedaServicio()"
+              (input)="onBuscarServicio($any($event.target).value)"
+              (focus)="comboServicioAbierto.set(true)"
+              (blur)="cerrarComboServicio()"
+              (keydown.escape)="cerrarComboServicio()"
+              (keydown.enter)="$event.preventDefault(); catalogoFiltrado()[0] && elegirServicio(catalogoFiltrado()[0])"
+              placeholder="Escribe para buscar un servicio…" />
+            @if (comboServicioAbierto()) {
+              <ul class="combo-servicio__lista">
+                @for (s of catalogoFiltrado(); track s.id) {
+                  <li>
+                    <button type="button" class="combo-servicio__item" (mousedown)="elegirServicio(s)">
+                      <span class="combo-servicio__nombre">{{ s.nombre }}</span>
+                      <span class="combo-servicio__precio">S/ {{ s.precio }} / {{ s.unidad }}</span>
+                    </button>
+                  </li>
+                } @empty {
+                  <li class="combo-servicio__vacio">Sin resultados para “{{ busquedaServicio() }}”. Usa <strong>“Nuevo”</strong> para crearlo.</li>
+                }
+              </ul>
             }
-          </select>
+          </div>
           <button class="btn btn--secundario" (click)="agregarItem()" [disabled]="!servicioSeleccionadoId">Agregar</button>
           <button type="button" class="btn btn--ghost btn-nuevo-servicio" (click)="abrirNuevoServicio()"
             title="Crear un producto que no está en la lista">
@@ -188,7 +211,18 @@
                   }
                 </td>
                 <td>{{ it.nombre }} <small>({{ it.unidad }})</small></td>
-                <td>S/ {{ it.precio.toFixed(2) }}</td>
+                <td>
+                  @if (esItemDelivery(it.servicioId)) {
+                    S/ {{ it.precio.toFixed(2) }}
+                  } @else {
+                    <div class="input-precio">
+                      <span>S/</span>
+                      <input type="number" step="0.10" min="0" [ngModel]="it.precio"
+                        (ngModelChange)="cambiarPrecio(it.servicioId, $event)"
+                        title="Precio editable: el del catálogo es solo referencial" />
+                    </div>
+                  }
+                </td>
                 <td>S/ {{ (it.precio * it.cantidad).toFixed(2) }}</td>
                 <td><button class="btn-quitar" (click)="quitarItem(it.servicioId)"><app-icon name="close" [size]="11"></app-icon></button></td>
               </tr>

@@ -146,7 +146,7 @@ export class HeaderComponent implements OnInit {
       label: 'Cuadre de Caja', path: '/cuadre-caja', modulo: 'CAJA', icono: 'cash',
       children: [
         { label: 'Cuadre del día', path: '/cuadre-caja' },
-        { label: 'Reporte de cuadres', path: '/reportes/cuadres-caja', modulo: 'REPORTES' },
+        { label: 'Reporte de cuadres', path: '/reportes/cuadres-caja', modulo: 'CAJA' },
       ]
     },
   ];
@@ -170,7 +170,7 @@ export class HeaderComponent implements OnInit {
       ]
     },
     { label: 'Inventario', path: '/inventario', modulo: 'INVENTARIO', icono: 'package' },
-    { label: 'Facturación electrónica', path: '/ajustes/facturacion-electronica', modulo: 'AJUSTES', icono: 'note' },
+    { label: 'Comprobantes electrónicos', path: '/facturacion/comprobantes', modulo: 'PEDIDOS', icono: 'note' },
     {
       label: 'Ajustes', path: '/ajustes', modulo: 'AJUSTES', icono: 'settings',
       children: [

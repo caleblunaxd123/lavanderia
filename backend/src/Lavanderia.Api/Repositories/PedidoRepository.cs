@@ -1,4 +1,5 @@
 using Lavanderia.Api.Domain;
+using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Infrastructure;
 using Microsoft.Data.SqlClient;
 using System.Data;
@@ -21,6 +22,7 @@ public interface IPedidoRepository
         int? nuevaAreaId, string nuevoEstado, int? usuarioId, string? nota, string actorTipo,
         int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorial>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
+    Task<List<PagoPedidoDto>> ObtenerPagosAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task<Dictionary<string, int>> ContadoresPorEstadoAsync(int sedeId, CancellationToken ct = default);
     Task<Dictionary<int, int>> ConteoPorAreaAsync(int sedeId, CancellationToken ct = default);
     Task<decimal> VentasDelDiaAsync(DateTime fecha, int sedeId, CancellationToken ct = default);
@@ -545,6 +547,36 @@ public class PedidoRepository : IPedidoRepository
             Fecha = r.GetDateTime(r.GetOrdinal("Fecha")),
             Nota = r.GetNullableString("Nota"),
             NotificadoWsp = r.GetBoolean(r.GetOrdinal("NotificadoWsp"))
+        }, ct);
+    }
+
+    /// <summary>
+    /// Cobros registrados de un pedido, con su metodo de pago. Se leen de MovimientoCaja,
+    /// que es donde queda la plata: el pedido solo guarda el acumulado (MontoPagado) y por eso
+    /// un adelanto en Yape no se distinguia de uno en efectivo al mirar la orden.
+    /// </summary>
+    public async Task<List<PagoPedidoDto>> ObtenerPagosAsync(int pedidoId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT m.Id, m.Fecha, m.MetodoPago, m.Monto, m.Descripcion, u.NombreCompleto AS UsuarioNombre
+            FROM dbo.MovimientoCaja m
+            INNER JOIN dbo.Pedido p ON p.Id = m.PedidoId
+            LEFT JOIN dbo.Usuario u ON u.Id = m.UsuarioId
+            WHERE m.PedidoId = @PedidoId AND m.Tipo = 'INGRESO' AND p.SedeId = @SedeId
+            ORDER BY m.Fecha ASC";
+        cmd.AddParam("@PedidoId", pedidoId);
+        cmd.AddParam("@SedeId", sedeId);
+        return await cmd.ReadListAsync(r => new PagoPedidoDto
+        {
+            Id = r.GetInt32(r.GetOrdinal("Id")),
+            Fecha = r.GetDateTime(r.GetOrdinal("Fecha")),
+            MetodoPago = r.GetString(r.GetOrdinal("MetodoPago")),
+            Monto = r.GetDecimal(r.GetOrdinal("Monto")),
+            Descripcion = r.GetNullableString("Descripcion"),
+            UsuarioNombre = r.GetNullableString("UsuarioNombre")
         }, ct);
     }
 

@@ -13,17 +13,19 @@ import { CodigoGenerado, PromocionesService } from '../../core/services/promocio
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { ToastService } from '../../core/services/toast.service';
 import { esCelularValido } from '../../core/util/telefono';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importador-masivo/importador-masivo.component';
 
 @Component({
   selector: 'app-clientes',
-  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective, ImportadorMasivoComponent, MiniBarrasComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, SoloDigitosDirective, ImportadorMasivoComponent, MiniBarrasComponent, TelefonoPaisComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.scss'
 })
@@ -64,6 +66,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
   confirmarEliminar = signal<Cliente | null>(null);
   guardando = signal(false);
   errorNuevo = signal<string | null>(null);
+  readonly err = new ErroresCampo();
 
   // ---------- Pestañas ----------
   readonly tab = signal<'buscar' | 'frecuentes' | 'unir'>('buscar');
@@ -225,6 +228,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
   abrirModal() {
     this.nuevoCliente = { nombre: '', celular: '', dni: '', direccion: '', puntos: 0 };
     this.errorNuevo.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -263,14 +267,18 @@ export class ClientesComponent implements OnInit, OnDestroy {
   }
 
   guardar() {
-    if (!this.nuevoCliente.nombre?.trim()) {
-      this.errorNuevo.set('El nombre es obligatorio.');
-      return;
-    }
-    if (!esCelularValido(this.nuevoCliente.celular)) {
-      this.errorNuevo.set('El celular debe tener 9 dígitos y empezar con 9 (o déjalo vacío).');
-      return;
-    }
+    const errs: Record<string, string> = {};
+    const dni = (this.nuevoCliente.dni ?? '').toString().trim();
+    const ruc = (this.nuevoCliente.documentoFiscal ?? '').toString().trim();
+
+    if (!this.nuevoCliente.nombre?.trim()) errs['nombre'] = 'Ingresa el nombre del cliente.';
+    if (!esCelularValido(this.nuevoCliente.celular))
+      errs['celular'] = 'Revisa el celular: 9 dígitos para Perú, o elige el país para un número extranjero (o déjalo vacío).';
+    if (dni && !/^\d{8}$/.test(dni)) errs['dni'] = 'El DNI debe tener 8 dígitos (o déjalo vacío).';
+    if (ruc && !/^\d{11}$/.test(ruc)) errs['ruc'] = 'El RUC debe tener 11 dígitos (o déjalo vacío).';
+
+    this.err.set(errs);
+    if (this.err.hay) { this.errorNuevo.set('Revisa los campos marcados en rojo.'); return; }
     this.guardando.set(true);
     this.errorNuevo.set(null);
 
@@ -297,6 +305,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
         this.guardando.set(false);
         this.modalAbierto.set(false);
         this.editando.set(null);
+        this.err.limpiarTodo();
         this.toast.exito(edit
           ? `Cliente "${this.nuevoCliente.nombre}" actualizado`
           : `Cliente "${res?.nombre ?? this.nuevoCliente.nombre}" registrado`);
@@ -305,7 +314,13 @@ export class ClientesComponent implements OnInit, OnDestroy {
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el cliente.';
-        this.errorNuevo.set(msg);
+        const low = msg.toLowerCase();
+        const campo = low.includes('celular') ? 'celular'
+          : low.includes('dni') ? 'dni'
+          : low.includes('ruc') || low.includes('fiscal') ? 'ruc'
+          : low.includes('nombre') ? 'nombre' : null;
+        if (campo) { this.err.marcar(campo, msg); this.errorNuevo.set('Revisa los campos marcados en rojo.'); }
+        else this.errorNuevo.set(msg);
         this.toast.desdeHttp(err, msg);
       }
     });
@@ -315,6 +330,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
     this.editando.set(c);
     this.nuevoCliente = { ...c };
     this.errorNuevo.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 

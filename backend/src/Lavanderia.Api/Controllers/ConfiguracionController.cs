@@ -140,6 +140,9 @@ public class ConfiguracionController : TenantAwareControllerBase
         existente.CostoDelivery = dto.CostoDelivery;
         existente.ValorPuntoCanje = dto.ValorPuntoCanje;
         existente.MaxDescuentoPct = dto.MaxDescuentoPct;
+        existente.YapeNumero = dto.YapeNumero;
+        existente.YapeTitular = dto.YapeTitular;
+        existente.YapeQrUrl = dto.YapeQrUrl;
 
         await _repo.ActualizarAsync(existente, NegocioId, ct);
 
@@ -179,6 +182,9 @@ public class ConfiguracionController : TenantAwareControllerBase
         NotasProduccion = c.NotasProduccion,
         CostoDelivery = c.CostoDelivery,
         ValorPuntoCanje = c.ValorPuntoCanje,
-        MaxDescuentoPct = c.MaxDescuentoPct
+        MaxDescuentoPct = c.MaxDescuentoPct,
+        YapeNumero = c.YapeNumero,
+        YapeTitular = c.YapeTitular,
+        YapeQrUrl = c.YapeQrUrl
     };
 }

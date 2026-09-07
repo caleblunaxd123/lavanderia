@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { fechaLocalIso } from '../../core/util/fecha-local';
 import { Router } from '@angular/router';
 import { ReportesService, TableroSla, VistaGerencial } from '../../core/services/reportes.service';
 import { formatearDuracion } from '../../core/util/duracion';
@@ -47,7 +48,7 @@ export class VistaGerencialComponent implements OnInit {
     const k = this.kpis(); if (!k) return [];
     const serie = k.ventasUltimos14Dias ?? [];
     const max = Math.max(1, ...serie.map(p => p.total));
-    const hoyIso = new Date().toISOString().slice(0, 10);
+    const hoyIso = fechaLocalIso();
     return serie.map(p => ({
       fecha: p.fecha,
       total: p.total,

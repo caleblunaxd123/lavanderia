@@ -130,6 +130,12 @@ public class PedidosController : TenantAwareControllerBase
     public async Task<ActionResult<List<PedidoHistorialDto>>> Historial(int id, CancellationToken ct)
         => Ok(await _service.ObtenerHistorialAsync(id, SedeRequeridaId, ct));
 
+    /// <summary>Cobros registrados del pedido, cada uno con su metodo de pago.</summary>
+    [HttpGet("{id:int}/pagos")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<List<PagoPedidoDto>>> Pagos(int id, CancellationToken ct)
+        => Ok(await _service.ObtenerPagosAsync(id, SedeRequeridaId, ct));
+
     [HttpGet("dashboard")]
     [Authorize(Policy = "Modulo:INICIO")]
     public async Task<ActionResult<DashboardDto>> Dashboard(CancellationToken ct)

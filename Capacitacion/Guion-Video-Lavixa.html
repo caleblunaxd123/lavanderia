@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guion de video — LaviSystem</title>
+<style>
+  :root{
+    --navy:#0d3b66; --teal:#1a9cb0; --gold:#f2b544; --ink:#1f2933;
+    --muted:#5b6b7a; --line:#d7e2ea; --bg:#ffffff; --panel:#eef5f9; --panel2:#fff7e6;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{
+    font-family:"Segoe UI",Calibri,Arial,sans-serif;
+    color:var(--ink); background:var(--bg); margin:0;
+    font-size:12.3pt; line-height:1.55;
+  }
+  @page{ size:A4; margin:16mm 16mm 18mm 16mm; }
+
+  .cover{ text-align:center; padding:34mm 0 8mm; }
+  .cover .brand{ color:var(--teal); font-weight:800; letter-spacing:.28em; font-size:12pt; }
+  .cover h1{ color:var(--navy); font-size:30pt; margin:6mm 0 3mm; line-height:1.1; }
+  .cover .sub{ color:var(--muted); font-size:13.5pt; max-width:150mm; margin:0 auto; }
+  .cover .tag{ margin-top:9mm; color:var(--navy); font-weight:700; }
+
+  .howto{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:6mm 7mm; margin:8mm 0 0; text-align:left;
+  }
+  .howto h3{ margin:0 0 3mm; color:var(--navy); font-size:13pt; text-align:center; }
+  .howto ul{ margin:0; padding-left:5mm; }
+  .howto li{ margin:1.5mm 0; }
+  .key{ display:inline-block; padding:.2mm 2mm; border-radius:4px; font-weight:700; font-size:10.5pt; }
+  .key.say{ background:#e8f6ef; color:#12704e; }
+  .key.do{ background:#e9eef3; color:#3a4a5a; }
+
+  .module{ page-break-before:always; padding-top:2mm; }
+  .mhead{ display:flex; align-items:baseline; gap:5mm; border-bottom:2px solid var(--navy); padding-bottom:3mm; margin-bottom:5mm; }
+  .mnum{ color:#fff; background:var(--navy); font-weight:800; font-size:14pt; border-radius:8px; padding:1.5mm 4mm; }
+  .mtitle{ color:var(--navy); font-size:19pt; font-weight:800; margin:0; }
+  .mmeta{ color:var(--muted); font-size:10.5pt; margin:0 0 5mm; }
+
+  /* Lo que se dice = texto normal, buen tamaño para leer */
+  .say-p{ margin:0 0 3.6mm; }
+  .say-p strong{ color:var(--navy); }
+
+  /* Lo que se hace en pantalla (no leer) */
+  .screen{
+    background:var(--panel); border-left:4px solid var(--teal);
+    border-radius:0 8px 8px 0; padding:3mm 5mm; margin:3.4mm 0 4.2mm; font-size:11pt; color:#274b57;
+    page-break-inside:avoid;
+  }
+  .screen .lbl{ color:var(--teal); letter-spacing:.06em; font-size:9.6pt; display:block; margin-bottom:1mm; text-transform:uppercase; font-weight:700; }
+  .screen b{ font-weight:700; color:#123f4a; }
+
+  .tip{
+    background:var(--panel2); border-left:4px solid var(--gold);
+    border-radius:0 8px 8px 0; padding:3mm 5mm; margin:3.4mm 0 4.2mm; font-size:11pt; color:#6b4e12;
+    page-break-inside:avoid;
+  }
+  .tip .lbl{ color:#9a6a00; letter-spacing:.06em; font-size:9.6pt; display:block; margin-bottom:1mm; text-transform:uppercase; font-weight:700; }
+  .tip b{ font-weight:700; color:#6b4e12; }
+
+  .cue{ color:var(--muted); font-style:italic; font-size:10.5pt; margin:0 0 4mm; }
+  h4.step{ color:var(--navy); font-size:12.5pt; margin:5mm 0 2mm; }
+  .modtag{ display:inline-block; background:#e7f4f7; color:var(--teal); font-weight:700; border-radius:6px; padding:.3mm 2.4mm; font-size:11pt; }
+  .modtag.b{ background:#eaf0f6; color:var(--navy); }
+  .modtag.g{ background:#fbf0d6; color:#9a6a00; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="brand">LAVANDERÍA LAVIXA · LAVISYSTEM</div>
+  <h1>Guion de video para la capacitación</h1>
+  <p class="sub">Narración lista para leer, módulo por módulo. Un video por cada punto del sistema: registrar, seguir, cobrar, cuadrar la caja y emitir comprobantes.</p>
+  <p class="tag">12 módulos · aprox. 25–30 min de grabación en total</p>
+
+  <div class="howto">
+    <h3>Cómo usar este guion</h3>
+    <ul>
+      <li><span class="key say">TEXTO NORMAL</span> &nbsp;es lo que <b>dices en voz alta</b>, tal cual está escrito. Puedes adaptarlo a tu forma de hablar.</li>
+      <li><span class="key do">EN PANTALLA</span> &nbsp;(cajas celestes) es lo que <b>haces en la pantalla</b> mientras hablas. <b>No se lee.</b></li>
+      <li><span class="key do">CONSEJO</span> &nbsp;(cajas amarillas) son recordatorios para ti; tampoco se leen.</li>
+      <li>Graba <b>un video por módulo</b>. Antes de grabar cada uno, ten la pantalla ya abierta en el punto de inicio que indica la caja celeste.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 1 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">1</span><h2 class="mtitle">Bienvenida</h2></div>
+  <p class="mmeta">Video corto de presentación · a cámara, sin sistema todavía.</p>
+
+  <p class="say-p">¡Hola! Bienvenida a la lavandería. En estos videos te voy a enseñar a usar el sistema paso a paso. No te preocupes si es tu primera vez con algo así: es sencillo, y lo vamos a ver con calma, uno por uno.</p>
+  <p class="say-p">Al terminar vas a poder hacer todo tu día a día en el sistema: registrar los pedidos que trae el cliente, seguir en qué parte del proceso va cada ropa, cobrar, cerrar la caja al final del día y emitir las boletas o facturas.</p>
+  <p class="say-p">Una cosa importante antes de empezar: <strong>el sistema no cambia tu trabajo, solo lo ordena.</strong> Todo queda guardado —qué trajo cada cliente, cuánto pagó y en qué va su pedido— y eso nos evita confusiones y reclamos. Puedes equivocarte mientras aprendes; para eso practicamos. Empecemos.</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Habla tranquila y sonríe. Este primer video marca el tono: cercano y sin tecnicismos.</div>
+</section>
+
+<!-- 2 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">2</span><h2 class="mtitle">Ingresar al sistema</h2></div>
+  <p class="mmeta">Graba la pantalla desde el navegador cerrado o en el enlace del sistema.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Abre Chrome en el enlace del sistema (tenlo guardado en favoritos). Debe verse la pantalla de <b>Iniciar sesión</b>.</div>
+
+  <p class="say-p">Para entrar al sistema abres este enlace en el navegador, en Chrome. Te recomiendo guardarlo en favoritos para tenerlo siempre a la mano.</p>
+  <p class="say-p">Aquí escribes tu <strong>usuario</strong> y tu <strong>clave</strong>, que te da el administrador. Ojo: tu usuario y tu clave son <strong>personales, no se comparten con nadie.</strong></p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Escribe el usuario y la clave. Toca el ícono del <b>ojito</b> para mostrar la clave y que se vea que la estás escribiendo bien.</div>
+
+  <p class="say-p">Si te equivocas al escribir la clave, toca este ojito para verla y corregirla. Y si algún día la olvidas, no te preocupes: le pides al administrador que te la restablezca.</p>
+  <p class="say-p">Le das a <strong>Ingresar</strong>, y ahora te pide elegir la <strong>sede</strong>. Seleccionas tu sede y listo: con eso ya estás dentro del sistema.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Clic en <b>Ingresar</b> → elige la sede → muestra que llegas a la pantalla de inicio.</div>
+  <div class="tip"><span class="lbl">Consejo</span>Nunca uses la cuenta de otra persona. Cada quien entra con la suya.</div>
+</section>
+
+<!-- 3 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">3</span><h2 class="mtitle">Tu pantalla de inicio y tus módulos</h2></div>
+  <p class="mmeta">Ya dentro del sistema, en la pantalla de inicio.</p>
+
+  <p class="say-p">Esta es tu pantalla de inicio. Fíjate en el <strong>menú de la izquierda</strong>: ahí están solo <strong>tus módulos</strong>, los que vas a usar.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Señala con el cursor cada opción del menú al ir nombrándola.</div>
+
+  <p class="say-p">Tienes el <strong>Dashboard</strong>, que es el resumen del día: cuántos pedidos hay, cuáles están pendientes y los avisos. La <strong>Lista de Pedidos</strong>, donde ves todos los pedidos y los puedes buscar y avanzar. <strong>Registrar</strong>, para crear un pedido nuevo. El <strong>Cuadre de Caja</strong>, para cerrar el día. <strong>Clientes</strong>, para buscar y registrar clientes. Y <strong>Comprobantes electrónicos</strong>, donde ves las boletas y facturas emitidas.</p>
+  <p class="say-p">Vas a notar que <strong>no aparecen Ajustes, Reportes ni Inventario.</strong> Eso es a propósito: esos los maneja el administrador. Así tu pantalla queda simple y te concentras en atender y registrar.</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Repite la idea con seguridad: "si no lo ves en tu menú, no es tu tarea, y está bien así".</div>
+</section>
+
+<!-- 4 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">4</span><h2 class="mtitle">Registrar un pedido (los 5 pasos)</h2></div>
+  <p class="mmeta">El módulo más importante. Registra un pedido de ejemplo EN VIVO mientras hablas.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Entra a <b>Registrar</b>. La pantalla se lee de arriba hacia abajo, en 5 pasos.</div>
+
+  <p class="say-p">Cuando llega un cliente con su ropa, entras a <strong>Registrar</strong>. La pantalla te guía de arriba hacia abajo, en cinco pasos. Vamos uno por uno.</p>
+
+  <h4 class="step">Paso 1 — Datos del cliente</h4>
+  <p class="say-p">Primero, el cliente. Si ya vino antes, lo buscas por su nombre o su celular y aparece solo. Si es nuevo, escribes su <strong>nombre</strong> y su <strong>celular</strong>. El celular es importante, porque por ahí le avisamos por WhatsApp.</p>
+  <div class="screen"><span class="lbl">En pantalla</span>Escribe un nombre de ejemplo (ej. "María Gómez") y un celular.</div>
+
+  <h4 class="step">Paso 2 — ¿Qué trajo el cliente?</h4>
+  <p class="say-p">Ahora anotas lo que trajo. Eliges el servicio en la lista —por ejemplo, camisas, o lavado por kilo— y le das <strong>Agregar</strong>. Repites por cada cosa que traiga. Si una prenda viene manchada o es delicada, tómale una <strong>foto</strong>: eso nos protege de reclamos después.</p>
+  <div class="screen"><span class="lbl">En pantalla</span>Elige un servicio → <b>Agregar</b>. Muestra cómo se suma al detalle y cambia el total.</div>
+
+  <h4 class="step">Paso 3 — ¿Cuándo estará listo?</h4>
+  <p class="say-p">Pones la fecha y la hora para el cliente. Puedes escribirla, o usar los botones rápidos como <strong>En 24 horas</strong> o <strong>En 48 horas</strong>.</p>
+
+  <h4 class="step">Paso 4 — Descuento</h4>
+  <p class="say-p">Este paso es solo si aplica: si el cliente tiene un <strong>código de promoción</strong>, o si es un pedido <strong>urgente</strong>. Si no, lo dejas como está.</p>
+
+  <h4 class="step">Paso 5 — Pago</h4>
+  <p class="say-p">Por último, el pago. Anotas cuánto paga ahora. Puede pagar todo, una parte, o dejarlo para cuando recoja. Y dejas marcado <strong>"Enviar confirmación por WhatsApp"</strong>.</p>
+  <div class="tip"><span class="lbl">Consejo</span>Con esa casilla marcada, apenas registres se abre WhatsApp con el mensaje del pedido ya escrito para el cliente; solo tocas enviar.</div>
+
+  <p class="say-p">Y para terminar, le das a <strong>Registrar pedido</strong>, arriba a la derecha. Listo: se crea el pedido y sale su ticket. Así de fácil.</p>
+  <div class="screen"><span class="lbl">En pantalla</span>Clic en <b>Registrar pedido</b>. Muestra la pantalla de "Pedido registrado".</div>
+</section>
+
+<!-- 5 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">5</span><h2 class="mtitle">Tienda, Recojo y Delivery</h2></div>
+  <p class="mmeta">El punto que más se confunde. Explícalo despacio y muestra el cambio en pantalla.</p>
+
+  <p class="say-p">Arriba del pedido eliges la <strong>modalidad</strong>, que es cómo se mueve la ropa. Hay tres, y es importante que las diferencies bien.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Muestra los tres botones de arriba: <b>Tienda · Recojo · Delivery</b>. Ve tocando cada uno mientras lo explicas.</div>
+
+  <p class="say-p">La primera es <span class="modtag">Tienda</span>. Es la más común: <strong>todo pasa en el local.</strong> El cliente trae su ropa y él mismo la recoge en la tienda. No hay traslado ni costo de envío.</p>
+
+  <p class="say-p">La segunda es <span class="modtag b">Recojo</span>, y esta es la que hay que tener clara. <strong>Recojo es recojo a domicilio: nosotros vamos a la casa del cliente a recoger su ropa.</strong> Por eso, cuando eliges Recojo, el sistema te pide la <strong>dirección donde recoger</strong> y agrega una <strong>tarifa de recojo</strong>.</p>
+
+  <p class="say-p">Y la tercera es <span class="modtag g">Delivery</span>, que es lo contrario: <strong>nosotros llevamos la ropa limpia a la casa del cliente.</strong> Ahí el sistema te pide la dirección, el distrito, marcar el punto en el mapa, y agrega la tarifa de envío.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Toca <b>Recojo</b> y muestra el campo de dirección de recojo. Luego toca <b>Delivery</b> y muestra dirección, distrito y mapa.</div>
+
+  <p class="say-p">La forma fácil de recordarlo es esta: en <strong>Recojo, nosotros vamos a buscar la ropa</strong>. En <strong>Delivery, nosotros la llevamos</strong>. Y en Tienda, el cliente hace todo el viaje.</p>
+
+  <p class="say-p">Un último dato útil: si ya registraste un pedido en Tienda y el cliente después pide delivery, no lo vuelvas a crear. Abres el pedido y usas <strong>"Convertir a Delivery"</strong>: se agrega la tarifa, y conviene reimprimir el ticket.</p>
+</section>
+
+<!-- 6 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">6</span><h2 class="mtitle">El ticket</h2></div>
+  <p class="mmeta">Justo después de registrar, en la pantalla de confirmación.</p>
+
+  <p class="say-p">Apenas registras el pedido, aparece esta pantalla de confirmación con el pedido creado. Desde aquí imprimes los tickets.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Señala los botones de la pantalla de confirmación: imprimir ticket del <b>cliente</b>, imprimir ticket de <b>producción</b>, y enviar por WhatsApp.</div>
+
+  <p class="say-p">Hay dos tickets. El <strong>ticket del cliente</strong> es el que le entregas a él: es su comprobante para recoger su ropa. Siempre imprímelo y dáselo.</p>
+  <p class="say-p">El <strong>ticket de producción</strong> es para el taller: lleva los datos del cliente, la descripción de las prendas, las observaciones y lo que pagó. Ese va con la ropa por el proceso, para que en cada área sepan qué es y qué se pidió.</p>
+  <p class="say-p">Y si el cliente pierde su ticket o necesitas otra copia, no hay problema: abres el pedido y le das <strong>"Reimprimir ticket"</strong>.</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Regla simple: ticket del cliente = para el cliente; ticket de producción = para el taller.</div>
+</section>
+
+<!-- 7 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">7</span><h2 class="mtitle">Seguimiento: el avance por áreas</h2></div>
+  <p class="mmeta">Abre un pedido y muestra la barra de áreas.</p>
+
+  <p class="say-p">Cada pedido pasa por varias áreas hasta llegar a la entrega: <strong>Recepción, Lavado, Secado, Doblado, Control de calidad, Embolsado</strong> y por último <strong>Entrega</strong>. Cuando abres un pedido, ves una barra con todos esos pasos.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Abre un pedido y muestra la barra de progreso con las áreas.</div>
+
+  <p class="say-p">La idea es muy simple: <strong>el sistema debe reflejar dónde está realmente la ropa.</strong> Si ya la lavaste, la pasas a Secado. Si ya la doblaste, la pasas a la siguiente. Así, en cualquier momento, todos sabemos en qué va cada pedido y ningún cliente se queda sin respuesta.</p>
+</section>
+
+<!-- 8 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">8</span><h2 class="mtitle">Avanzar, cobrar y entregar</h2></div>
+  <p class="mmeta">Dentro de un pedido. Muestra Avanzar, Cobrar y la entrega.</p>
+
+  <p class="say-p">Para trabajar un pedido, primero lo abres. Lo buscas en la <strong>Lista de Pedidos</strong> por su número, el nombre, el celular o el DNI del cliente. También hay un botón verde <strong>"Pasar a…"</strong> en la misma lista, para avanzarlo rápido.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Abre un pedido desde la lista. Señala el botón azul <b>"Avanzar a…"</b>.</div>
+
+  <p class="say-p">Dentro del pedido, el botón azul <strong>"Avanzar a…"</strong> lo mueve al siguiente paso. Le das cada vez que termines un área, hasta llegar a Entrega.</p>
+
+  <p class="say-p">Cuando el cliente va a pagar, le das a <strong>Cobrar</strong>. Se abre una ventanita donde eliges el método —efectivo, Yape, Plin, transferencia o tarjeta— y registras el pago. Y aquí algo muy práctico: en ese mismo paso puedes <strong>emitir la boleta al toque</strong>, con el botón "Cobrar y emitir boleta". Así cobras y boleteas en una sola acción.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Clic en <b>Cobrar</b> → muestra el método de pago y la opción de emitir la boleta en el mismo paso.</div>
+
+  <p class="say-p">Y cuando el pedido ya está <strong>pagado</strong> y llegó a <strong>Entrega</strong>, le entregas su ropa al cliente y marcas el pedido como entregado. Con eso el pedido queda cerrado.</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Aclara que "avanzar de área" y "cobrar" son dos cosas distintas, aunque las dos se hacen desde el mismo pedido.</div>
+</section>
+
+<!-- 9 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">9</span><h2 class="mtitle">Delivery: avisar al cliente por WhatsApp</h2></div>
+  <p class="mmeta">En un pedido de delivery. Muestra el botón verde de WhatsApp.</p>
+
+  <p class="say-p">Cuando el pedido es de <strong>delivery</strong>, además tienes el botón verde de <strong>WhatsApp</strong>. Con ese botón le mandas al cliente un mensaje de que su pedido va <strong>en camino</strong>, con el enlace para seguirlo y el saldo que debe.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>En un pedido de delivery, muestra el botón verde de WhatsApp y el mensaje que se arma.</div>
+
+  <p class="say-p">En la puerta, cuando entregas, le puedes mostrar el <strong>QR de Yape</strong> para que pague ahí mismo. Y cuando ya entregaste, marcas el pedido como entregado, igual que en tienda.</p>
+</section>
+
+<!-- 10 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">10</span><h2 class="mtitle">Cuadre de caja</h2></div>
+  <p class="mmeta">Lo que más asusta. Ve despacio. En el módulo Cuadre de Caja.</p>
+
+  <p class="say-p">Al final del día entras a <strong>Cuadre de Caja</strong>. Sirve para revisar el dinero y cerrar el día. Son tres pasos, y los vemos con calma.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>Entra a <b>Cuadre de Caja</b>. Muestra los tres bloques.</div>
+
+  <h4 class="step">Paso 1 — El efectivo</h4>
+  <p class="say-p">Cuentas el <strong>efectivo</strong> que tienes en caja y lo comparas con lo que debería haber. El sistema te dice solito si la caja <strong>cuadra, sobra o falta</strong>. Ojo importante: en este paso <strong>solo va el efectivo.</strong> Yape, Plin, transferencias y tarjeta no cuentan aquí.</p>
+
+  <h4 class="step">Paso 2 — Ventas del día</h4>
+  <p class="say-p">Es un <strong>resumen</strong> de todo lo que se cobró por cada método y la ganancia del día. No tienes que escribir montos: el sistema los junta. Si hubo algún <strong>gasto</strong> del día, lo registras aquí.</p>
+
+  <h4 class="step">Paso 3 — Cerrar el día</h4>
+  <p class="say-p">Anotas cuánto <strong>retiras</strong>, si es que retiras algo, y cuánto queda en caja para mañana. Guardas el cierre, y con eso la caja queda lista.</p>
+
+  <p class="say-p">Y si la caja no cuadra, no te asustes: cuenta el efectivo otra vez y revisa los cobros y los gastos en efectivo del día. Si aun así sobra o falta, lo anotas y me avisas. Es normal, pasa, y se resuelve.</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Este es el tema que más nervios da. Insiste en la regla de oro del paso 1: aquí solo va efectivo.</div>
+</section>
+
+<!-- 11 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">11</span><h2 class="mtitle">Boletas y facturas</h2></div>
+  <p class="mmeta">En un pedido ya pagado. Muestra los botones Emitir Boleta / Emitir Factura.</p>
+
+  <p class="say-p">El comprobante se emite <strong>desde el pedido</strong>, y solo cuando el pedido ya está <strong>pagado</strong>. La regla es fácil: si es una <strong>persona</strong>, boleta con su <strong>DNI</strong>; si es una <strong>empresa</strong>, factura con su <strong>RUC</strong>.</p>
+
+  <div class="screen"><span class="lbl">En pantalla</span>En un pedido pagado, en "Acciones", señala <b>Emitir Boleta</b> y <b>Emitir Factura</b>.</div>
+
+  <p class="say-p">Los pasos son estos. Primero, que el pedido esté pagado. Segundo, abres el pedido y en <strong>Acciones</strong> eliges <strong>Emitir Boleta</strong> o <strong>Emitir Factura</strong>. El sistema lo envía a la SUNAT, y en unos segundos queda <strong>aceptado</strong>. Y si quieres verlo o descargar el PDF, entras al módulo <strong>Comprobantes electrónicos</strong>.</p>
+
+  <p class="say-p">Dos cosas por si pasan. Si el DNI o el RUC está mal escrito, el sistema te avisa y no te deja emitir; corriges el dato del cliente y vuelves a intentar. Y si tuvieras que anular o corregir un comprobante ya emitido, eso se hace con una <strong>nota de crédito</strong>; pero eso es poco frecuente y te lo enseño aparte si el negocio lo necesita.</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Regla de oro: primero cobra, después emite. El botón de emitir recién aparece cuando el pedido está pagado.</div>
+</section>
+
+<!-- 12 -->
+<section class="module">
+  <div class="mhead"><span class="mnum">12</span><h2 class="mtitle">Buenas prácticas y cierre</h2></div>
+  <p class="mmeta">A cámara. Cierre motivador.</p>
+
+  <p class="say-p">Para terminar, te dejo las reglas de oro, las que van a hacer que todo salga bien:</p>
+  <p class="say-p">Registra el pedido <strong>apenas llega la ropa</strong>, no para después. Pide siempre el <strong>nombre y el celular</strong> del cliente. Tómale <strong>foto</strong> a las prendas manchadas o delicadas. Mueve el pedido de área <strong>conforme avanza el trabajo real</strong>. <strong>Cobra y luego emite</strong> la boleta o factura. <strong>Cuenta el efectivo</strong> antes de cerrar la caja. Y nunca compartas tu usuario ni tu clave.</p>
+
+  <p class="say-p">Con esto ya tienes todo lo del día a día: registrar, seguir, cobrar, cuadrar la caja y emitir comprobantes. Cualquier duda que tengas, pregunta con confianza; para eso estamos, y puedes volver a ver estos videos cuando quieras. ¡Mucho éxito, y bienvenida al equipo!</p>
+
+  <div class="tip"><span class="lbl">Consejo</span>Cierra con energía y una sonrisa. Deja claro que puede repasar los videos sin problema.</div>
+</section>
+
+</body>
+</html>

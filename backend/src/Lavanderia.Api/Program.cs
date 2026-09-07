@@ -19,6 +19,10 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Secretos locales fuera de git (ej. credenciales de APISUNAT). Opcional; se carga en cualquier
+// entorno y pisa a appsettings.json. NUNCA se commitea (ver .gitignore: appsettings.Local.json).
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024;
@@ -131,21 +135,21 @@ var dataProtection = builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi();
 builder.Services.AddTransient<SecretProtector>();
-builder.Services.AddHttpClient<SunatSoapClient>();
+  builder.Services.AddHttpClient<SunatSoapClient>(client => client.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddHttpClient<GeocodificacionService>();
 // Proveedor de facturación electrónica seleccionable por configuración:
 //   SUNAT_DIRECTO (default) → firma local + SOAP de SUNAT.
 //   APISUNAT               → PSE en la nube (listo para activar cuando lleguen
 //                             ApiSunat:PersonaId y ApiSunat:PersonaToken de Mekias).
 builder.Services.Configure<Lavanderia.Api.Services.Facturacion.ApiSunatOptions>(builder.Configuration.GetSection("ApiSunat"));
-builder.Services.AddHttpClient<Lavanderia.Api.Services.Facturacion.ApiSunatProvider>();
-var proveedorFe = builder.Configuration["FacturacionElectronica:Proveedor"] ?? "SUNAT_DIRECTO";
-if (string.Equals(proveedorFe, "APISUNAT", StringComparison.OrdinalIgnoreCase))
-    builder.Services.AddTransient<IFacturacionElectronicaProvider>(sp =>
-        sp.GetRequiredService<Lavanderia.Api.Services.Facturacion.ApiSunatProvider>());
-else
-    builder.Services.AddTransient<IFacturacionElectronicaProvider, SunatDirectoProvider>();
+  builder.Services.AddHttpClient<Lavanderia.Api.Services.Facturacion.ApiSunatProvider>(client =>
+      client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddTransient<SunatDirectoProvider>();
+builder.Services.AddTransient<IFacturacionElectronicaProvider>(sp => sp.GetRequiredService<SunatDirectoProvider>());
+builder.Services.AddTransient<IFacturacionElectronicaProvider>(sp => sp.GetRequiredService<Lavanderia.Api.Services.Facturacion.ApiSunatProvider>());
 builder.Services.AddTransient<ComprobantePdfGenerator>();
+builder.Services.AddScoped<IRespaldoComprobantes, RespaldoComprobantesLocal>();
+builder.Services.AddHostedService<FacturacionPendientesWorker>();
 
 // Limites defensivos para los puntos anonimos que pueden disparar trabajo costoso o
 // solicitudes hacia terceros. En produccion, el proxy debe preservar la IP remota real.
@@ -257,6 +261,13 @@ builder.Services.AddAuthorization(options =>
             policy.Requirements.Add(new ModuloRequirement(modulo));
         });
     }
+    // El reporte de cuadres es parte de la operación de caja: lo pueden ver quienes manejan
+    // la caja (CAJA) o quienes ven reportes (REPORTES). ADMIN siempre pasa.
+    options.AddPolicy("Modulo:CAJA_O_REPORTES", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.Requirements.Add(new ModuloRequirement("CAJA", "REPORTES"));
+    });
 });
 
 // CORS
@@ -404,6 +415,19 @@ static async Task<IResult> Readiness(ISqlConnectionFactory factory, Cancellation
 
 app.MapGet("/health/ready", Readiness).AllowAnonymous();
 app.MapGet("/health", Readiness).AllowAnonymous();
+
+// Marca de versión: cambia en cada despliegue (fecha del .dll principal). El frontend
+// la consulta cada cierto tiempo; si cambió, muestra "hay una nueva versión, recargar".
+var versionApp = "0";
+try
+{
+    var dllPath = System.Reflection.Assembly.GetEntryAssembly()?.Location;
+    if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath))
+        versionApp = new DateTimeOffset(File.GetLastWriteTimeUtc(dllPath)).ToUnixTimeSeconds().ToString();
+}
+catch { /* si falla, queda "0" */ }
+app.MapGet("/api/version", () => Results.Json(new { version = versionApp })).AllowAnonymous();
+
 app.MapControllers();
 
 // Un endpoint de API que no existe debe responder 404 JSON, no el index.html: si cae al

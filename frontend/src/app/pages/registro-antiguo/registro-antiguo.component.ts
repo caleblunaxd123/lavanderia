@@ -11,6 +11,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { esCelularObligatorioValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 interface ItemAgregado {
@@ -24,7 +25,7 @@ interface ItemAgregado {
 
 @Component({
   selector: 'app-registro-antiguo',
-  imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent, SoloDigitosDirective],
+  imports: [CommonModule, FormsModule, IconComponent, PageHeaderComponent, SoloDigitosDirective, TelefonoPaisComponent],
   templateUrl: './registro-antiguo.component.html',
   styleUrl: './registro-antiguo.component.scss'
 })
@@ -164,7 +165,8 @@ export class RegistroAntiguoComponent implements OnInit {
     if (!this.puedeRegistrar) return;
     this.registrando.set(true);
 
-    const fechaIso = new Date(this.fechaIngresoValor()).toISOString();
+    // Hora LOCAL (naive), no toISOString() (UTC), para que no se desfase ~5h.
+    const fechaIso = this.fechaIngresoValor();
 
     const payload = {
       clienteId: this.clienteExistente?.id,

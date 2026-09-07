@@ -223,6 +223,29 @@
           @if (saldoPendiente() > 0 && p.estadoProceso === 'LISTO') {
             <p class="hint">El cobro se hace al entregar (botón verde de "Acciones", más abajo).</p>
           }
+
+          <!-- Desglose de cobros: con qué pagó cada adelanto (efectivo, Yape, ...) -->
+          @if (pagos().length > 0) {
+            <div class="cobros">
+              <h5 class="cobros__titulo">Cobros registrados</h5>
+              <ul class="cobros__lista">
+                @for (pago of pagos(); track pago.id) {
+                  <li class="cobros__item">
+                    <span class="cobros__metodo" [class]="'cobros__metodo--' + pago.metodoPago.toLowerCase()">
+                      {{ etiquetaMetodo(pago.metodoPago) }}
+                    </span>
+                    <span class="cobros__fecha">{{ pago.fecha | date:'dd/MM/yy hh:mm a' }}</span>
+                    <strong class="cobros__monto">S/ {{ pago.monto | number:'1.2-2' }}</strong>
+                    @if (pago.usuarioNombre) {
+                      <small class="cobros__usuario">Cobró: {{ pago.usuarioNombre }}</small>
+                    }
+                  </li>
+                }
+              </ul>
+            </div>
+          } @else if (p.montoPagado > 0) {
+            <p class="hint">Este pedido tiene pagos anteriores al detalle por método.</p>
+          }
         </section>
       </div>
     </div>
@@ -375,11 +398,23 @@
         <button type="button" class="metodo" [class.is-active]="pagoMetodo==='POS'" (click)="pagoMetodo='POS'"><app-icon name="credit-card" [size]="13"></app-icon> POS</button>
       </div>
 
+      @if (pagoCompletaTotal()) {
+        <label><app-icon name="note" [size]="13"></app-icon> Comprobante a emitir</label>
+        <div class="metodos">
+          <button type="button" class="metodo" [class.is-active]="pagoComprobante==='BOLETA'" (click)="pagoComprobante='BOLETA'"><app-icon name="note" [size]="13"></app-icon> Boleta</button>
+          <button type="button" class="metodo" [class.is-active]="pagoComprobante==='FACTURA'" (click)="pagoComprobante='FACTURA'"><app-icon name="note" [size]="13"></app-icon> Factura</button>
+          <button type="button" class="metodo" [class.is-active]="pagoComprobante==='NINGUNO'" (click)="pagoComprobante='NINGUNO'"><app-icon name="ban" [size]="13"></app-icon> Sin comprobante</button>
+        </div>
+        @if (pagoComprobante==='FACTURA') {
+          <p class="modal-simple__hint">La factura requiere que el cliente tenga RUC registrado.</p>
+        }
+      }
+
       <div class="modal-simple__actions">
         <button type="button" class="btn btn--ghost" (click)="cerrarModales()">Cancelar</button>
         <button type="button" class="btn btn--verde"
           [disabled]="procesando() || pagoMonto <= 0 || pagoMonto > saldoPendiente()" (click)="confirmarPago()">
-          {{ procesando() ? 'Guardando…' : 'Confirmar pago' }}
+          {{ textoBotonPago() }}
         </button>
       </div>
     </div>

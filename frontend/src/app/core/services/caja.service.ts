@@ -46,6 +46,7 @@ export class CajaService {
     ingresosTarjeta: number;
     nota?: string;
     observaciones?: string;
+    detalleConteo?: string;
   }) {
     return this.http.post<CuadreCajaGuardado>(`${this.base}/cuadres`, data);
   }
@@ -83,5 +84,6 @@ export interface CuadreCajaGuardado {
   ingresosTarjeta: number;
   nota?: string;
   observaciones?: string;
+  detalleConteo?: string | null;
   fechaCreacion: string;
 }

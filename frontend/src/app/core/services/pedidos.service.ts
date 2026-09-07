@@ -157,6 +157,11 @@ export class PedidosService {
     return this.http.get<PedidoHistorial[]>(`${this.base}/${id}/historial`);
   }
 
+  /** Cobros del pedido, cada uno con su método (efectivo, Yape, Plin, ...). */
+  pagos(id: number) {
+    return this.http.get<PagoPedido[]>(`${this.base}/${id}/pagos`);
+  }
+
   dashboard() {
     return this.http.get<Dashboard>(`${this.base}/dashboard`);
   }
@@ -210,4 +215,13 @@ export class PedidosService {
   asignarMotorizado(id: number, motorizadoId: number | null) {
     return this.http.put<void>(`${this.base}/${id}/motorizado`, { motorizadoId });
   }
+}
+
+export interface PagoPedido {
+  id: number;
+  fecha: string;
+  metodoPago: string;
+  monto: number;
+  descripcion?: string | null;
+  usuarioNombre?: string | null;
 }

@@ -9,8 +9,8 @@
     @let d = data()!;
     <div class="tarjeta">
       <div class="cabecera">
-        @if (d.logoUrl) {
-          <img [src]="d.logoUrl" alt="" class="logo" />
+        @if (logoSeguimiento()) {
+          <img [src]="logoSeguimiento()" alt="" class="logo" />
         }
         <h1>{{ d.nombreNegocio }}</h1>
         <p class="numero">Pedido #{{ d.numeroPedido }}</p>

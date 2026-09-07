@@ -363,8 +363,10 @@ public class NegociosController : ControllerBase
     // ADMIN no necesita filas: AuthController.ObtenerModulosAsync le da Modulos.Todos directo.
     private async Task SembrarPermisosDefectoAsync(int negocioId, CancellationToken ct)
     {
-        var rolCoordinador = await _roles.BuscarPorCodigoAsync("COORDINADOR", ct);
-        var rolTrabajador = await _roles.BuscarPorCodigoAsync("TRABAJADOR", ct);
+        // Cada negocio nace con dos roles de ejemplo PROPIOS (editables/eliminables por el dueño).
+        // ADMIN es de sistema y no necesita filas (AuthController le da Modulos.Todos directo).
+        var rolCoordinadorId = await _roles.CrearAsync(negocioId, "COORDINADOR", "Coordinador", ct);
+        var rolTrabajadorId = await _roles.CrearAsync(negocioId, "TRABAJADOR", "Trabajador", ct);
 
         var coordinador = new (string Modulo, bool Puede)[]
         {
@@ -379,13 +381,10 @@ public class NegociosController : ControllerBase
             ("INVENTARIO", false), ("AJUSTES", false)
         };
 
-        if (rolCoordinador is not null)
-            foreach (var (modulo, puede) in coordinador)
-                await _permisos.GuardarAsync(rolCoordinador.Id, modulo, puede, negocioId, ct);
-
-        if (rolTrabajador is not null)
-            foreach (var (modulo, puede) in trabajador)
-                await _permisos.GuardarAsync(rolTrabajador.Id, modulo, puede, negocioId, ct);
+        foreach (var (modulo, puede) in coordinador)
+            await _permisos.GuardarAsync(rolCoordinadorId, modulo, puede, negocioId, ct);
+        foreach (var (modulo, puede) in trabajador)
+            await _permisos.GuardarAsync(rolTrabajadorId, modulo, puede, negocioId, ct);
     }
 
     private static string? NormalizarOpcional(string? valor)

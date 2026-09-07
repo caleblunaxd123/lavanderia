@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { EstadoRuta, PagoPublicoService, SeguimientoPedido } from '../../core/services/pago-publico.service';
 import { MapaSeguimientoComponent } from '../../shared/mapa-seguimiento/mapa-seguimiento.component';
+import { ConfiguracionService } from '../../core/services/configuracion.service';
+import { numeroWhatsapp } from '../../core/util/telefono';
 import { environment } from '../../../environments/environment';
 
 const INTERVALO_NORMAL_MS = 10_000;
@@ -39,6 +41,12 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   nuevaFecha = '';
 
   readonly fotoAmpliada = signal<string | null>(null);
+
+  /** Logo optimizado (monocromo sobre transparente) que se funde con la tarjeta blanca del
+   * seguimiento, en vez del logo de marca con fondo de color. Ver ConfiguracionService.logoImpresion. */
+  logoSeguimiento(): string | null {
+    return ConfiguracionService.logoImpresion(this.data()?.logoUrl);
+  }
 
   /** URL pública de una foto de evidencia (servida por el token del enlace). */
   fotoUrl(fotoId: number): string {
@@ -108,7 +116,8 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
     }
     this.reprogramando.set(true);
     this.errorReprogramar.set(null);
-    this.svc.reprogramar(this.token, new Date(this.nuevaFecha).toISOString()).subscribe({
+    // Hora LOCAL (naive), no UTC, para que la fecha elegida no se desfase ~5h.
+    this.svc.reprogramar(this.token, this.nuevaFecha).subscribe({
       next: () => {
         this.reprogramando.set(false);
         this.modalReprogramar.set(false);
@@ -135,9 +144,7 @@ export class SeguimientoPagoComponent implements OnInit, OnDestroy {
   }
 
   telefonoWhatsapp() {
-    const telefono = this.data()?.telefonoNegocio ?? '';
-    const soloDigitos = telefono.replace(/\D/g, '');
-    return soloDigitos || null;
+    return numeroWhatsapp(this.data()?.telefonoNegocio) || null;
   }
 
   /** True cuando un pedido delivery está en su tramo final: listo y saliendo a ruta. */

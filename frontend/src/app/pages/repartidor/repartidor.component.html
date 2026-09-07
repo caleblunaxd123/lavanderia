@@ -81,6 +81,19 @@
       }
     </section>
 
+    <!-- Cobro por Yape: muestra el QR al cliente en la puerta si paga por Yape/Plin -->
+    @if (d.saldo > 0.01 && (d.yapeQrUrl || d.yapeNumero)) {
+      <section class="tarjeta tarjeta--yape">
+        <h3>Cobro por Yape / Plin</h3>
+        @if (d.yapeQrUrl) {
+          <img class="yape-qr" [src]="d.yapeQrUrl" alt="QR de Yape" />
+        }
+        @if (d.yapeNumero) { <p class="yape-num"><strong>{{ d.yapeNumero }}</strong></p> }
+        @if (d.yapeTitular) { <p class="sub">{{ d.yapeTitular }}</p> }
+        <p class="yape-hint">Muéstrale este QR al cliente si va a pagar por Yape/Plin.</p>
+      </section>
+    }
+
     <!-- Acción principal -->
     <div class="barra">
       @if (estadoRuta() === 'SIN_RUTA') {

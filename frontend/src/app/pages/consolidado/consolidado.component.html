@@ -69,5 +69,27 @@
         </tfoot>
       </table>
     </div>
+
+    <!-- Vista de tarjetas (solo móvil) -->
+    <div class="cards-rep">
+      @for (s of sedes(); track s.sedeId) {
+        <div class="rep-card">
+          <div class="rep-card__titulo">{{ s.sedeNombre }}</div>
+          <div class="rep-card__row"><span>Ventas hoy</span><strong>S/ {{ s.ventasHoy | number:'1.2-2' }}</strong></div>
+          <div class="rep-card__row"><span>Ventas mes</span><strong>S/ {{ s.ventasMes | number:'1.2-2' }}</strong></div>
+          <div class="rep-card__row"><span>Por cobrar</span><strong [class.txt-deuda]="s.saldoPorCobrar > 0">S/ {{ s.saldoPorCobrar | number:'1.2-2' }}</strong></div>
+          <div class="rep-card__row"><span>Activos</span><strong>{{ s.pedidosActivos }}</strong></div>
+          <div class="rep-card__row"><span>Listos</span><strong>{{ s.pedidosListos }}</strong></div>
+        </div>
+      }
+      <div class="rep-card rep-card--total">
+        <div class="rep-card__titulo">Total</div>
+        <div class="rep-card__row"><span>Ventas hoy</span><strong>S/ {{ totales().ventasHoy | number:'1.2-2' }}</strong></div>
+        <div class="rep-card__row"><span>Ventas mes</span><strong>S/ {{ totales().ventasMes | number:'1.2-2' }}</strong></div>
+        <div class="rep-card__row"><span>Por cobrar</span><strong [class.txt-deuda]="totales().saldoPorCobrar > 0">S/ {{ totales().saldoPorCobrar | number:'1.2-2' }}</strong></div>
+        <div class="rep-card__row"><span>Activos</span><strong>{{ totales().pedidosActivos }}</strong></div>
+        <div class="rep-card__row"><span>Listos</span><strong>{{ totales().pedidosListos }}</strong></div>
+      </div>
+    </div>
   }
 </div>

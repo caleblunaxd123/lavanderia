@@ -73,18 +73,6 @@ public class ReportesController : TenantAwareControllerBase
         return Ok(await _repo.CuadresCajaAsync(d, h, SedeRequeridaId, ct));
     }
 
-    /// <summary>Reporte mensual dedicado de cuadres diarios (pantalla propia con vista
-    /// colapsable, corte/digital/tarjeta y días sin información / montos no cuadrados).</summary>
-    [HttpGet("cuadres-diarios")]
-    public async Task<ActionResult<CuadresDiariosReporteDto>> CuadresDiarios([FromQuery] int? anio, [FromQuery] int? mes, CancellationToken ct)
-    {
-        var hoy = DateTime.Today;
-        var a = anio ?? hoy.Year;
-        var m = mes ?? hoy.Month;
-        if (m < 1 || m > 12) return BadRequest(new { mensaje = "Mes inválido." });
-        return Ok(await _repo.CuadresDiariosAsync(a, m, SedeRequeridaId, ct));
-    }
-
     [HttpGet("ordenes-mensual")]
     public async Task<ActionResult<ReporteResultDto>> OrdenesMensual([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, CancellationToken ct)
     {

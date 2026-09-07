@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -81,6 +82,7 @@ export class AjustesServiciosComponent implements OnInit {
   readonly confirmarDesactivar = signal<ServicioEditable | null>(null);
   form: Partial<ServicioEditable> = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   unidades = ['kg', 'prenda', 'pieza', 'und', 'servicio', 'm2'];
@@ -109,6 +111,7 @@ export class AjustesServiciosComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -116,6 +119,7 @@ export class AjustesServiciosComponent implements OnInit {
     this.editando.set(s);
     this.form = { ...s };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -130,31 +134,21 @@ export class AjustesServiciosComponent implements OnInit {
     const unidad = this.form.unidad?.trim() ?? '';
     const precio = Number(this.form.precio ?? 0);
 
-    if (nombre.length < 2 || nombre.length > 120) {
-      this.errorForm.set('El nombre debe tener entre 2 y 120 caracteres.');
-      return;
-    }
-    if (!unidad) {
-      this.errorForm.set('Selecciona la unidad de cobro del servicio.');
-      return;
-    }
-    if (!Number.isFinite(precio) || precio <= 0 || precio > 10_000) {
-      this.errorForm.set('Ingresa un precio mayor a S/ 0.00 y menor o igual a S/ 10,000.00.');
-      return;
-    }
     const costo = Number(this.form.costo ?? 0);
-    if (!Number.isFinite(costo) || costo < 0 || costo > 10_000) {
-      this.errorForm.set('El costo debe estar entre S/ 0.00 y S/ 10,000.00.');
-      return;
-    }
     const editandoId = this.editando()?.id;
-    const duplicado = this.servicios().some(s =>
-      s.id !== editandoId && this.normalizar(s.nombre) === this.normalizar(nombre)
-    );
-    if (duplicado) {
-      this.errorForm.set(`Ya existe un servicio llamado “${nombre}”. Edita el existente o usa un nombre diferente.`);
-      return;
-    }
+    const errs: Record<string, string> = {};
+
+    if (nombre.length < 2 || nombre.length > 120) errs['nombre'] = 'El nombre debe tener entre 2 y 120 caracteres.';
+    else if (this.servicios().some(s => s.id !== editandoId && this.normalizar(s.nombre) === this.normalizar(nombre)))
+      errs['nombre'] = `Ya existe un servicio llamado “${nombre}”. Usa un nombre diferente.`;
+    if (!unidad) errs['unidad'] = 'Selecciona la unidad de cobro del servicio.';
+    if (!Number.isFinite(precio) || precio <= 0 || precio > 10_000)
+      errs['precio'] = 'Ingresa un precio mayor a S/ 0.00 y hasta S/ 10,000.00.';
+    if (!Number.isFinite(costo) || costo < 0 || costo > 10_000)
+      errs['costo'] = 'El costo debe estar entre S/ 0.00 y S/ 10,000.00.';
+
+    this.err.set(errs);
+    if (this.err.hay) { this.errorForm.set('Revisa los campos marcados en rojo.'); return; }
     this.form = { ...this.form, nombre, unidad, precio: Math.round(precio * 100) / 100, costo: Math.round(costo * 100) / 100 };
     this.guardando.set(true);
     this.errorForm.set(null);
@@ -168,13 +162,18 @@ export class AjustesServiciosComponent implements OnInit {
       next: () => {
         this.guardando.set(false);
         this.modalAbierto.set(false);
+        this.err.limpiarTodo();
         this.toast.exito(edit ? 'Servicio actualizado' : 'Servicio creado');
         this.cargar();
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el servicio.';
-        this.errorForm.set(msg);
+        const low = msg.toLowerCase();
+        const campo = low.includes('precio') ? 'precio' : low.includes('costo') ? 'costo'
+          : low.includes('unidad') ? 'unidad' : (low.includes('nombre') || low.includes('existe')) ? 'nombre' : null;
+        if (campo) { this.err.marcar(campo, msg); this.errorForm.set('Revisa los campos marcados en rojo.'); }
+        else this.errorForm.set(msg);
         this.toast.desdeHttp(err, msg);
       }
     });

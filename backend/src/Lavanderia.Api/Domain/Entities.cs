@@ -18,6 +18,8 @@ public class CuadreCaja
     public decimal IngresosTarjeta { get; set; }
     public string? Nota { get; set; }
     public string? Observaciones { get; set; }
+    /// <summary>Desglose del conteo billete por billete, como JSON {"100":2,"50":1,...}. Null si se cerró por total directo.</summary>
+    public string? DetalleConteo { get; set; }
     public DateTime FechaCreacion { get; set; }
 }
 
@@ -44,6 +46,10 @@ public class ConfiguracionNegocio
     public decimal CostoDelivery { get; set; }
     public decimal ValorPuntoCanje { get; set; }   // soles que vale 1 punto al canjear (0 = canje off)
     public decimal MaxDescuentoPct { get; set; }    // tope de descuento manual (0 = sin tope)
+    // Cobro por Yape/Plin del negocio (para que el cliente le pague a la lavandería).
+    public string? YapeNumero { get; set; }
+    public string? YapeTitular { get; set; }
+    public string? YapeQrUrl { get; set; }
 }
 
 public class Rol
@@ -51,6 +57,12 @@ public class Rol
     public int Id { get; set; }
     public string Codigo { get; set; } = "";
     public string Nombre { get; set; } = "";
+    /// <summary>null = rol de sistema (global, p. ej. ADMIN); si tiene valor, es un rol propio del negocio.</summary>
+    public int? NegocioId { get; set; }
+    /// <summary>Roles de sistema (ADMIN, PROPIETARIO): no se pueden editar ni eliminar.</summary>
+    public bool EsSistema { get; set; }
+    /// <summary>Solo informativo (listado de roles): true si algún usuario lo tiene asignado.</summary>
+    public bool EnUso { get; set; }
 }
 
 public class RolPermiso
@@ -433,7 +445,25 @@ public class ConfiguracionFacturacion
     public string SerieFactura { get; set; } = "F001";
     public int CorrelativoBoleta { get; set; }
     public int CorrelativoFactura { get; set; }
+    // Series y correlativos propios de las Notas de Crédito (SUNAT: la serie inicia con F o B).
+    public string SerieNotaCreditoFactura { get; set; } = "FC01";
+    public string SerieNotaCreditoBoleta { get; set; } = "BC01";
+    public int CorrelativoNotaCreditoFactura { get; set; }
+    public int CorrelativoNotaCreditoBoleta { get; set; }
+    public string SerieNotaDebitoFactura { get; set; } = "FD01";
+    public string SerieNotaDebitoBoleta { get; set; } = "BD01";
+    public int CorrelativoNotaDebitoFactura { get; set; }
+    public int CorrelativoNotaDebitoBoleta { get; set; }
+    public string SerieGuiaRemision { get; set; } = "T001";
+    public int CorrelativoGuiaRemision { get; set; }
     public bool Activo { get; set; }
+    public string Proveedor { get; set; } = "SUNAT_DIRECTO";
+    public string? ApiSunatPersonaId { get; set; }
+    public string? ApiSunatTokenCifrado { get; set; }
+    public string? DireccionFiscal { get; set; }
+    public string? Ubigeo { get; set; }
+    public string CodigoEstablecimiento { get; set; } = "0000";
+    public string? EmailEmisor { get; set; }
 }
 
 public class ConfiguracionPagos
@@ -488,4 +518,88 @@ public class ComprobanteElectronico
     public DateTime FechaEmision { get; set; }
     public DateTime? FechaEnvio { get; set; }
     public int UsuarioId { get; set; }
+    public string Proveedor { get; set; } = "SUNAT_DIRECTO";
+    public string Ambiente { get; set; } = "BETA";
+    public string? ExternalId { get; set; }
+    public string? RucEmisor { get; set; }
+    public string? RazonSocialEmisor { get; set; }
+    public string? DireccionFiscalEmisor { get; set; }
+    public string? UbigeoEmisor { get; set; }
+    public string? CodigoEstablecimientoEmisor { get; set; }
+    public string Moneda { get; set; } = "PEN";
+    public decimal IgvPorcentaje { get; set; } = 18m;
+    public decimal Subtotal { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal Recargo { get; set; }
+    public decimal Redondeo { get; set; }
+    public bool EsSimulado { get; set; }
+    public DateTime FechaActualizacion { get; set; }
+    public DateTime? FechaRespuesta { get; set; }
+    public string? EstadoAnulacion { get; set; }
+    public string? MotivoAnulacion { get; set; }
+    public DateTime? FechaSolicitudAnulacion { get; set; }
+    public DateTime? FechaAnulacion { get; set; }
+    // Nota de Crédito (Tipo = NOTA_CREDITO): referencia al comprobante que corrige/anula + motivo (catálogo 09).
+    public int? ComprobanteRefId { get; set; }
+    public string? DocRefTipo { get; set; }          // 01 factura / 03 boleta referenciada
+    public string? DocRefSerieNumero { get; set; }   // p.ej. F001-00000123
+    public string? MotivoNotaCodigo { get; set; }    // catálogo 09 (01, 02, 03, 06…)
+    public string? MotivoNotaDescripcion { get; set; }
+    public List<ComprobanteElectronicoDetalle> Detalles { get; set; } = [];
+    public List<ComprobanteElectronicoIntento> Intentos { get; set; } = [];
+    // Guía de Remisión (Tipo = GUIA_REMISION): datos de traslado.
+    public GuiaRemisionDatos? Guia { get; set; }
+}
+
+/// <summary>Datos de traslado de una Guía de Remisión Remitente (GRE, SUNAT 09), 1:1 con el comprobante.</summary>
+public class GuiaRemisionDatos
+{
+    public int ComprobanteId { get; set; }
+    public string MotivoTrasladoCodigo { get; set; } = "01";   // catálogo 20
+    public string? MotivoTrasladoDescripcion { get; set; }
+    public decimal PesoBrutoTotal { get; set; }
+    public string UnidadPeso { get; set; } = "KGM";
+    public int? NumeroBultos { get; set; }
+    public DateTime FechaInicioTraslado { get; set; }
+    public string ModalidadTransporte { get; set; } = "02";    // 01 público / 02 privado
+    public string PartidaUbigeo { get; set; } = "";
+    public string PartidaDireccion { get; set; } = "";
+    public string LlegadaUbigeo { get; set; } = "";
+    public string LlegadaDireccion { get; set; } = "";
+    // Transporte público (01)
+    public string? TransportistaNumDoc { get; set; }
+    public string? TransportistaRazonSocial { get; set; }
+    // Transporte privado (02)
+    public string? VehiculoPlaca { get; set; }
+    public string? ConductorTipoDoc { get; set; }
+    public string? ConductorNumDoc { get; set; }
+    public string? ConductorNombres { get; set; }
+    public string? ConductorLicencia { get; set; }
+}
+
+public class ComprobanteElectronicoDetalle
+{
+    public int Id { get; set; }
+    public int ComprobanteId { get; set; }
+    public int NumeroLinea { get; set; }
+    public int? ServicioId { get; set; }
+    public string Descripcion { get; set; } = "";
+    public string UnidadMedida { get; set; } = "ZZ";
+    public decimal Cantidad { get; set; }
+    public decimal PrecioUnitarioIgv { get; set; }
+    public decimal ValorVenta { get; set; }
+    public decimal Igv { get; set; }
+    public decimal Total { get; set; }
+}
+
+public class ComprobanteElectronicoIntento
+{
+    public long Id { get; set; }
+    public int ComprobanteId { get; set; }
+    public string Accion { get; set; } = "";
+    public string Estado { get; set; } = "";
+    public string? Codigo { get; set; }
+    public string? Descripcion { get; set; }
+    public DateTime Fecha { get; set; }
+    public int? UsuarioId { get; set; }
 }

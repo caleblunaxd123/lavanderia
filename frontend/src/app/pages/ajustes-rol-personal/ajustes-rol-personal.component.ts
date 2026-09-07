@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -27,9 +28,17 @@ export class AjustesRolPersonalComponent implements OnInit {
 
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
+  readonly busqueda = signal('');
+  readonly rolesFiltrados = computed(() => {
+    const t = this.busqueda().trim().toLowerCase();
+    if (!t) return this.roles();
+    return this.roles().filter(r => (r.nombre ?? '').toLowerCase().includes(t));
+  });
+  actualizarBusqueda(v: string) { this.busqueda.set(v); this.pagina.set(1); }
+
   readonly rolesPaginados = computed(() => {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
-    return this.roles().slice(inicio, inicio + this.tamanoPagina());
+    return this.rolesFiltrados().slice(inicio, inicio + this.tamanoPagina());
   });
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
@@ -40,6 +49,7 @@ export class AjustesRolPersonalComponent implements OnInit {
   readonly confirmarDesactivar = signal<RolPersonal | null>(null);
   form: Partial<RolPersonal> = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   ngOnInit() { this.cargar(); }
@@ -63,6 +73,7 @@ export class AjustesRolPersonalComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -70,6 +81,7 @@ export class AjustesRolPersonalComponent implements OnInit {
     this.editando.set(r);
     this.form = { ...r };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -77,9 +89,11 @@ export class AjustesRolPersonalComponent implements OnInit {
 
   guardar() {
     if (!this.form.nombre?.trim()) {
-      this.errorForm.set('El nombre es obligatorio.');
+      this.err.set({ nombre: 'Ingresa el nombre.' });
+      this.errorForm.set(null);
       return;
     }
+    this.err.limpiarTodo();
     this.guardando.set(true);
     this.errorForm.set(null);
 
@@ -92,12 +106,12 @@ export class AjustesRolPersonalComponent implements OnInit {
       next: () => {
         this.guardando.set(false);
         this.modalAbierto.set(false);
-        this.toast.exito(edit ? 'Rol actualizado' : 'Rol creado');
+        this.toast.exito(edit ? 'Cargo actualizado' : 'Cargo creado');
         this.cargar();
       },
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
-        const msg = err.error?.mensaje ?? 'No se pudo guardar el rol.';
+        const msg = err.error?.mensaje ?? 'No se pudo guardar el cargo.';
         this.errorForm.set(msg);
         this.toast.desdeHttp(err, msg);
       }

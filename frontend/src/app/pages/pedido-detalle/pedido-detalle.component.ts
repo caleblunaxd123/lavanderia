@@ -13,7 +13,7 @@ import { ConfiguracionService } from '../../core/services/configuracion.service'
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { FotoPedido, FotosPedidoService, MomentoFoto } from '../../core/services/fotos-pedido.service';
 import { Motorizado, MotorizadosService } from '../../core/services/motorizados.service';
-import { PedidoHistorial, PedidosService } from '../../core/services/pedidos.service';
+import { PagoPedido, PedidoHistorial, PedidosService } from '../../core/services/pedidos.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -72,6 +72,8 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   // Formularios
   pagoMonto = 0;
   pagoMetodo: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS' = 'EFECTIVO';
+  // Comprobante a emitir junto con el cobro (solo si el pago completa el total).
+  pagoComprobante: 'NINGUNO' | 'BOLETA' | 'FACTURA' = 'BOLETA';
   recibidoPor = '';
   itemServicioId: number | '' = '';
   itemCantidad = 1;
@@ -136,6 +138,25 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   private readonly tour = inject(TourService);
   iniciarTour() { this.tour.iniciar(TOURS['pedido-detalle']); }
 
+  /** Cobros del pedido (adelantos y saldos) con su método de pago. */
+  readonly pagos = signal<PagoPedido[]>([]);
+
+  readonly etiquetasMetodoPago: Record<string, string> = {
+    EFECTIVO: 'Efectivo', YAPE: 'Yape', PLIN: 'Plin',
+    TRANSFERENCIA: 'Transferencia', POS: 'POS/Tarjeta', TARJETA: 'Tarjeta'
+  };
+
+  etiquetaMetodo(metodo: string): string {
+    return this.etiquetasMetodoPago[metodo] ?? metodo;
+  }
+
+  private cargarPagos() {
+    this.service.pagos(this.pedidoId).subscribe({
+      next: list => this.pagos.set(list),
+      error: () => this.pagos.set([])
+    });
+  }
+
   private cargar() {
     this.cargando.set(true);
     this.error.set(null);
@@ -151,6 +172,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       next: h => { this.historial.set(h); this.cargandoHistorial.set(false); },
       error: () => this.cargandoHistorial.set(false)
     });
+    this.cargarPagos();
     this.cargarFotos();
   }
 
@@ -161,6 +183,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       error: () => { if (!silencioso) this.toast.error('No se pudo actualizar el pedido.'); }
     });
     this.service.historial(this.pedidoId).subscribe(h => this.historial.set(h));
+    this.cargarPagos();
   }
 
   // ---------- Derivados ----------
@@ -403,6 +426,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     if (!p) return;
     this.pagoMonto = Math.max(0, p.total - p.montoPagado);
     this.pagoMetodo = 'EFECTIVO';
+    this.pagoComprobante = 'BOLETA';
     this.modalPago.set(true);
   }
 
@@ -415,19 +439,32 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       return;
     }
     this.pagoMonto = Math.round(this.pagoMonto * 100) / 100;
+    // El comprobante solo se emite si este pago deja el pedido totalmente pagado.
+    const completaPago = this.pagoMonto >= saldo - 0.01;
+    const emitirTipo = completaPago ? this.pagoComprobante : 'NINGUNO';
     this.procesando.set(true);
     this.service.registrarPago(p.id, this.pagoMonto, this.pagoMetodo).subscribe({
       next: () => {
         this.procesando.set(false);
         this.modalPago.set(false);
         this.toast.exito(`Pago de S/ ${this.pagoMonto.toFixed(2)} registrado`);
-        this.refrescar();
+        if (emitirTipo === 'BOLETA' || emitirTipo === 'FACTURA') this.emitirComprobante(emitirTipo);
+        else this.refrescar();
       },
       error: (err: HttpErrorResponse) => {
         this.procesando.set(false);
         this.toast.desdeHttp(err, 'No se pudo registrar el pago.');
       }
     });
+  }
+
+  /** El monto ingresado deja el pedido totalmente pagado. */
+  pagoCompletaTotal(): boolean { return this.pagoMonto >= this.saldoPendiente() - 0.01; }
+  /** Texto del botón de cobro según si además se emitirá comprobante. */
+  textoBotonPago(): string {
+    if (this.procesando()) return 'Procesando…';
+    if (!this.pagoCompletaTotal() || this.pagoComprobante === 'NINGUNO') return 'Confirmar pago';
+    return this.pagoComprobante === 'BOLETA' ? 'Cobrar y emitir boleta' : 'Cobrar y emitir factura';
   }
 
   // ---------- Entrega (cobra el saldo si hay) ----------
@@ -561,7 +598,9 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       return;
     }
     this.procesando.set(true);
-    this.service.cambiarFechaEntrega(p.id, nuevaFecha.toISOString(), this.motivoCambioFecha.trim() || undefined).subscribe({
+    // Se envía en hora LOCAL (naive), no toISOString() (UTC), para que la nueva hora no se
+    // desfase ~5h respecto a lo que se ve en el ticket/detalle (mismo criterio que FechaIngreso).
+    this.service.cambiarFechaEntrega(p.id, this.fechaEntregaNueva, this.motivoCambioFecha.trim() || undefined).subscribe({
       next: () => {
         this.procesando.set(false);
         this.modalFecha.set(false);
@@ -640,12 +679,18 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       longitudEntrega: this.longitudEntregaConversion
     }).subscribe({
       next: () => {
+        const fueConversion = p.modalidad !== 'Delivery';
         this.convirtiendoDelivery.set(false);
         this.modalDestinoDelivery.set(false);
-        this.toast.exito(p.modalidad === 'Delivery'
-          ? `Destino del pedido #${p.numero} actualizado`
-          : `Pedido #${p.numero} convertido a Delivery`);
+        this.toast.exito(fueConversion
+          ? `Pedido #${p.numero} convertido a Delivery`
+          : `Destino del pedido #${p.numero} actualizado`);
         this.refrescar();
+        // Al convertir se agregó la tarifa de domicilio, así que el total y el ticket cambiaron:
+        // se ofrece reimprimir el ticket actualizado.
+        if (fueConversion && confirm('Se agregó la tarifa de domicilio y el total cambió. ¿Reimprimir el ticket actualizado?')) {
+          this.imprimirTicket(p);
+        }
       },
       error: (err: HttpErrorResponse) => {
         this.convirtiendoDelivery.set(false);
@@ -688,8 +733,13 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.facturacionSvc.emitirComprobante(p.id, tipo).subscribe({
       next: c => {
         this.emitiendoComprobante.set(false);
+        // PENDIENTE es el estado normal de APISUNAT: el comprobante se encoló y SUNAT lo acepta en
+        // segundos (el listado sincroniza solo). Solo RECHAZADO/ERROR son fallas reales.
         if (c.estado === 'ACEPTADO') this.toast.exito(`${c.numeroCompleto} emitido y aceptado por SUNAT.`);
+        else if (c.estado === 'PENDIENTE') this.toast.info(`${c.numeroCompleto} enviado a SUNAT. Se confirmará en unos segundos (revisa Comprobantes).`);
+        else if (c.estado === 'SIMULADO') this.toast.exito(`${c.numeroCompleto} generado (documento de prueba).`);
         else this.toast.error(`${c.numeroCompleto}: ${c.descripcionRespuestaSunat ?? c.estado}`);
+        this.refrescar();
       },
       error: (err: HttpErrorResponse) => {
         this.emitiendoComprobante.set(false);

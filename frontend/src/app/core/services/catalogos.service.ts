@@ -11,6 +11,11 @@ export class CatalogosService {
     return this.http.get<Servicio[]>(`${environment.apiUrl}/servicios`);
   }
 
+  /** Alta rápida de un servicio al registrar un pedido (accesible al módulo PEDIDOS). */
+  crearServicioRapido(nombre: string, precio: number, unidad: string) {
+    return this.http.post<Servicio>(`${environment.apiUrl}/servicios`, { nombre, precio, unidad });
+  }
+
   areasLavado() {
     return this.http.get<AreaLavado[]>(`${environment.apiUrl}/areas-lavado`);
   }

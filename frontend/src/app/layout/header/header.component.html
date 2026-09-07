@@ -7,8 +7,9 @@
   <div class="mtop__brand">
     @if (negocio().logoUrl) {
       <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" class="mtop__logo" />
+    } @else {
+      <strong>{{ negocio().nombreNegocio }}</strong>
     }
-    <strong>{{ negocio().nombreNegocio }}</strong>
   </div>
   @if (puedeVerAtencion()) {
     <button type="button" class="mtop__attention" [class.has-alerts]="totalAtencion() > 0"

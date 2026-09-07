@@ -50,4 +50,18 @@ public static class XmlSigner
         xmlDoc.Save(salida);
         return salida.ToArray();
     }
+
+    public static string? ObtenerDigest(byte[]? xml)
+    {
+        if (xml is null || xml.Length == 0) return null;
+        try
+        {
+            var doc = new XmlDocument();
+            using var ms = new MemoryStream(xml);
+            doc.Load(ms);
+            return doc.GetElementsByTagName("DigestValue", SignedXml.XmlDsigNamespaceUrl)
+                .Cast<XmlNode>().FirstOrDefault()?.InnerText;
+        }
+        catch { return null; }
+    }
 }

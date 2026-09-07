@@ -78,6 +78,48 @@ export class AjustesNegocioComponent implements OnInit {
     });
   }
 
+  // --- QR de Yape: se sube como el logo (mismo endpoint de imagen) y se guarda en yapeQrUrl ---
+  readonly subiendoQr = signal(false);
+  readonly errorQr = signal<string | null>(null);
+
+  onArchivoQr(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (archivo) this.subirQr(archivo);
+    input.value = '';
+  }
+
+  quitarQr() {
+    this.actualizarCampo('yapeQrUrl', null as never);
+    this.errorQr.set(null);
+  }
+
+  private subirQr(archivo: File) {
+    this.errorQr.set(null);
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type)) {
+      this.errorQr.set('Formato no permitido. Elige una imagen JPG, PNG o WEBP.');
+      return;
+    }
+    if (archivo.size > 2 * 1024 * 1024) {
+      this.errorQr.set('La imagen pesa más de 2 MB. Usa una más liviana.');
+      return;
+    }
+    this.subiendoQr.set(true);
+    this.svc.subirLogo(archivo).subscribe({
+      next: r => {
+        this.subiendoQr.set(false);
+        this.actualizarCampo('yapeQrUrl', r.logoUrl as never);
+        this.toast.exito('QR cargado. Guarda los cambios para aplicarlo.');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.subiendoQr.set(false);
+        const msg = err.error?.mensaje ?? 'No se pudo subir el QR.';
+        this.errorQr.set(msg);
+        this.toast.desdeHttp(err, msg);
+      }
+    });
+  }
+
   readonly previewStyle = computed(() => ({
     'background': `linear-gradient(90deg, ${this.form().colorPrimario} 0%, ${this.form().colorSecundario} 100%)`,
   }));

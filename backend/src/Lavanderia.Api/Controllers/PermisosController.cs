@@ -35,8 +35,8 @@ public class PermisosController : TenantAwareControllerBase
     [HttpPut]
     public async Task<IActionResult> Guardar([FromBody] ActualizarPermisosRequest req, CancellationToken ct)
     {
-        var rolesEditables = (await _roles.ListarTodosAsync(ct))
-            .Where(r => r.Codigo is not "ADMIN" and not "PROPIETARIO")
+        var rolesEditables = (await _roles.ListarPorNegocioAsync(NegocioId, ct))
+            .Where(r => !r.EsSistema)   // ADMIN (sistema) siempre tiene acceso total, no se edita
             .Select(r => r.Id)
             .ToHashSet();
 

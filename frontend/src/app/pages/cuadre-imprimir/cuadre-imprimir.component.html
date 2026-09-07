@@ -19,8 +19,8 @@
     <div class="doc">
       <header class="doc__header">
         <div class="doc__brand">
-          @if (negocio().logoUrl) {
-            <img [src]="negocio().logoUrl" [alt]="negocio().nombreNegocio" />
+          @if (logoImpresion()) {
+            <img [src]="logoImpresion()" [alt]="negocio().nombreNegocio" />
           }
           <div>
             <h1>{{ negocio().nombreNegocio }}</h1>

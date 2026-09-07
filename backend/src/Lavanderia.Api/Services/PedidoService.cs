@@ -12,6 +12,7 @@ public interface IPedidoService
     Task<PagedResultDto<PedidoDto>> ListarPorClienteAsync(int clienteId, string? filtro, int pagina, int tamanoPagina, int sedeId, CancellationToken ct = default);
     Task AvanzarAreaAsync(int pedidoId, AvanzarAreaRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default);
+    Task<List<PagoPedidoDto>> ObtenerPagosAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task AvanzarSiguienteAreaAsync(int pedidoId, int? usuarioId, int sedeId, string? recibidoPor = null, string actorTipo = "USUARIO", CancellationToken ct = default);
     Task<DashboardDto> DashboardAsync(int negocioId, int sedeId, CancellationToken ct = default);
     Task<PedidoContadoresDto> ContadoresAsync(int sedeId, CancellationToken ct = default);
@@ -40,6 +41,7 @@ public class PedidoService : IPedidoService
     private readonly IMotorizadoRepository _motorizados;
     private readonly IConfiguracionNegocioRepository _configNegocio;
     private readonly IGerencialRepository _gerencial;
+    private readonly IFacturacionRepository _facturacion;
     private readonly ILogger<PedidoService> _log;
 
     public PedidoService(
@@ -51,6 +53,7 @@ public class PedidoService : IPedidoService
         IMotorizadoRepository motorizados,
         IConfiguracionNegocioRepository configNegocio,
         IGerencialRepository gerencial,
+        IFacturacionRepository facturacion,
         ILogger<PedidoService> log)
     {
         _pedidos = pedidos;
@@ -61,6 +64,7 @@ public class PedidoService : IPedidoService
         _motorizados = motorizados;
         _configNegocio = configNegocio;
         _gerencial = gerencial;
+        _facturacion = facturacion;
         _log = log;
     }
 
@@ -186,7 +190,12 @@ public class PedidoService : IPedidoService
                 incluyoServicioLavanderia = true;
             }
 
-            var precioUnitario = servicio.EsCargoDelivery ? costoDelivery : servicio.Precio;
+            // El precio del catálogo es solo referencial: si el registro envía un precio válido
+            // (el operario pudo ajustarlo en el mostrador), se respeta ese. El cargo de domicilio
+            // no se toca por aquí (se controla con el costo de delivery). Fuera de rango → catálogo.
+            var precioUnitario = servicio.EsCargoDelivery
+                ? costoDelivery
+                : (it.PrecioUnit > 0m && it.PrecioUnit <= 10000m ? Math.Round(it.PrecioUnit, 2) : servicio.Precio);
             var totalItem = Math.Round(precioUnitario * it.Cantidad, 2);
             subtotal += totalItem;
             itemsPersistir.Add(new PedidoItem
@@ -358,6 +367,9 @@ public class PedidoService : IPedidoService
         if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
             throw new InvalidOperationException("El pedido está finalizado y no se puede convertir a Delivery.");
 
+        if (await _facturacion.TieneComprobanteVigenteAsync(pedidoId, sedeId, ct))
+            throw new InvalidOperationException("El pedido ya tiene un comprobante electronico y no puede cambiar su modalidad o importe.");
+
         var clienteDestino = await _clientes.ObtenerPorIdAsync(pedido.ClienteId, negocioId, ct)
             ?? throw new InvalidOperationException("El cliente del pedido no existe.");
         PedidoCalculos.ValidarContacto(clienteDestino.Celular, clienteDestino.Direccion, "Delivery");
@@ -377,6 +389,33 @@ public class PedidoService : IPedidoService
         pedido.LongitudEntrega = req.LongitudEntrega;
 
         pedido.Modalidad = "Delivery";
+
+        // Cobra la tarifa de domicilio (igual que un pedido Delivery normal): se agrega como
+        // ítem "Tarifa de domicilio" y sube el total. Antes de este cambio, convertir a Delivery
+        // cambiaba la modalidad pero NO cobraba el envío. Se guarda contra duplicados por si se
+        // convierte un pedido que ya tenía el cargo.
+        var servicioDelivery = await _servicios.ObtenerCargoDeliveryAsync(negocioId, ct)
+            ?? throw new InvalidOperationException("El servicio de domicilio no está configurado para este negocio.");
+        var yaTieneCargo = pedido.Items.Any(i => i.ServicioId == servicioDelivery.Id);
+        if (!yaTieneCargo)
+        {
+            var costoDelivery = Math.Round(req.CostoDelivery ?? servicioDelivery.Precio, 2);
+            if (costoDelivery < 0)
+                throw new InvalidOperationException("El costo de domicilio no puede ser negativo.");
+            if (costoDelivery > 0)
+            {
+                await _pedidos.AgregarItemAsync(pedidoId, new PedidoItem
+                {
+                    ServicioId = servicioDelivery.Id,
+                    Cantidad = 1,
+                    PrecioUnit = costoDelivery,
+                    Total = costoDelivery,
+                    Descripcion = "Tarifa de domicilio"
+                }, sedeId, ct);
+                // Recarga el pedido para que el link/saldo use el total ya actualizado.
+                pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct) ?? pedido;
+            }
+        }
 
         await AsegurarLinkPagoAsync(pedidoId, pedido, negocioId, sedeId, ct);
     }
@@ -507,6 +546,10 @@ public class PedidoService : IPedidoService
             string.IsNullOrWhiteSpace(req.Nota) ? siguiente.Nota : req.Nota.Trim(), "USUARIO", sedeId, ct);
     }
 
+    /// <summary>Cobros del pedido con su metodo (efectivo, Yape, ...), para verlos desde la orden.</summary>
+    public Task<List<PagoPedidoDto>> ObtenerPagosAsync(int pedidoId, int sedeId, CancellationToken ct = default)
+        => _pedidos.ObtenerPagosAsync(pedidoId, sedeId, ct);
+
     public async Task<List<PedidoHistorialDto>> ObtenerHistorialAsync(int pedidoId, int sedeId, CancellationToken ct = default)
     {
         var lista = await _pedidos.ObtenerHistorialAsync(pedidoId, sedeId, ct);
@@ -590,6 +633,9 @@ public class PedidoService : IPedidoService
         if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
             throw new InvalidOperationException("El pedido está finalizado y no admite nuevos ítems.");
 
+        if (await _facturacion.TieneComprobanteVigenteAsync(pedidoId, sedeId, ct))
+            throw new InvalidOperationException("El pedido ya tiene un comprobante electronico y sus importes no pueden modificarse.");
+
         var servicio = await _servicios.ObtenerPorIdAsync(req.ServicioId, negocioId, ct)
             ?? throw new InvalidOperationException($"Servicio {req.ServicioId} no existe.");
         if (!servicio.Activo)
@@ -634,6 +680,9 @@ public class PedidoService : IPedidoService
         if (pedido.MontoPagado > 0.01m)
             throw new InvalidOperationException(
                 $"El pedido tiene S/ {pedido.MontoPagado:F2} en pagos registrados. Gestiona la devolución antes de anularlo.");
+
+        if (await _facturacion.TieneComprobanteVigenteAsync(pedidoId, sedeId, ct))
+            throw new InvalidOperationException("Anula primero el comprobante electronico asociado al pedido.");
 
         await _pedidos.AnularAsync(pedidoId, usuarioId, motivo, sedeId, ct);
 

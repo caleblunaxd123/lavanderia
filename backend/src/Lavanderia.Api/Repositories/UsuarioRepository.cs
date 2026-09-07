@@ -208,8 +208,16 @@ public class UsuarioRepository : IUsuarioRepository
 
 public interface IRolRepository
 {
+    /// <summary>Rol de SISTEMA (global) por código: ADMIN, PROPIETARIO.</summary>
     Task<Rol?> BuscarPorCodigoAsync(string codigo, CancellationToken ct = default);
     Task<List<Rol>> ListarTodosAsync(CancellationToken ct = default);
+    Task<Rol?> ObtenerAsync(int id, CancellationToken ct = default);
+    /// <summary>Roles que un negocio puede asignar/administrar: ADMIN (sistema) + sus roles propios.</summary>
+    Task<List<Rol>> ListarPorNegocioAsync(int negocioId, CancellationToken ct = default);
+    Task<int> CrearAsync(int negocioId, string codigo, string nombre, CancellationToken ct = default);
+    Task RenombrarAsync(int id, string nombre, int negocioId, CancellationToken ct = default);
+    Task EliminarAsync(int id, int negocioId, CancellationToken ct = default);
+    Task<bool> EnUsoAsync(int rolId, CancellationToken ct = default);
 }
 
 public class RolRepository : IRolRepository
@@ -217,11 +225,15 @@ public class RolRepository : IRolRepository
     private readonly ISqlConnectionFactory _factory;
     public RolRepository(ISqlConnectionFactory factory) => _factory = factory;
 
+    private const string Cols = "Id, Codigo, Nombre, NegocioId, EsSistema";
+
     private static Rol Map(Microsoft.Data.SqlClient.SqlDataReader r) => new()
     {
         Id = r.GetInt32(0),
         Codigo = r.GetString(1),
-        Nombre = r.GetString(2)
+        Nombre = r.GetString(2),
+        NegocioId = r.IsDBNull(3) ? null : r.GetInt32(3),
+        EsSistema = r.GetBoolean(4)
     };
 
     public async Task<Rol?> BuscarPorCodigoAsync(string codigo, CancellationToken ct = default)
@@ -229,7 +241,7 @@ public class RolRepository : IRolRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Codigo, Nombre FROM dbo.Rol WHERE Codigo = @Codigo";
+        cmd.CommandText = $"SELECT TOP 1 {Cols} FROM dbo.Rol WHERE Codigo = @Codigo AND NegocioId IS NULL";
         cmd.AddParam("@Codigo", codigo);
         return await cmd.ReadFirstOrDefaultAsync(Map, ct);
     }
@@ -239,7 +251,81 @@ public class RolRepository : IRolRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Id, Codigo, Nombre FROM dbo.Rol ORDER BY Id";
+        cmd.CommandText = $"SELECT {Cols} FROM dbo.Rol ORDER BY Id";
         return await cmd.ReadListAsync(Map, ct);
+    }
+
+    public async Task<Rol?> ObtenerAsync(int id, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {Cols} FROM dbo.Rol WHERE Id = @Id";
+        cmd.AddParam("@Id", id);
+        return await cmd.ReadFirstOrDefaultAsync(Map, ct);
+    }
+
+    public async Task<List<Rol>> ListarPorNegocioAsync(int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $@"
+            SELECT {Cols},
+                CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Usuario u WHERE u.RolId = r.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
+            FROM dbo.Rol r
+            WHERE r.NegocioId = @NegocioId OR (r.EsSistema = 1 AND r.Codigo = 'ADMIN')
+            ORDER BY CASE WHEN r.Codigo = 'ADMIN' THEN 0 ELSE 1 END, r.Nombre";
+        cmd.AddParam("@NegocioId", negocioId);
+        return await cmd.ReadListAsync(r => { var rol = Map(r); rol.EnUso = r.GetBoolean(5); return rol; }, ct);
+    }
+
+    public async Task<int> CrearAsync(int negocioId, string codigo, string nombre, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"INSERT INTO dbo.Rol (Codigo, Nombre, NegocioId, EsSistema) VALUES (@Codigo, @Nombre, @NegocioId, 0);
+                            SELECT CAST(SCOPE_IDENTITY() AS INT);";
+        cmd.AddParam("@Codigo", codigo);
+        cmd.AddParam("@Nombre", nombre);
+        cmd.AddParam("@NegocioId", negocioId);
+        var id = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(id);
+    }
+
+    public async Task RenombrarAsync(int id, string nombre, int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Rol SET Nombre = @Nombre WHERE Id = @Id AND NegocioId = @NegocioId AND EsSistema = 0";
+        cmd.AddParam("@Nombre", nombre);
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@NegocioId", negocioId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task EliminarAsync(int id, int negocioId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"DELETE FROM dbo.RolPermiso WHERE RolId = @Id AND NegocioId = @NegocioId;
+                            DELETE FROM dbo.Rol WHERE Id = @Id AND NegocioId = @NegocioId AND EsSistema = 0;";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@NegocioId", negocioId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<bool> EnUsoAsync(int rolId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.Usuario WHERE RolId = @Id) THEN 1 ELSE 0 END";
+        cmd.AddParam("@Id", rolId);
+        var r = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt32(r) == 1;
     }
 }

@@ -41,13 +41,14 @@ public class PlantillasController : ControllerBase
             }),
         ["insumos"] = new(
             "Insumos", "Plantilla de insumos (inventario)",
-            "Completa una fila por insumo. No borres la fila de títulos. Stock actual y mínimo en números (ej. 10 o 2.5). La unidad puede ser: und, kg, litro, bolsa, etc.",
+            "Completa una fila por insumo. No borres la fila de títulos. Stock actual y mínimo en números (ej. 10 o 2.5). La unidad puede ser: und, kg, litro, bolsa, etc. Clase: INSUMO (consumible), MATERIAL (herramienta) o EQUIPO (activo); si la dejas vacía se toma INSUMO.",
             new[]
             {
                 new Columna("Nombre", "Detergente industrial", "Bolsas 5 kg", "Obligatorio", 34),
                 new Columna("Unidad", "litro", "unidad", "und / kg / litro / bolsa…", 16),
                 new Columna("StockActual", "20", "150", "Cantidad que tienes hoy", 16),
                 new Columna("StockMinimo", "5", "30", "Nivel de alerta", 16),
+                new Columna("Clase", "INSUMO", "EQUIPO", "INSUMO / MATERIAL / EQUIPO", 18),
             }),
     };
 

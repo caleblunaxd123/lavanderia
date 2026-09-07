@@ -8,6 +8,7 @@ import { ClaseInsumo, Insumo, InsumosService, MovimientoInsumo } from '../../cor
 import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { ToastService } from '../../core/services/toast.service';
 import { TipoGasto } from '../../core/models/models';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -111,6 +112,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
   readonly editandoInsumo = signal<Insumo | null>(null);
   formInsumo: Partial<Insumo> = this.formInsumoVacio();
   errorFormInsumo = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardandoInsumo = signal(false);
 
   readonly confirmarEliminar = signal<Insumo | null>(null);
@@ -226,6 +228,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
     this.editandoInsumo.set(null);
     this.formInsumo = this.formInsumoVacio();
     this.errorFormInsumo.set(null);
+    this.err.limpiarTodo();
     this.modalInsumo.set(true);
   }
 
@@ -237,6 +240,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
     { clave: 'unidadMedida', etiqueta: 'Unidad', requerido: true, tipo: 'texto' },
     { clave: 'stockActual', etiqueta: 'StockActual', tipo: 'numero', min: 0, max: 1000000 },
     { clave: 'stockMinimo', etiqueta: 'StockMinimo', tipo: 'numero', min: 0, max: 1000000 },
+    { clave: 'clase', etiqueta: 'Clase', tipo: 'texto' },
   ];
 
   abrirImportar() { this.importarAbierto.set(true); }
@@ -265,6 +269,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
     this.editandoInsumo.set(i);
     this.formInsumo = { ...i };
     this.errorFormInsumo.set(null);
+    this.err.limpiarTodo();
     this.modalInsumo.set(true);
   }
 
@@ -277,27 +282,18 @@ export class InventarioComponent implements OnInit, OnDestroy {
     const unidad = this.formInsumo.unidadMedida?.trim() ?? '';
     const stockMinimo = Number(this.formInsumo.stockMinimo ?? 0);
     const stockActual = Number(this.formInsumo.stockActual ?? 0);
-    if (nombre.length < 2 || nombre.length > 80) {
-      this.errorFormInsumo.set('El nombre debe tener entre 2 y 80 caracteres.');
-      return;
-    }
-    if (!unidad || unidad.length > 20) {
-      this.errorFormInsumo.set('Nombre y unidad de medida son obligatorios.');
-      return;
-    }
-    if (!Number.isFinite(stockMinimo) || stockMinimo < 0 || stockMinimo > 1_000_000) {
-      this.errorFormInsumo.set('El stock mínimo debe ser un número entre 0 y 1,000,000.');
-      return;
-    }
-    if (!this.editandoInsumo() && (!Number.isFinite(stockActual) || stockActual < 0 || stockActual > 1_000_000)) {
-      this.errorFormInsumo.set('El stock inicial debe ser un número entre 0 y 1,000,000.');
-      return;
-    }
-    const duplicado = this.insumos().some(i => i.id !== this.editandoInsumo()?.id && this.normalizar(i.nombre) === this.normalizar(nombre));
-    if (duplicado) {
-      this.errorFormInsumo.set('Ya existe un insumo con ese nombre en esta sede.');
-      return;
-    }
+    const errs: Record<string, string> = {};
+    if (nombre.length < 2 || nombre.length > 80) errs['nombre'] = 'El nombre debe tener entre 2 y 80 caracteres.';
+    else if (this.insumos().some(i => i.id !== this.editandoInsumo()?.id && this.normalizar(i.nombre) === this.normalizar(nombre)))
+      errs['nombre'] = 'Ya existe un insumo con ese nombre en esta sede.';
+    if (!unidad || unidad.length > 20) errs['unidad'] = 'Indica cómo lo cuentas (ej: bidón, bolsa, kg). Máx. 20 caracteres.';
+    if (!Number.isFinite(stockMinimo) || stockMinimo < 0 || stockMinimo > 1_000_000)
+      errs['stockMinimo'] = 'Debe ser un número entre 0 y 1,000,000.';
+    if (!this.editandoInsumo() && (!Number.isFinite(stockActual) || stockActual < 0 || stockActual > 1_000_000))
+      errs['stockActual'] = 'Debe ser un número entre 0 y 1,000,000.';
+
+    this.err.set(errs);
+    if (this.err.hay) { this.errorFormInsumo.set('Revisa los campos marcados en rojo.'); return; }
     this.formInsumo = { ...this.formInsumo, nombre, unidadMedida: unidad, stockMinimo, stockActual };
     this.guardandoInsumo.set(true);
     this.errorFormInsumo.set(null);
@@ -311,13 +307,20 @@ export class InventarioComponent implements OnInit, OnDestroy {
       next: () => {
         this.guardandoInsumo.set(false);
         this.modalInsumo.set(false);
+        this.err.limpiarTodo();
         this.toast.exito(edit ? 'Insumo actualizado' : 'Insumo registrado');
         this.cargar();
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoInsumo.set(false);
         const msg = err.error?.mensaje ?? 'No se pudo guardar el insumo.';
-        this.errorFormInsumo.set(msg);
+        const low = msg.toLowerCase();
+        const campo = low.includes('unidad') ? 'unidad'
+          : low.includes('nombre') || low.includes('existe') ? 'nombre'
+          : low.includes('mínimo') || low.includes('minimo') ? 'stockMinimo'
+          : low.includes('inicial') ? 'stockActual' : null;
+        if (campo) { this.err.marcar(campo, msg); this.errorFormInsumo.set('Revisa los campos marcados en rojo.'); }
+        else this.errorFormInsumo.set(msg);
         this.toast.desdeHttp(err, msg);
       }
     });

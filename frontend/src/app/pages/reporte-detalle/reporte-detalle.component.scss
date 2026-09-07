@@ -129,3 +129,10 @@
   &__body { padding: 18px; p { margin: 0 0 14px; color: #475569; font-size: 14px; line-height: 1.5; } }
   &__actions { display: flex; justify-content: flex-end; gap: 10px; }
 }
+
+.rep-card__accion { margin-top: 10px; width: 100%; }
+
+@media (max-width: 720px) {
+  .card.tabla-wrap { display: none; }
+  .cards-rep { display: flex; }
+}

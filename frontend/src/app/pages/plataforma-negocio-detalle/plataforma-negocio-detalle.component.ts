@@ -4,6 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ConfiguracionPlataforma, NegocioDetalle, PagoSuscripcion } from '../../core/models/models';
+import { numeroWhatsapp } from '../../core/util/telefono';
 import { NegociosPlataformaService } from '../../core/services/negocios-plataforma.service';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -172,8 +173,7 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
   /** Abre WhatsApp con un recordatorio de cobro ya redactado para el titular de la empresa. */
   recordarCobro() {
     const n = this.negocio(); if (!n?.titularCelular) return;
-    const digitos = n.titularCelular.replace(/\D/g, '');
-    const numero = digitos.length === 9 ? '51' + digitos : digitos;
+    const numero = numeroWhatsapp(n.titularCelular);
     const cfg = this.config();
     const plataforma = cfg?.nombrePlataforma || 'LaviSystem';
     const vence = n.proximoPago ? new Date(n.proximoPago).toLocaleDateString('es-PE') : '';
@@ -189,8 +189,7 @@ export class PlataformaNegocioDetalleComponent implements OnInit {
   /** Abre WhatsApp para dar soporte al titular (saludo genérico, no de cobro). */
   contactarTitular() {
     const n = this.negocio(); if (!n?.titularCelular) return;
-    const digitos = n.titularCelular.replace(/\D/g, '');
-    const numero = digitos.length === 9 ? '51' + digitos : digitos;
+    const numero = numeroWhatsapp(n.titularCelular);
     const saludo = n.titularNombre ? `Hola ${n.titularNombre.split(' ')[0]}` : 'Hola';
     const msg = `${saludo}, te escribo del soporte de LaviSystem para ayudarte con tu sistema (${n.nombre}). ¿En qué puedo apoyarte?`;
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');

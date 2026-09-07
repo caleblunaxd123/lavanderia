@@ -122,7 +122,8 @@ public class CajaController : TenantAwareControllerBase
             IngresosDigital = ingresosDigital,
             IngresosTarjeta = ingresosTarjeta,
             Nota = req.Nota,
-            Observaciones = req.Observaciones
+            Observaciones = req.Observaciones,
+            DetalleConteo = string.IsNullOrWhiteSpace(req.DetalleConteo) ? null : req.DetalleConteo
         };
         var id = await _repo.GuardarCuadreAsync(cuadre, ct);
         var guardado = await _repo.ObtenerCuadreAsync(id, sedeId, ct);
@@ -177,6 +178,7 @@ public class CajaController : TenantAwareControllerBase
         IngresosTarjeta = c.IngresosTarjeta,
         Nota = c.Nota,
         Observaciones = c.Observaciones,
+        DetalleConteo = c.DetalleConteo,
         FechaCreacion = c.FechaCreacion
     };
 }

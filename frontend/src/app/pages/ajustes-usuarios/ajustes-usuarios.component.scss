@@ -246,6 +246,49 @@
   gap: 10px;
 }
 
+/* Validación por campo: resaltado y mensaje claro debajo del input. */
+.campo-error {
+  display: block;
+  color: #c0392b;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+.modal__body {
+  input.invalid, select.invalid, .input-clave.invalid input {
+    border-color: #e04b3f;
+    background: #fff6f5;
+    &:focus { border-color: #e04b3f; box-shadow: 0 0 0 3px rgba(224, 75, 63, .15); }
+  }
+}
+
+/* Contraseña con botón "ojo" para mostrar / ocultar. */
+.input-clave {
+  position: relative;
+  display: block;
+
+  input { padding-right: 42px; }
+
+  &__ojo {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    transition: color .15s, background .15s;
+
+    &:hover { color: var(--azul-oscuro); background: #eef4ff; }
+  }
+}
+
 .checkbox-row {
   display: flex !important;
   align-items: center;

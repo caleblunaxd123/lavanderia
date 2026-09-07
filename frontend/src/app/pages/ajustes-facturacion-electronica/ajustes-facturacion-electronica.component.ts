@@ -20,7 +20,18 @@ const VACIO: ConfiguracionFacturacion = {
   serieFactura: 'F001',
   activo: false,
   tieneCertificado: false,
-  tieneCredencialesSol: false
+  tieneCredencialesSol: false,
+  proveedor: 'APISUNAT',
+  apiSunatPersonaId: '',
+  apiSunatTokenNuevo: null,
+  tieneCredencialesApiSunat: false,
+  direccionFiscal: '',
+  ubigeo: '',
+  codigoEstablecimiento: '0000',
+  emailEmisor: '',
+  correlativoBoleta: 0,
+  correlativoFactura: 0,
+  requiereCertificadoLocal: false
 };
 
 @Component({
@@ -37,11 +48,12 @@ export class AjustesFacturacionElectronicaComponent implements OnInit {
   readonly form = signal<ConfiguracionFacturacion>({ ...VACIO });
   readonly cargando = signal(true);
   readonly guardando = signal(false);
+  readonly probandoConexion = signal(false);
   readonly nombreCertificadoSeleccionado = signal<string | null>(null);
 
   ngOnInit() {
     this.svc.obtenerConfiguracion().subscribe({
-      next: c => { this.form.set({ ...c, solClaveNueva: null, certificadoPasswordNueva: null, certificadoPfxBase64: null }); this.cargando.set(false); },
+      next: c => { this.form.set({ ...c, solClaveNueva: null, apiSunatTokenNuevo: null, certificadoPasswordNueva: null, certificadoPfxBase64: null }); this.cargando.set(false); },
       error: () => { this.cargando.set(false); this.toast.error('No se pudo cargar la configuración.'); }
     });
   }
@@ -54,6 +66,11 @@ export class AjustesFacturacionElectronicaComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
     if (!archivo) return;
+    if (!/\.(pfx|p12)$/i.test(archivo.name) || archivo.size > 2 * 1024 * 1024) {
+      this.toast.error('Selecciona un certificado .pfx o .p12 de hasta 2 MB.');
+      input.value = '';
+      return;
+    }
     this.nombreCertificadoSeleccionado.set(archivo.name);
     const lector = new FileReader();
     lector.onload = () => {
@@ -75,6 +92,25 @@ export class AjustesFacturacionElectronicaComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.guardando.set(false);
         this.toast.desdeHttp(err, 'No se pudo guardar la configuración.');
+      }
+    });
+  }
+
+  probarConexion() {
+    this.probandoConexion.set(true);
+    this.svc.probarConfiguracion(this.form()).subscribe({
+      next: resultado => {
+        this.probandoConexion.set(false);
+        if (resultado.exitoso) {
+          const ambiente = resultado.produccion ? 'PRODUCCIÓN' : 'DESARROLLO';
+          this.toast.exito(`${resultado.mensaje} Ambiente ${ambiente}.`);
+        } else {
+          this.toast.error(resultado.mensaje);
+        }
+      },
+      error: (err: HttpErrorResponse) => {
+        this.probandoConexion.set(false);
+        this.toast.desdeHttp(err, 'No se pudo probar la conexión.');
       }
     });
   }

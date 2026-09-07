@@ -20,6 +20,8 @@ export class CuadreImprimirComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly cargando = signal(true);
   readonly negocio = computed(() => this.config.configuracion());
+  // Logo monocromo para impresión (ver ConfiguracionService.logoImpresion).
+  readonly logoImpresion = computed(() => ConfiguracionService.logoImpresion(this.negocio().logoUrl));
 
   readonly estado = computed<'SOBRA' | 'CUADRA' | 'FALTA'>(() => {
     const c = this.cuadre();
@@ -39,7 +41,10 @@ export class CuadreImprimirComponent implements OnInit {
       next: c => {
         this.cuadre.set(c);
         this.cargando.set(false);
-        setTimeout(() => this.imprimir(), 500);
+        // Con ?print=0 se abre solo para previsualizar (sin diálogo de impresión).
+        if (this.route.snapshot.queryParamMap.get('print') !== '0') {
+          setTimeout(() => this.imprimir(), 500);
+        }
       },
       error: () => {
         this.error.set('No se pudo cargar el cuadre.');

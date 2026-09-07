@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -25,11 +26,19 @@ export class AjustesAreasComponent implements OnInit {
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
 
+  readonly busqueda = signal('');
+  readonly areasFiltradas = computed(() => {
+    const t = this.busqueda().trim().toLowerCase();
+    if (!t) return this.areas();
+    return this.areas().filter(a => (a.nombre ?? '').toLowerCase().includes(t));
+  });
+  actualizarBusqueda(v: string) { this.busqueda.set(v); this.pagina.set(1); }
+
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
   readonly areasPaginadas = computed(() => {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
-    return this.areas().slice(inicio, inicio + this.tamanoPagina());
+    return this.areasFiltradas().slice(inicio, inicio + this.tamanoPagina());
   });
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
@@ -40,6 +49,7 @@ export class AjustesAreasComponent implements OnInit {
   readonly confirmarDesactivar = signal<AreaLavadoEditable | null>(null);
   form: Partial<AreaLavadoEditable> = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   ngOnInit() { this.cargar(); }
@@ -64,6 +74,7 @@ export class AjustesAreasComponent implements OnInit {
     const maxOrden = this.areas().reduce((max, a) => Math.max(max, a.orden), 0);
     this.form = this.formVacio(maxOrden + 1);
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -71,16 +82,18 @@ export class AjustesAreasComponent implements OnInit {
     this.editando.set(a);
     this.form = { ...a };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
   cerrar() { this.modalAbierto.set(false); }
 
   guardar() {
-    if (!this.form.nombre?.trim() || !this.form.orden || this.form.orden <= 0) {
-      this.errorForm.set('Nombre y orden (mayor a 0) son obligatorios.');
-      return;
-    }
+    const errs: Record<string, string> = {};
+    if (!this.form.nombre?.trim()) errs['nombre'] = 'Ingresa el nombre del área.';
+    if (!this.form.orden || this.form.orden <= 0) errs['orden'] = 'El orden debe ser un número mayor a 0.';
+    this.err.set(errs);
+    if (this.err.hay) { this.errorForm.set('Revisa los campos marcados en rojo.'); return; }
     this.guardando.set(true);
     this.errorForm.set(null);
 

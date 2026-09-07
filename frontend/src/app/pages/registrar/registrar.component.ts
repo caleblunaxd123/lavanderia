@@ -12,12 +12,12 @@ import { ConfiguracionService } from '../../core/services/configuracion.service'
 import { FotosPedidoService } from '../../core/services/fotos-pedido.service';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { PromocionValida } from '../../core/services/promociones.service';
-import { ServiciosAdminService } from '../../core/services/servicios-admin.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { esCelularObligatorioValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
 import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicacion/mapa-ubicacion.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
@@ -42,7 +42,7 @@ export function esUnidadM2(unidad: string | null | undefined): boolean {
 
 @Component({
   selector: 'app-registrar',
-  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, PageHeaderComponent, SoloDigitosDirective],
+  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, PageHeaderComponent, SoloDigitosDirective, TelefonoPaisComponent],
   templateUrl: './registrar.component.html',
   styleUrl: './registrar.component.scss'
 })
@@ -55,7 +55,6 @@ export class RegistrarComponent implements OnInit, OnDestroy {
   private readonly whatsapp = inject(WhatsappService);
   private readonly config = inject(ConfiguracionService);
   private readonly fotosSvc = inject(FotosPedidoService);
-  private readonly serviciosAdmin = inject(ServiciosAdminService);
 
   // ---------- Botón Registrar arriba/abajo dinámico ----------
   // La barra de arriba está en el flujo normal; cuando el trabajador hace scroll y deja de
@@ -108,6 +107,14 @@ export class RegistrarComponent implements OnInit, OnDestroy {
   private busquedaClienteTimerId?: ReturnType<typeof setTimeout>;
 
   servicioSeleccionadoId: number | '' = '';
+  // Buscador del catálogo de servicios (Paso 2): filtra la lista al escribir.
+  readonly busquedaServicio = signal('');
+  readonly comboServicioAbierto = signal(false);
+  readonly catalogoFiltrado = computed(() => {
+    const q = this.normalizarTexto(this.busquedaServicio());
+    const lista = this.catalogo();
+    return q ? lista.filter(s => this.normalizarTexto(s.nombre).includes(q)) : lista;
+  });
   items = signal<ItemAgregado[]>([]);
 
   // ---------- Crear al vuelo un producto/servicio que falta en la lista ----------
@@ -426,7 +433,21 @@ export class RegistrarComponent implements OnInit, OnDestroy {
       if (this.itemAnimadoId() === servicio.id) this.itemAnimadoId.set(null);
     }, 850);
     this.servicioSeleccionadoId = '';
+    this.busquedaServicio.set('');
   }
+
+  // ---------- Buscador de servicios (Paso 2) ----------
+  onBuscarServicio(valor: string) {
+    this.busquedaServicio.set(valor);
+    this.comboServicioAbierto.set(true);
+    this.servicioSeleccionadoId = ''; // al escribir se "deselecciona" hasta elegir de la lista
+  }
+  elegirServicio(s: Servicio) {
+    this.servicioSeleccionadoId = s.id;
+    this.busquedaServicio.set(s.nombre);
+    this.comboServicioAbierto.set(false);
+  }
+  cerrarComboServicio() { this.comboServicioAbierto.set(false); }
 
   abrirNuevoServicio() {
     this.formNuevoServicio = { nombre: '', precio: null, unidad: 'prenda' };
@@ -471,7 +492,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
 
     this.guardandoNuevoServicio.set(true);
     this.errorNuevoServicio.set(null);
-    this.serviciosAdmin.crear({ nombre, precio: Math.round(precio * 100) / 100, unidad, categoriaId: null, activo: true }).subscribe({
+    this.catalogosSvc.crearServicioRapido(nombre, Math.round(precio * 100) / 100, unidad).subscribe({
       next: creado => {
         this.guardandoNuevoServicio.set(false);
         this.modalNuevoServicio.set(false);
@@ -553,6 +574,19 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     );
   }
 
+  /** El precio del catálogo es referencial: el operario puede ajustarlo por ítem. */
+  cambiarPrecio(id: number, precio: number) {
+    const p = Math.max(0, Math.min(10000, Number(precio) || 0));
+    this.items.update(list =>
+      list.map(i => i.servicioId === id ? { ...i, precio: p } : i)
+    );
+  }
+
+  /** El cargo de domicilio no se edita en la tabla: se controla con el "Costo de delivery/recojo". */
+  esItemDelivery(id: number): boolean {
+    return id === this.config.configuracion().servicioDeliveryId;
+  }
+
   // ---------- Servicios por m² (alfombras) ----------
   /** Área en m² = ancho × largo × piezas, redondeada a 2 decimales (mínimo 0). */
   private areaM2(ancho?: number, largo?: number, piezas?: number): number {
@@ -604,7 +638,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
   get validacionPedido(): string | null {
     if (!this.nombre.trim()) return 'Indica el nombre del cliente.';
     if (!this.celular.trim()) return 'Indica un celular de contacto.';
-    if (!esCelularObligatorioValido(this.celular)) return 'El celular debe tener 9 dígitos y empezar con 9.';
+    if (!esCelularObligatorioValido(this.celular)) return 'Revisa el celular: 9 dígitos para Perú, o elige el país para un número extranjero.';
     if (this.modalidad === 'Recojo' && !this.direccion.trim()) return 'Indica la dirección donde se recogerá el pedido.';
     if (this.modalidad === 'Delivery' && !this.direccionEntrega.trim()) return 'Indica la dirección exacta de entrega.';
     if (this.modalidad === 'Delivery' && !this.distritoEntrega.trim()) return 'Selecciona el distrito de entrega.';
@@ -660,10 +694,17 @@ export class RegistrarComponent implements OnInit, OnDestroy {
       costoDelivery: this.esDomicilio() ? this.costoDeliveryPedido : null,
       montoPagado: this.montoPagado,
       metodoPagoInicial: this.metodoPagoInicial,
-      fechaEntregaEst: new Date(this.fechaEntregaValor()).toISOString(),
+      // Se envía en hora LOCAL (naive), igual que FechaIngreso, para que la hora de entrega
+      // no se desfase ~5h. Antes se mandaba toISOString() (UTC) y salía adelantada en el ticket.
+      fechaEntregaEst: this.fechaEntregaValor(),
       observaciones: this.observacionesPedido.trim() || null,
       areaInicialId: this.areaInicialId,
     };
+
+    // Si se enviará la confirmación por WhatsApp, se abre la pestaña AHORA (durante el clic) para
+    // que el navegador no la bloquee al abrirla luego, tras la respuesta del servidor.
+    const notificar = this.notificarWhatsapp && !!this.celular?.trim();
+    const ventanaWa = notificar ? window.open('', '_blank') : null;
 
     this.pedidosSvc.crear(payload).subscribe({
       next: p => {
@@ -672,9 +713,12 @@ export class RegistrarComponent implements OnInit, OnDestroy {
         this.pedidoCreado.set(p);
         this.toast.exito(`Pedido #${p.numero} registrado`);
         this.subirFotosStaged(p.id);
+        if (notificar && p.clienteCelular) this.enviarWhatsapp(ventanaWa);
+        else ventanaWa?.close();
       },
       error: (err: HttpErrorResponse) => {
         this.registrando.set(false);
+        ventanaWa?.close();
         this.toast.desdeHttp(err, 'No se pudo registrar el pedido.');
       }
     });
@@ -756,19 +800,20 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     this.router.navigate(['/ajustes/servicios']);
   }
 
-  imprimirTicket() {
+  imprimirTicket(tipo: 'cliente' | 'produccion' = 'cliente') {
     const p = this.pedidoCreado();
     if (!p) return;
-    window.open(`/ticket/${p.id}`, '_blank');
+    const query = tipo === 'produccion' ? '?tipo=produccion' : '';
+    window.open(`/ticket/${p.id}${query}`, '_blank');
   }
 
-  enviarWhatsapp() {
+  enviarWhatsapp(ventana?: Window | null) {
     const p = this.pedidoCreado();
-    if (!p || !p.clienteCelular) return;
+    if (!p || !p.clienteCelular) { ventana?.close(); return; }
 
     const enviar = (link?: string) => {
       const mensaje = this.whatsapp.mensajeIngreso(p, this.config.configuracion(), link);
-      this.whatsapp.enviar(p.clienteCelular!, mensaje);
+      this.whatsapp.enviar(p.clienteCelular!, mensaje, ventana);
     };
 
     if (this.esPedidoDomicilio(p)) {
@@ -780,6 +825,22 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     }
 
     enviar();
+  }
+
+  /** Botón verde "Enviar pedido y seguimiento" (solo Delivery): manda el mensaje "en camino"
+   * con el link de seguimiento en vivo + saldo + datos de Yape del negocio. */
+  enviarEnCamino() {
+    const p = this.pedidoCreado();
+    if (!p || !p.clienteCelular) return;
+    const ventana = window.open('', '_blank');
+    const enviar = (link?: string) => {
+      const mensaje = this.whatsapp.mensajeEnCamino(p, this.config.configuracion(), link);
+      this.whatsapp.enviar(p.clienteCelular!, mensaje, ventana);
+    };
+    this.pedidosSvc.linkSeguimiento(p.id).subscribe({
+      next: ({ token }) => enviar(`${window.location.origin}/seguimiento/${token}`),
+      error: () => enviar()
+    });
   }
 
   nuevaOrden() {

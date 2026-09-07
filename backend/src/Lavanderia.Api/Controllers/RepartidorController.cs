@@ -58,7 +58,10 @@ public class RepartidorController : ControllerBase
             Anulado = r.Anulado,
             Entregado = string.Equals(r.EstadoProceso, "ENTREGADO", StringComparison.OrdinalIgnoreCase),
             EstadoRuta = SeguimientoRutaCalculo.DeterminarEstado(r, distancia),
-            RutaIniciadaEn = r.RutaIniciadaEn
+            RutaIniciadaEn = r.RutaIniciadaEn,
+            YapeNumero = config?.YapeNumero,
+            YapeTitular = config?.YapeTitular,
+            YapeQrUrl = config?.YapeQrUrl
         });
     }
 

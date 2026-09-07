@@ -1,7 +1,12 @@
 <div class="page">
-  <app-page-header icono="users" color="gris" titulo="Roles del personal" subtitulo="Define los cargos o roles de tu personal (ej: Lavandero, Cajero, Supervisor)." volverTexto="Ajustes" (volver)="volver()">
-    <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo rol</button>
+  <app-page-header icono="users" color="gris" titulo="Cargos del personal" subtitulo="Etiquetas de puesto para tu personal (ej: Lavandero, Cajero, Supervisor). Son solo descriptivas: NO dan acceso al sistema." volverTexto="Ajustes" (volver)="volver()">
+    <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo cargo</button>
   </app-page-header>
+
+  <div class="card aviso-cargos">
+    <app-icon name="info" [size]="18"></app-icon>
+    <p>Estos son solo <strong>nombres de puesto</strong> para clasificar a tu personal. Para dar o quitar <strong>acceso</strong> a los módulos del sistema, usa <strong>Permisos y accesos</strong>.</p>
+  </div>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>
@@ -10,10 +15,19 @@
       <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
     </app-empty-state>
   } @else if (roles().length === 0) {
-    <app-empty-state icono="lista" titulo="Sin roles aún" mensaje="Crea el primero para empezar a clasificar a tu personal.">
-      <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo rol</button>
+    <app-empty-state icono="lista" titulo="Sin cargos aún" mensaje="Crea el primero para empezar a clasificar a tu personal.">
+      <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo cargo</button>
     </app-empty-state>
   } @else {
+    <div class="buscador-lista">
+      <app-icon name="search" [size]="16"></app-icon>
+      <input type="search" placeholder="Buscar cargo por nombre…"
+        [ngModel]="busqueda()" (ngModelChange)="actualizarBusqueda($event)" aria-label="Buscar cargo" />
+      @if (busqueda()) { <button type="button" (click)="actualizarBusqueda('')" title="Limpiar" aria-label="Limpiar búsqueda">×</button> }
+    </div>
+    @if (rolesFiltrados().length === 0) {
+      <p class="hint">Sin coincidencias para “{{ busqueda() }}”.</p>
+    }
     <div class="card tabla-wrap">
       <table class="tabla">
         <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
@@ -64,7 +78,7 @@
       <app-paginacion
         [pagina]="pagina()"
         [tamanoPagina]="tamanoPagina()"
-        [total]="roles().length"
+        [total]="rolesFiltrados().length"
         (paginaChange)="cambiarPagina($event)"
         (tamanoPaginaChange)="cambiarTamanoPagina($event)">
       </app-paginacion>
@@ -76,17 +90,19 @@
   <div class="modal-backdrop" (click)="cerrar()"></div>
   <div class="modal">
     <div class="modal__header">
-      <h3>{{ editando() ? 'Editar rol' : 'Nuevo rol' }}</h3>
+      <h3>{{ editando() ? 'Editar cargo' : 'Nuevo cargo' }}</h3>
       <button class="modal__close" (click)="cerrar()"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <form (submit)="guardar(); $event.preventDefault()">
       <div class="modal__body">
         <label>Nombre *</label>
-        <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Lavandero" />
+        <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Lavandero"
+          [class.invalid]="err.get('nombre')" (ngModelChange)="err.limpiar('nombre')" />
+        @if (err.get('nombre')) { <small class="campo-error">{{ err.get('nombre') }}</small> }
 
         <label class="checkbox-row">
           <input type="checkbox" [(ngModel)]="form.activo" name="activo" />
-          Rol activo
+          Cargo activo
         </label>
 
         @if (errorForm()) {
@@ -108,7 +124,7 @@
   <div class="modal-backdrop" (click)="confirmarEliminar.set(null)"></div>
   <div class="modal modal--sm">
     <div class="modal__header">
-      <h3>¿Eliminar rol?</h3>
+      <h3>¿Eliminar cargo?</h3>
       <button class="modal__close" (click)="confirmarEliminar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">
@@ -127,7 +143,7 @@
   <div class="modal-backdrop" (click)="confirmarDesactivar.set(null)"></div>
   <div class="modal modal--sm">
     <div class="modal__header">
-      <h3>¿Desactivar rol?</h3>
+      <h3>¿Desactivar cargo?</h3>
       <button class="modal__close" (click)="confirmarDesactivar.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
     </div>
     <div class="modal__body">

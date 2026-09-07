@@ -84,9 +84,12 @@
     align-items: center;
 
     img {
-      max-width: 60px;
-      max-height: 60px;
+      max-width: 200px;
+      max-height: 90px;
       object-fit: contain;
+      // Respeta el color/contraste del logo al imprimir o "Guardar como PDF".
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     h1 {

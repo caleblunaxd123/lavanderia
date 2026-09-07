@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -9,11 +10,12 @@ import { EmptyStateComponent } from '../../shared/empty-state/empty-state.compon
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
+import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 
 @Component({
   selector: 'app-ajustes-motorizados',
-  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, SoloDigitosDirective],
+  imports: [PageHeaderComponent, CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, SoloDigitosDirective, TelefonoPaisComponent],
   templateUrl: './ajustes-motorizados.component.html',
   styleUrl: './ajustes-motorizados.component.scss'
 })
@@ -28,9 +30,17 @@ export class AjustesMotorizadosComponent implements OnInit {
 
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
+  readonly busqueda = signal('');
+  readonly motorizadosFiltrados = computed(() => {
+    const t = this.busqueda().trim().toLowerCase();
+    if (!t) return this.motorizados();
+    return this.motorizados().filter(m => (m.nombre ?? '').toLowerCase().includes(t));
+  });
+  actualizarBusqueda(v: string) { this.busqueda.set(v); this.pagina.set(1); }
+
   readonly motorizadosPaginados = computed(() => {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
-    return this.motorizados().slice(inicio, inicio + this.tamanoPagina());
+    return this.motorizadosFiltrados().slice(inicio, inicio + this.tamanoPagina());
   });
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
@@ -40,6 +50,7 @@ export class AjustesMotorizadosComponent implements OnInit {
   readonly confirmarDesactivar = signal<Motorizado | null>(null);
   form: Partial<Motorizado> = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   ngOnInit() { this.cargar(); }
@@ -63,6 +74,7 @@ export class AjustesMotorizadosComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -70,6 +82,7 @@ export class AjustesMotorizadosComponent implements OnInit {
     this.editando.set(m);
     this.form = { ...m };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -77,9 +90,11 @@ export class AjustesMotorizadosComponent implements OnInit {
 
   guardar() {
     if (!this.form.nombre?.trim()) {
-      this.errorForm.set('El nombre es obligatorio.');
+      this.err.set({ nombre: 'Ingresa el nombre.' });
+      this.errorForm.set(null);
       return;
     }
+    this.err.limpiarTodo();
     this.guardando.set(true);
     this.errorForm.set(null);
 

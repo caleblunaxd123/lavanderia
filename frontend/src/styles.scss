@@ -503,3 +503,111 @@ tr.inactivo .badge--gris::before,
   background: #ef4444;
   flex-shrink: 0;
 }
+
+/* ============================================================
+   Validación de formularios (global) — usada por todos los
+   formularios para dar feedback claro por campo.
+   ============================================================ */
+.campo-error {
+  display: block;
+  color: #c0392b;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 5px;
+  line-height: 1.35;
+}
+/* Resaltado del campo con error (alta especificidad para ganar
+   a los estilos scoped de cada componente). */
+input.invalid,
+select.invalid,
+textarea.invalid,
+.input-clave.invalid input {
+  border-color: #e04b3f !important;
+  background: #fff6f5 !important;
+}
+input.invalid:focus,
+select.invalid:focus,
+textarea.invalid:focus,
+.input-clave.invalid input:focus {
+  outline: none !important;
+  border-color: #e04b3f !important;
+  box-shadow: 0 0 0 3px rgba(224, 75, 63, .15) !important;
+}
+
+/* Campo de contraseña con botón "ojo" (mostrar / ocultar). */
+.input-clave {
+  position: relative;
+  display: block;
+}
+.input-clave input { padding-right: 42px !important; }
+.input-clave__ojo {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.input-clave__ojo:hover { color: var(--azul-oscuro); background: #eef4ff; }
+
+/* ============================================================
+   Tarjetas de REPORTE en móvil (reutilizable).
+   Cada página de reporte activa el cambio tabla→cards en su
+   propio SCSS (scopeado), para no afectar otras pantallas.
+   ============================================================ */
+.cards-rep { display: none; flex-direction: column; gap: 10px; }
+.rep-card {
+  background: #fff;
+  border: 1px solid var(--gris-borde, #e4e9f0);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(5, 52, 101, .05);
+
+  &__titulo { font-weight: 800; color: var(--azul-oscuro, #053465); font-size: 15px; margin-bottom: 6px; }
+  &__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;
+    .rep-card__titulo { margin-bottom: 0; } }
+  &__row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 5px 0; border-top: 1px solid #f1f5f9; font-size: 13.5px;
+    span { color: #64748b; }
+    strong { color: #1c2733; font-weight: 700; text-align: right; }
+  }
+  &__accion { margin-top: 10px; width: 100%; }
+  &--total { border-color: var(--azul-oscuro, #053465); background: #f7faff; }
+}
+
+/* ============================================================
+   Buscador de listados (global) — barra simple con ícono, para
+   que todos los catálogos tengan búsqueda consistente.
+   ============================================================ */
+.buscador-lista {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--gris-borde, #e4e9f0);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  max-width: 420px;
+
+  app-icon { color: #94a3b8; flex-shrink: 0; }
+  input {
+    flex: 1; min-width: 0; border: none; outline: none;
+    font-size: 14px; font-family: inherit; color: var(--ink, #1c2733); background: transparent;
+    &::placeholder { color: #94a3b8; }
+  }
+  button {
+    flex-shrink: 0; border: none; background: #eef2f7; color: #64748b;
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+    &:hover { background: #e2e8f0; color: #334155; }
+  }
+}

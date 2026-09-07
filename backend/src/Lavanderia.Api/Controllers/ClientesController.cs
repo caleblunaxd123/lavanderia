@@ -1,6 +1,7 @@
 using Lavanderia.Api.Domain;
 using Lavanderia.Api.Dtos;
 using Lavanderia.Api.Repositories;
+using Lavanderia.Api.Services.Facturacion;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -93,6 +94,8 @@ public class ClientesController : TenantAwareControllerBase
         var dni = LimpiarTexto(dto.Dni);
         var documentoFiscal = LimpiarTexto(dto.DocumentoFiscal);
         var direccion = LimpiarTexto(dto.Direccion);
+        if (documentoFiscal is not null && !DocumentoFiscalValidator.EsRucValido(documentoFiscal))
+            return BadRequest(new { mensaje = "El RUC ingresado no es valido ante SUNAT." });
 
         var duplicado = await _repo.BuscarDuplicadoAsync(nombre, celular, dni, documentoFiscal, NegocioId, null, ct);
         if (duplicado is not null)
@@ -145,8 +148,8 @@ public class ClientesController : TenantAwareControllerBase
 
             if (nombre.Length < 2 || nombre.Length > 120)
             { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Nombre inválido (2 a 120 caracteres)." }); continue; }
-            if (celular is not null && !System.Text.RegularExpressions.Regex.IsMatch(celular, @"^9\d{8}$"))
-            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular inválido (9 dígitos, empieza con 9)." }); continue; }
+            if (celular is not null && !System.Text.RegularExpressions.Regex.IsMatch(celular, @"^(9\d{8}|\+\d{7,15})$"))
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular inválido (9 dígitos para Perú, o + y código de país)." }); continue; }
             if (dni is not null && !System.Text.RegularExpressions.Regex.IsMatch(dni, @"^\d{8}$"))
             { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "DNI inválido (8 dígitos)." }); continue; }
 
@@ -186,6 +189,8 @@ public class ClientesController : TenantAwareControllerBase
         var celular = LimpiarTexto(dto.Celular);
         var dni = LimpiarTexto(dto.Dni);
         var documentoFiscal = LimpiarTexto(dto.DocumentoFiscal);
+        if (documentoFiscal is not null && !DocumentoFiscalValidator.EsRucValido(documentoFiscal))
+            return BadRequest(new { mensaje = "El RUC ingresado no es valido ante SUNAT." });
         var duplicado = await _repo.BuscarDuplicadoAsync(nombre, celular, dni, documentoFiscal, NegocioId, id, ct);
         if (duplicado is not null)
             return Conflict(new { mensaje = MensajeDuplicado(duplicado, celular, dni, documentoFiscal), clienteId = duplicado.Id });

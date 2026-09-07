@@ -19,6 +19,10 @@ export interface RepartidorPedido {
   entregado: boolean;
   estadoRuta: EstadoRuta;
   rutaIniciadaEn?: string | null;
+  // Cobro por Yape/Plin del negocio: el repartidor muestra el QR al cliente en la puerta.
+  yapeNumero?: string | null;
+  yapeTitular?: string | null;
+  yapeQrUrl?: string | null;
 }
 
 export interface UbicacionResultado {

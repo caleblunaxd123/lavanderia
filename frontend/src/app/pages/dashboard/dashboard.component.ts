@@ -4,7 +4,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { debounceTime, forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { CajaService } from '../../core/services/caja.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
+import { fechaLocalIso } from '../../core/util/fecha-local';
 import { ClientesService, ClienteCumpleanos } from '../../core/services/clientes.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { Dashboard, PedidosService } from '../../core/services/pedidos.service';
@@ -49,11 +51,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly catalogos = inject(CatalogosService);
   private readonly personalSvc = inject(PersonalService);
   private readonly clientesSvc = inject(ClientesService);
+  private readonly cajaSvc = inject(CajaService);
   private readonly actualizaciones = inject(ActualizacionDatosService);
   private readonly destroyRef = inject(DestroyRef);
 
   // Clientes que cumplen años dentro de la semana (para alerta de fidelización).
   readonly cumpleanos = signal<ClienteCumpleanos[]>([]);
+
+  // Turnos de HOY con movimientos de caja pero sin cierre guardado (para alerta "caja sin cerrar").
+  readonly cajaHoyPendiente = signal(0);
 
   readonly data = signal<Dashboard | null>(null);
   readonly cargando = signal(false);
@@ -150,6 +156,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const d = this.data();
     if (!d) return [];
     const alertas: AlertaInicio[] = [];
+
+    if (this.tieneModulo('CAJA') && this.cajaHoyPendiente() > 0) {
+      const n = this.cajaHoyPendiente();
+      alertas.push({
+        clave: 'caja-sin-cerrar',
+        titulo: 'La caja de hoy aún no se ha cerrado',
+        detalle: n === 1
+          ? 'Hay un turno con movimientos sin cuadrar. Ciérralo para dejar el conteo registrado.'
+          : `Hay ${n} turnos con movimientos sin cuadrar. Ciérralos para dejar el conteo registrado.`,
+        accion: 'Cerrar caja',
+        ruta: '/cuadre-caja',
+        nivel: 'advertencia',
+        icono: 'cash'
+      });
+    }
 
     if (this.tieneModulo('PEDIDOS') && d.totalPedidosEstancados > 0 && d.pedidosEstancados.length > 0) {
       const primero = d.pedidosEstancados[0];
@@ -287,6 +308,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (silencioso) this.actualizando.set(true);
     else this.cargando.set(true);
 
+    this.cargarEstadoCaja();
     this.svc.dashboard().subscribe({
       next: d => {
         if (version !== this.versionCarga) return;
@@ -306,6 +328,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private cargarSiVisible() {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     if (!this.cargando() && !this.actualizando()) this.cargar(true);
+  }
+
+  /** Revisa si la caja de HOY tiene movimientos sin cuadrar (para el aviso del dashboard). */
+  private cargarEstadoCaja() {
+    if (!this.tieneModulo('CAJA')) return;
+    this.cajaSvc.usuariosDelDia(fechaLocalIso()).subscribe({
+      next: list => this.cajaHoyPendiente.set(
+        list.filter(u => u.movimientos > 0 && !u.tieneCuadre).length),
+      error: () => { /* silencioso: el aviso simplemente no aparece */ }
+    });
   }
 
   cerrarOnboarding() {

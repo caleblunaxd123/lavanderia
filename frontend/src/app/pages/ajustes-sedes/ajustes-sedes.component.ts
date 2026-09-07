@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ErroresCampo } from '../../core/util/errores-campo';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -26,11 +27,19 @@ export class AjustesSedesComponent implements OnInit {
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
 
+  readonly busqueda = signal('');
+  readonly sedesFiltradas = computed(() => {
+    const t = this.busqueda().trim().toLowerCase();
+    if (!t) return this.sedes();
+    return this.sedes().filter(s => (s.nombre ?? '').toLowerCase().includes(t) || (s.direccion ?? '').toLowerCase().includes(t));
+  });
+  actualizarBusqueda(v: string) { this.busqueda.set(v); this.pagina.set(1); }
+
   readonly pagina = signal(1);
   readonly tamanoPagina = signal(15);
   readonly sedesPaginadas = computed(() => {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
-    return this.sedes().slice(inicio, inicio + this.tamanoPagina());
+    return this.sedesFiltradas().slice(inicio, inicio + this.tamanoPagina());
   });
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
@@ -40,6 +49,7 @@ export class AjustesSedesComponent implements OnInit {
   readonly confirmarDesactivar = signal<Sede | null>(null);
   form: Partial<Sede> = this.formVacio();
   errorForm = signal<string | null>(null);
+  readonly err = new ErroresCampo();
   guardando = signal(false);
 
   ngOnInit() { this.cargar(); }
@@ -63,6 +73,7 @@ export class AjustesSedesComponent implements OnInit {
     this.editando.set(null);
     this.form = this.formVacio();
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -70,6 +81,7 @@ export class AjustesSedesComponent implements OnInit {
     this.editando.set(s);
     this.form = { ...s };
     this.errorForm.set(null);
+    this.err.limpiarTodo();
     this.modalAbierto.set(true);
   }
 
@@ -77,9 +89,11 @@ export class AjustesSedesComponent implements OnInit {
 
   guardar() {
     if (!this.form.nombre?.trim()) {
-      this.errorForm.set('El nombre es obligatorio.');
+      this.err.set({ nombre: 'Ingresa el nombre de la sede.' });
+      this.errorForm.set(null);
       return;
     }
+    this.err.limpiarTodo();
     this.guardando.set(true);
     this.errorForm.set(null);
 

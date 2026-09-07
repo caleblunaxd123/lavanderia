@@ -16,6 +16,15 @@
       <button class="btn btn--primario" (click)="abrirCrear()">+ Nuevo repartidor</button>
     </app-empty-state>
   } @else {
+    <div class="buscador-lista">
+      <app-icon name="search" [size]="16"></app-icon>
+      <input type="search" placeholder="Buscar repartidor por nombre…"
+        [ngModel]="busqueda()" (ngModelChange)="actualizarBusqueda($event)" aria-label="Buscar repartidor" />
+      @if (busqueda()) { <button type="button" (click)="actualizarBusqueda('')" title="Limpiar" aria-label="Limpiar búsqueda">×</button> }
+    </div>
+    @if (motorizadosFiltrados().length === 0) {
+      <p class="hint">Sin coincidencias para “{{ busqueda() }}”.</p>
+    }
     <div class="card tabla-wrap">
       <table class="tabla">
         <thead><tr><th>Nombre</th><th>Celular</th><th>Estado</th><th></th></tr></thead>
@@ -68,7 +77,7 @@
       <app-paginacion
         [pagina]="pagina()"
         [tamanoPagina]="tamanoPagina()"
-        [total]="motorizados().length"
+        [total]="motorizadosFiltrados().length"
         (paginaChange)="cambiarPagina($event)"
         (tamanoPaginaChange)="cambiarTamanoPagina($event)">
       </app-paginacion>
@@ -86,11 +95,12 @@
     <form (submit)="guardar(); $event.preventDefault()">
       <div class="modal__body">
         <label>Nombre *</label>
-        <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Juan Pérez" />
+        <input type="text" [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Juan Pérez"
+          [class.invalid]="err.get('nombre')" (ngModelChange)="err.limpiar('nombre')" />
+        @if (err.get('nombre')) { <small class="campo-error">{{ err.get('nombre') }}</small> }
 
         <label>Celular</label>
-        <input type="tel" inputmode="numeric" appSoloDigitos [maxDigitos]="9" maxlength="9"
-               [(ngModel)]="form.celular" name="celular" placeholder="Ej: 987654321" />
+        <app-telefono-pais [(ngModel)]="form.celular" name="celular" inputId="celular"></app-telefono-pais>
 
         <label class="checkbox-row">
           <input type="checkbox" [(ngModel)]="form.activo" name="activo" />

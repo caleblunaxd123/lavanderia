@@ -34,7 +34,9 @@
   margin-bottom: 20px;
 
   .logo {
-    max-height: 56px;
+    max-width: 190px;
+    max-height: 96px;
+    object-fit: contain;
     margin-bottom: 8px;
   }
 
