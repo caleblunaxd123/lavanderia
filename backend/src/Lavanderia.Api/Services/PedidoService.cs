@@ -17,6 +17,8 @@ public interface IPedidoService
     Task<DashboardDto> DashboardAsync(int negocioId, int sedeId, CancellationToken ct = default);
     Task<PedidoContadoresDto> ContadoresAsync(int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, RegistrarPagoRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
+    Task<string> EntregarAsync(int pedidoId, EntregarPedidoRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
+    Task<List<PedidoEntregaDto>> ObtenerEntregasAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task AgregarItemAsync(int pedidoId, AgregarItemRequest req, int negocioId, int sedeId, CancellationToken ct = default);
     Task AnularAsync(int pedidoId, string motivo, int usuarioId, int negocioId, int sedeId, CancellationToken ct = default);
     Task DonarAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
@@ -606,8 +608,10 @@ public class PedidoService : IPedidoService
 
         if (pedido.Anulado)
             throw new InvalidOperationException("El pedido está anulado.");
-        if (pedido.EstadoProceso is "ENTREGADO" or "DONADO" or "ANULADO")
-            throw new InvalidOperationException("El pedido está finalizado y no admite nuevos pagos.");
+        // Se permite cobrar aunque ya esté entregado: un pedido puede entregarse con saldo
+        // pendiente (fiado) y cobrarse el resto después. Solo se bloquean anulados/donados.
+        if (pedido.EstadoProceso is "DONADO" or "ANULADO")
+            throw new InvalidOperationException("El pedido está anulado o donado y no admite nuevos pagos.");
 
         var saldo = pedido.Total - pedido.MontoPagado;
         if (saldo <= 0.01m)
@@ -622,6 +626,78 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException("Método de pago inválido.");
 
         await _pedidos.RegistrarPagoAsync(pedidoId, req.Monto, req.Metodo.ToUpperInvariant(), usuarioId, req.Descripcion, sedeId, ct);
+    }
+
+    private static readonly string[] MetodosPagoValidos = ["EFECTIVO", "YAPE", "PLIN", "TRANSFERENCIA", "POS", "TARJETA"];
+
+    public async Task<string> EntregarAsync(int pedidoId, EntregarPedidoRequest req, int usuarioId, int sedeId, CancellationToken ct = default)
+    {
+        var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
+            ?? throw new InvalidOperationException("Pedido no encontrado.");
+
+        if (pedido.Anulado)
+            throw new InvalidOperationException("El pedido está anulado.");
+        if (pedido.EstadoProceso is not ("LISTO" or "ENTREGA_PARCIAL"))
+            throw new InvalidOperationException("Solo se puede entregar un pedido que está LISTO. Termina primero el proceso de lavado.");
+
+        // --- Validar ítems a entregar contra lo pendiente ---
+        var items = new List<(int PedidoItemId, decimal Cantidad)>();
+        foreach (var it in req.Items ?? new())
+        {
+            if (it.Cantidad <= 0) continue;
+            var item = pedido.Items.FirstOrDefault(x => x.Id == it.PedidoItemId)
+                ?? throw new InvalidOperationException("Un ítem indicado no pertenece a este pedido.");
+            var pendiente = item.Cantidad - item.CantidadEntregada;
+            if (it.Cantidad > pendiente + 0.01m)
+                throw new InvalidOperationException(
+                    $"No puedes entregar {it.Cantidad:0.##} de '{item.ServicioNombre}': solo quedan {pendiente:0.##} pendientes.");
+            items.Add((item.Id, Math.Round(it.Cantidad, 2)));
+        }
+
+        // --- Validar pagos (pago mixto) contra el saldo ---
+        var saldo = pedido.Total - pedido.MontoPagado;
+        var pagos = new List<(string Metodo, decimal Monto)>();
+        foreach (var pg in req.Pagos ?? new())
+        {
+            if (pg.Monto <= 0) continue;
+            var metodo = (pg.Metodo ?? "").ToUpperInvariant();
+            if (!MetodosPagoValidos.Contains(metodo))
+                throw new InvalidOperationException($"Método de pago inválido: {pg.Metodo}");
+            pagos.Add((metodo, Math.Round(pg.Monto, 2)));
+        }
+        var totalCobrado = pagos.Sum(p => p.Monto);
+        if (totalCobrado > saldo + 0.01m)
+            throw new InvalidOperationException($"El total a cobrar (S/ {totalCobrado:0.00}) excede el saldo pendiente (S/ {saldo:0.00}).");
+
+        if (items.Count == 0 && pagos.Count == 0)
+            throw new InvalidOperationException("Indica qué prendas se entregan y/o registra un cobro.");
+
+        var recibidoPor = string.IsNullOrWhiteSpace(req.RecibidoPor) ? null : req.RecibidoPor.Trim();
+        var nota = string.IsNullOrWhiteSpace(req.Nota) ? null : req.Nota.Trim();
+
+        return await _pedidos.EntregarAsync(pedidoId, items, pagos, recibidoPor, nota, usuarioId, sedeId, ct);
+    }
+
+    public async Task<List<PedidoEntregaDto>> ObtenerEntregasAsync(int pedidoId, int sedeId, CancellationToken ct = default)
+    {
+        var entregas = await _pedidos.ObtenerEntregasAsync(pedidoId, sedeId, ct);
+        return entregas.Select(e => new PedidoEntregaDto
+        {
+            Id = e.Id,
+            Fecha = e.Fecha,
+            UsuarioNombre = e.UsuarioNombre,
+            RecibidoPor = e.RecibidoPor,
+            Nota = e.Nota,
+            EsFinal = e.EsFinal,
+            MontoCobrado = e.MontoCobrado,
+            Items = e.Items.Select(d => new EntregaDetalleDto
+            {
+                PedidoItemId = d.PedidoItemId,
+                ServicioNombre = d.ServicioNombre,
+                ServicioUnidad = d.ServicioUnidad,
+                Cantidad = d.Cantidad
+            }).ToList()
+        }).ToList();
     }
 
     public async Task AgregarItemAsync(int pedidoId, AgregarItemRequest req, int negocioId, int sedeId, CancellationToken ct = default)
@@ -840,7 +916,8 @@ public class PedidoService : IPedidoService
             Cantidad = i.Cantidad,
             PrecioUnit = i.PrecioUnit,
             Total = i.Total,
-            Descripcion = i.Descripcion
+            Descripcion = i.Descripcion,
+            CantidadEntregada = i.CantidadEntregada
         }).ToList()
     };
 

@@ -34,7 +34,7 @@ public static class PedidoCalculos
     /// </summary>
     public static SiguientePaso CalcularSiguientePaso(Pedido pedido, IReadOnlyList<AreaLavado> areasActivasOrdenadas)
     {
-        if (pedido.EstadoProceso == "LISTO")
+        if (pedido.EstadoProceso is "LISTO" or "ENTREGA_PARCIAL")
             return new SiguientePaso(pedido.AreaActualId, "ENTREGADO", "Entregado al cliente");
 
         if (pedido.EstadoProceso is not ("PENDIENTE" or "EN_PROCESO"))

@@ -13,7 +13,7 @@ import { ConfiguracionService } from '../../core/services/configuracion.service'
 import { FacturacionService } from '../../core/services/facturacion.service';
 import { FotoPedido, FotosPedidoService, MomentoFoto } from '../../core/services/fotos-pedido.service';
 import { Motorizado, MotorizadosService } from '../../core/services/motorizados.service';
-import { PagoPedido, PedidoHistorial, PedidosService } from '../../core/services/pedidos.service';
+import { PagoPedido, PedidoEntrega, PedidoHistorial, PedidosService } from '../../core/services/pedidos.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -21,6 +21,23 @@ import { MapaUbicacionComponent, UbicacionMapa } from '../../shared/mapa-ubicaci
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { TourService } from '../../core/services/tour.service';
 import { TOURS } from '../../core/constants/tours';
+
+export type MetodoPagoEntrega = 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS';
+
+/** Una fila del modal de entrega: un ítem del pedido con lo pendiente y cuánto se entrega ahora. */
+export interface LineaEntregaItem {
+  pedidoItemId: number;
+  servicioNombre: string;
+  unidad: string;
+  pendiente: number;
+  cantidad: number; // cuánto se entrega en esta visita
+}
+
+/** Una línea de cobro del modal de entrega (pago mixto). */
+export interface LineaPagoEntrega {
+  metodo: MetodoPagoEntrega;
+  monto: number;
+}
 
 /**
  * Página dedicada del pedido (/pedidos/:id).
@@ -75,6 +92,22 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   // Comprobante a emitir junto con el cobro (solo si el pago completa el total).
   pagoComprobante: 'NINGUNO' | 'BOLETA' | 'FACTURA' = 'BOLETA';
   recibidoPor = '';
+
+  // --- Entrega (parcial o final) + cobro mixto ---
+  readonly metodosPago: Array<{ v: MetodoPagoEntrega; nombre: string; icono: string }> = [
+    { v: 'EFECTIVO', nombre: 'Efectivo', icono: 'cash' },
+    { v: 'YAPE', nombre: 'Yape', icono: 'smartphone' },
+    { v: 'PLIN', nombre: 'Plin', icono: 'smartphone' },
+    { v: 'TRANSFERENCIA', nombre: 'Transferencia', icono: 'bank' },
+    { v: 'POS', nombre: 'POS/Tarjeta', icono: 'credit-card' }
+  ];
+  /** Filas de ítems a entregar en esta visita (una por ítem con cantidad pendiente). */
+  entregaItems = signal<LineaEntregaItem[]>([]);
+  /** Líneas de cobro de esta visita (pago mixto). */
+  entregaPagos = signal<LineaPagoEntrega[]>([]);
+  entregaNota = '';
+  /** Entregas ya registradas del pedido (parciales + final). */
+  readonly entregas = signal<PedidoEntrega[]>([]);
   itemServicioId: number | '' = '';
   itemCantidad = 1;
   itemDescripcion = '';
@@ -160,6 +193,13 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     });
   }
 
+  private cargarEntregas() {
+    this.service.entregas(this.pedidoId).subscribe({
+      next: list => this.entregas.set(list),
+      error: () => this.entregas.set([])
+    });
+  }
+
   private cargar() {
     this.cargando.set(true);
     this.error.set(null);
@@ -176,6 +216,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       error: () => this.cargandoHistorial.set(false)
     });
     this.cargarPagos();
+    this.cargarEntregas();
     this.cargarFotos();
   }
 
@@ -187,6 +228,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     });
     this.service.historial(this.pedidoId).subscribe(h => this.historial.set(h));
     this.cargarPagos();
+    this.cargarEntregas();
   }
 
   // ---------- Derivados ----------
@@ -234,10 +276,11 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
 
   /** Texto de LA acción principal: el sistema le dice al trabajador qué toca hacer ahora. */
   accionPrincipalLabel(p: Pedido): string {
-    if (p.estadoProceso === 'LISTO') {
+    if (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL') {
+      const verbo = p.estadoProceso === 'ENTREGA_PARCIAL' ? 'Entregar resto' : 'Entregar';
       return this.saldoPendiente() > 0.01
-        ? `Cobrar S/ ${this.saldoPendiente().toFixed(2)} y entregar`
-        : 'Entregar pedido';
+        ? `${verbo} / cobrar (falta S/ ${this.saldoPendiente().toFixed(2)})`
+        : `${verbo} pedido`;
     }
     if (p.estadoProceso === 'PENDIENTE' && p.areaActualId == null) return 'Iniciar proceso';
     const areasList = this.areas();
@@ -251,15 +294,145 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       this.toast.advertencia('El pedido está EN PROCESO pero no tiene un área actual. Revisa su historial.');
       return;
     }
-    if (p.estadoProceso === 'LISTO') {
-      const saldo = this.saldoPendiente();
-      this.pagoMonto = saldo > 0.01 ? Math.round(saldo * 100) / 100 : 0;
-      this.pagoMetodo = 'EFECTIVO';
-      this.recibidoPor = '';
-      this.modalEntrega.set(true);
+    if (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL') {
+      this.abrirModalEntrega(p);
       return;
     }
     this.ejecutarAvance(p);
+  }
+
+  /** Prepara el modal de entrega: una fila por ítem con lo pendiente y una línea de cobro con el saldo. */
+  abrirModalEntrega(p: Pedido) {
+    const filas: LineaEntregaItem[] = (p.items ?? [])
+      .map(it => {
+        const pendiente = Math.round((it.cantidad - (it.cantidadEntregada ?? 0)) * 100) / 100;
+        return {
+          pedidoItemId: it.id!,
+          servicioNombre: it.servicioNombre ?? 'Servicio',
+          unidad: it.servicioUnidad ?? '',
+          pendiente,
+          cantidad: pendiente // por defecto se entrega todo lo pendiente
+        };
+      })
+      .filter(f => f.pendiente > 0.001);
+
+    const saldo = this.saldoPendiente();
+    this.entregaItems.set(filas);
+    this.entregaPagos.set(saldo > 0.01 ? [{ metodo: 'EFECTIVO', monto: Math.round(saldo * 100) / 100 }] : []);
+    this.entregaNota = '';
+    this.recibidoPor = '';
+    this.modalEntrega.set(true);
+  }
+
+  // --- Derivados del modal de entrega ---
+  /** Total a cobrar en esta visita (suma de las líneas de pago). */
+  totalCobroEntrega(): number {
+    return Math.round(this.entregaPagos().reduce((s, l) => s + (Number(l.monto) || 0), 0) * 100) / 100;
+  }
+  /** Saldo que quedaría por cobrar después de este cobro. */
+  saldoRestanteEntrega(): number {
+    return Math.round((this.saldoPendiente() - this.totalCobroEntrega()) * 100) / 100;
+  }
+  /** ¿Se están entregando prendas en esta visita? */
+  hayItemsEntrega(): boolean {
+    return this.entregaItems().some(f => (Number(f.cantidad) || 0) > 0.001);
+  }
+  /** Tras esta entrega, ¿queda todo el pedido entregado? (define si es entrega final). */
+  esEntregaFinal(): boolean {
+    const filas = this.entregaItems();
+    if (filas.length === 0) return true; // ya no queda nada pendiente por entregar
+    return filas.every(f => (Number(f.cantidad) || 0) >= f.pendiente - 0.001);
+  }
+  agregarLineaPago() {
+    // Sugiere el método menos usado aún y el saldo restante como monto.
+    const usados = new Set(this.entregaPagos().map(l => l.metodo));
+    const libre = this.metodosPago.find(m => !usados.has(m.v))?.v ?? 'EFECTIVO';
+    const restante = Math.max(0, this.saldoRestanteEntrega());
+    this.entregaPagos.update(ls => [...ls, { metodo: libre, monto: Math.round(restante * 100) / 100 }]);
+  }
+  quitarLineaPago(i: number) {
+    this.entregaPagos.update(ls => ls.filter((_, idx) => idx !== i));
+  }
+  setMetodoPago(i: number, metodo: MetodoPagoEntrega) {
+    this.entregaPagos.update(ls => ls.map((l, idx) => idx === i ? { ...l, metodo } : l));
+  }
+  setMontoPago(i: number, monto: number) {
+    this.entregaPagos.update(ls => ls.map((l, idx) => idx === i ? { ...l, monto } : l));
+  }
+  setCantidadItem(i: number, cantidad: number) {
+    this.entregaItems.update(fs => fs.map((f, idx) => idx === i ? { ...f, cantidad } : f));
+  }
+  entregarTodoItem(i: number) {
+    this.entregaItems.update(fs => fs.map((f, idx) => idx === i ? { ...f, cantidad: f.pendiente } : f));
+  }
+
+  cerrarModalEntrega() {
+    this.modalEntrega.set(false);
+    this.entregaItems.set([]);
+    this.entregaPagos.set([]);
+    this.entregaNota = '';
+  }
+
+  confirmarEntregaNueva() {
+    const p = this.pedido();
+    if (!p || this.procesando()) return;
+
+    const items = this.entregaItems()
+      .filter(f => (Number(f.cantidad) || 0) > 0.001)
+      .map(f => ({ pedidoItemId: f.pedidoItemId, cantidad: Math.round(Number(f.cantidad) * 100) / 100 }));
+
+    // Validación de cantidades contra lo pendiente.
+    for (const f of this.entregaItems()) {
+      const c = Number(f.cantidad) || 0;
+      if (c < 0) { this.toast.advertencia('Las cantidades no pueden ser negativas.'); return; }
+      if (c > f.pendiente + 0.01) {
+        this.toast.advertencia(`De "${f.servicioNombre}" solo quedan ${f.pendiente} por entregar.`);
+        return;
+      }
+    }
+
+    const pagos = this.entregaPagos()
+      .filter(l => (Number(l.monto) || 0) > 0)
+      .map(l => ({ metodo: l.metodo, monto: Math.round(Number(l.monto) * 100) / 100 }));
+
+    const totalCobro = this.totalCobroEntrega();
+    if (totalCobro > this.saldoPendiente() + 0.01) {
+      this.toast.advertencia(`El total a cobrar excede el saldo pendiente (S/ ${this.saldoPendiente().toFixed(2)}).`);
+      return;
+    }
+    if (items.length === 0 && pagos.length === 0) {
+      this.toast.advertencia('Indica qué prendas se entregan y/o registra un cobro.');
+      return;
+    }
+    if (this.recibidoPor.trim().length > 120) {
+      this.toast.advertencia('El nombre de quien recibe no puede superar 120 caracteres.');
+      return;
+    }
+
+    const nombreTercero = this.recibidoPor.trim();
+    const titular = (p.clienteNombre ?? '').trim();
+    const recibidoPor = nombreTercero && nombreTercero.toLowerCase() !== titular.toLowerCase() ? nombreTercero : null;
+
+    this.procesando.set(true);
+    this.service.entregar(p.id, { items, pagos, recibidoPor, nota: this.entregaNota.trim() || null }).subscribe({
+      next: res => {
+        this.procesando.set(false);
+        this.cerrarModalEntrega();
+        const restante = Math.max(0, this.saldoPendiente() - totalCobro);
+        if (res.estadoProceso === 'ENTREGADO') {
+          this.toast.exito(restante > 0.01
+            ? `Pedido #${p.numero} entregado. Queda S/ ${restante.toFixed(2)} por cobrar.`
+            : `Pedido #${p.numero} entregado`);
+        } else {
+          this.toast.exito(`Entrega parcial registrada${restante > 0.01 ? ` — queda S/ ${restante.toFixed(2)} por cobrar` : ''}`);
+        }
+        this.refrescar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.procesando.set(false);
+        this.toast.desdeHttp(err, 'No se pudo registrar la entrega.');
+      }
+    });
   }
 
   private ejecutarAvance(p: Pedido) {
@@ -468,59 +641,6 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     if (this.procesando()) return 'Procesando…';
     if (!this.pagoCompletaTotal() || this.pagoComprobante === 'NINGUNO') return 'Confirmar pago';
     return this.pagoComprobante === 'BOLETA' ? 'Cobrar y emitir boleta' : 'Cobrar y emitir factura';
-  }
-
-  // ---------- Entrega (cobra el saldo si hay) ----------
-  confirmarEntrega() {
-    const p = this.pedido();
-    if (!p || this.procesando()) return;
-    const saldo = p.total - p.montoPagado;
-    if (saldo > 0.01 && (!Number.isFinite(this.pagoMonto) || Math.abs(this.pagoMonto - saldo) > 0.01)) {
-      this.toast.advertencia(`Para entregar debes cobrar el saldo completo de S/ ${saldo.toFixed(2)}.`);
-      return;
-    }
-    if (this.recibidoPor.trim().length > 120) {
-      this.toast.advertencia('El nombre de quien recibe no puede superar 120 caracteres.');
-      return;
-    }
-    this.pagoMonto = Math.round(Math.max(0, this.pagoMonto) * 100) / 100;
-    this.procesando.set(true);
-
-    const finalizar = () => {
-      const nombreTercero = this.recibidoPor.trim();
-      const titular = (p.clienteNombre ?? '').trim();
-      const pasarRecibidoPor = nombreTercero && nombreTercero.toLowerCase() !== titular.toLowerCase()
-        ? nombreTercero : undefined;
-      this.service.siguienteArea(p.id, pasarRecibidoPor).subscribe({
-        next: () => {
-          this.procesando.set(false);
-          this.modalEntrega.set(false);
-          this.toast.exito(pasarRecibidoPor
-            ? `Pedido #${p.numero} entregado a ${pasarRecibidoPor}`
-            : `Pedido #${p.numero} entregado`);
-          this.refrescar();
-        },
-        error: (err: HttpErrorResponse) => {
-          this.procesando.set(false);
-          this.toast.desdeHttp(err, 'No se pudo completar la entrega.');
-        }
-      });
-    };
-
-    if (this.pagoMonto > 0) {
-      this.service.registrarPago(p.id, this.pagoMonto, this.pagoMetodo).subscribe({
-        next: () => finalizar(),
-        error: (err: HttpErrorResponse) => {
-          this.procesando.set(false);
-          this.toast.desdeHttp(err, 'No se pudo cobrar el saldo.');
-        }
-      });
-    } else if (saldo > 0.01) {
-      this.procesando.set(false);
-      this.toast.advertencia('Hay saldo pendiente. Registra el cobro antes de entregar.');
-    } else {
-      finalizar();
-    }
   }
 
   // ---------- Ítems ----------
@@ -826,6 +946,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   tituloHistorial(h: PedidoHistorial): string {
     switch (h.estadoProceso) {
       case 'LISTO': return '✓ Listo para recojo';
+      case 'ENTREGA_PARCIAL': return '📦 Entrega parcial';
       case 'ENTREGADO': return '📦 Entregado al cliente';
       case 'ANULADO': return '🚫 Pedido anulado';
       case 'PENDIENTE': return h.areaNombre ? `Ingreso · ${h.areaNombre}` : 'Ingreso de pedido';
@@ -839,6 +960,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
       'PENDIENTE': 'Pendiente',
       'EN_PROCESO': 'En proceso',
       'LISTO': 'Listo para entregar',
+      'ENTREGA_PARCIAL': 'Entrega parcial',
       'ENTREGADO': 'Entregado',
       'ANULADO': 'Anulado'
     } as Record<string, string>)[estado] ?? estado;

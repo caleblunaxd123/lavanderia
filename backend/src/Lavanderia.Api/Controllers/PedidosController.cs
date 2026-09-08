@@ -236,6 +236,31 @@ public class PedidosController : TenantAwareControllerBase
         }
     }
 
+    /// <summary>Entregas del pedido (parciales y final), con el detalle de lo entregado y lo cobrado.</summary>
+    [HttpGet("{id:int}/entregas")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<List<PedidoEntregaDto>>> Entregas(int id, CancellationToken ct)
+        => Ok(await _service.ObtenerEntregasAsync(id, SedeRequeridaId, ct));
+
+    /// <summary>
+    /// Registra una entrega parcial o final: qué prendas se lleva el cliente ahora y con qué pagos
+    /// (uno o varios métodos a la vez). No exige pagar el total; el saldo queda por cobrar.
+    /// </summary>
+    [HttpPost("{id:int}/entregar")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<object>> Entregar(int id, [FromBody] EntregarPedidoRequest req, CancellationToken ct)
+    {
+        try
+        {
+            var estado = await _service.EntregarAsync(id, req, UsuarioId, SedeRequeridaId, ct);
+            return Ok(new { estadoProceso = estado });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
     [HttpPost("{id:int}/items")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<IActionResult> AgregarItem(int id, [FromBody] AgregarItemRequest req, CancellationToken ct)

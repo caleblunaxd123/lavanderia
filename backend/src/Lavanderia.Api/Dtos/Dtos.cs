@@ -162,6 +162,8 @@ public class PedidoItemDto
     public decimal PrecioUnit { get; set; }
     public decimal Total { get; set; }
     [StringLength(200)] public string? Descripcion { get; set; }
+    /// <summary>Cantidad ya entregada de este ítem (entregas parciales). Pendiente = Cantidad - CantidadEntregada.</summary>
+    public decimal CantidadEntregada { get; set; }
 }
 
 public class CrearPedidoRequest
@@ -325,6 +327,54 @@ public class RegistrarPagoRequest
     [Range(0.01, 100000)] public decimal Monto { get; set; }
     [Required] public string Metodo { get; set; } = "EFECTIVO";  // EFECTIVO | YAPE | PLIN | TRANSFERENCIA | POS | TARJETA
     [StringLength(300)] public string? Descripcion { get; set; }
+}
+
+/// <summary>Una línea de cobro (permite pago mixto: parte efectivo, parte Yape, etc.).</summary>
+public class PagoLineaDto
+{
+    [Range(0.01, 100000)] public decimal Monto { get; set; }
+    [Required] public string Metodo { get; set; } = "EFECTIVO";
+}
+
+/// <summary>Un ítem que se entrega en esta entrega, con la cantidad entregada ahora.</summary>
+public class EntregaItemDto
+{
+    [Range(1, int.MaxValue)] public int PedidoItemId { get; set; }
+    [Range(0.01, 100000)] public decimal Cantidad { get; set; }
+}
+
+/// <summary>
+/// Registra una entrega (parcial o total) de un pedido: qué prendas se lleva el cliente esta
+/// vez y con qué pagos (uno o varios métodos). No exige pagar el total: el saldo queda por cobrar.
+/// </summary>
+public class EntregarPedidoRequest
+{
+    /// <summary>Ítems entregados en esta visita. Vacío = no se entregan prendas ahora (solo cobro).</summary>
+    public List<EntregaItemDto> Items { get; set; } = new();
+    /// <summary>Cobros de esta visita, uno por método (pago mixto). Vacío = no se cobra ahora.</summary>
+    public List<PagoLineaDto> Pagos { get; set; } = new();
+    [StringLength(120)] public string? RecibidoPor { get; set; }
+    [StringLength(300)] public string? Nota { get; set; }
+}
+
+public class EntregaDetalleDto
+{
+    public int PedidoItemId { get; set; }
+    public string? ServicioNombre { get; set; }
+    public string? ServicioUnidad { get; set; }
+    public decimal Cantidad { get; set; }
+}
+
+public class PedidoEntregaDto
+{
+    public int Id { get; set; }
+    public DateTime Fecha { get; set; }
+    public string? UsuarioNombre { get; set; }
+    public string? RecibidoPor { get; set; }
+    public string? Nota { get; set; }
+    public bool EsFinal { get; set; }
+    public decimal MontoCobrado { get; set; }
+    public List<EntregaDetalleDto> Items { get; set; } = new();
 }
 
 public class AgregarItemRequest

@@ -188,6 +188,16 @@ export class PedidosService {
     return this.http.post<void>(`${this.base}/${id}/pagos`, { monto, metodo, descripcion });
   }
 
+  /** Registra una entrega (parcial o final): qué prendas se lleva el cliente y con qué pagos (mixto). */
+  entregar(id: number, req: EntregarPedidoRequest) {
+    return this.http.post<{ estadoProceso: string }>(`${this.base}/${id}/entregar`, req);
+  }
+
+  /** Historial de entregas (parciales y final) del pedido. */
+  entregas(id: number) {
+    return this.http.get<PedidoEntrega[]>(`${this.base}/${id}/entregas`);
+  }
+
   agregarItem(id: number, servicioId: number, cantidad: number, descripcion?: string) {
     return this.http.post<void>(`${this.base}/${id}/items`, { servicioId, cantidad, descripcion });
   }
@@ -224,4 +234,41 @@ export interface PagoPedido {
   monto: number;
   descripcion?: string | null;
   usuarioNombre?: string | null;
+}
+
+/** Una línea de cobro (pago mixto: parte efectivo, parte Yape, etc.). */
+export interface PagoLinea {
+  metodo: string;
+  monto: number;
+}
+
+/** Un ítem que se entrega en esta visita, con la cantidad entregada ahora. */
+export interface EntregaItem {
+  pedidoItemId: number;
+  cantidad: number;
+}
+
+export interface EntregarPedidoRequest {
+  items: EntregaItem[];
+  pagos: PagoLinea[];
+  recibidoPor?: string | null;
+  nota?: string | null;
+}
+
+export interface EntregaDetalle {
+  pedidoItemId: number;
+  servicioNombre?: string | null;
+  servicioUnidad?: string | null;
+  cantidad: number;
+}
+
+export interface PedidoEntrega {
+  id: number;
+  fecha: string;
+  usuarioNombre?: string | null;
+  recibidoPor?: string | null;
+  nota?: string | null;
+  esFinal: boolean;
+  montoCobrado: number;
+  items: EntregaDetalle[];
 }

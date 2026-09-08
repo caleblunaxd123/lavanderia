@@ -94,10 +94,12 @@ export interface PedidoItem {
   precioUnit: number;
   total: number;
   descripcion?: string | null;
+  /** Cantidad ya entregada al cliente (entregas parciales). Pendiente = cantidad - cantidadEntregada. */
+  cantidadEntregada?: number;
 }
 
 export type EstadoPago = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
-export type EstadoProceso = 'PENDIENTE' | 'EN_PROCESO' | 'LISTO' | 'ENTREGADO' | 'ANULADO';
+export type EstadoProceso = 'PENDIENTE' | 'EN_PROCESO' | 'LISTO' | 'ENTREGA_PARCIAL' | 'ENTREGADO' | 'ANULADO';
 export type ModalidadPedido = 'Tienda' | 'Recojo' | 'Delivery';
 
 export interface Pedido {

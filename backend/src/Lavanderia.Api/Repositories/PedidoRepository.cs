@@ -28,6 +28,13 @@ public interface IPedidoRepository
     Task<decimal> VentasDelDiaAsync(DateTime fecha, int sedeId, CancellationToken ct = default);
     Task<int> PedidosDelMesAsync(DateTime fecha, int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, decimal monto, string metodo, int usuarioId, string? descripcion, int sedeId, CancellationToken ct = default);
+    /// <summary>Registra una entrega (parcial o final): actualiza CantidadEntregada de cada ítem, guarda
+    /// la entrega y su detalle, registra los cobros (pago mixto) y ajusta el estado del pedido
+    /// (ENTREGA_PARCIAL si aún quedan prendas, ENTREGADO si ya se entregó todo). Devuelve el estado final.</summary>
+    Task<string> EntregarAsync(int pedidoId, List<(int PedidoItemId, decimal Cantidad)> items,
+        List<(string Metodo, decimal Monto)> pagos, string? recibidoPor, string? nota,
+        int usuarioId, int sedeId, CancellationToken ct = default);
+    Task<List<PedidoEntrega>> ObtenerEntregasAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task AgregarItemAsync(int pedidoId, PedidoItem item, int sedeId, CancellationToken ct = default);
     Task AnularAsync(int pedidoId, int usuarioId, string motivo, int sedeId, CancellationToken ct = default);
     Task DonarAsync(int pedidoId, int usuarioId, int sedeId, CancellationToken ct = default);
@@ -244,7 +251,7 @@ public class PedidoRepository : IPedidoRepository
         await using var cmdItems = conn.CreateCommand();
         cmdItems.CommandText = @"
             SELECT i.Id, i.PedidoId, i.ServicioId, s.Nombre AS ServicioNombre, s.Unidad AS ServicioUnidad,
-                   i.Cantidad, i.PrecioUnit, i.Total, i.Descripcion
+                   i.Cantidad, i.PrecioUnit, i.Total, i.Descripcion, i.CantidadEntregada
             FROM dbo.PedidoItem i
             INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
             WHERE i.PedidoId = @PedidoId";
@@ -278,8 +285,8 @@ public class PedidoRepository : IPedidoRepository
         {
             where = filtro?.ToLowerInvariant() switch
             {
-                "pendientes" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
-                "listos" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso = 'LISTO' AND p.Anulado = 0 ",
+                "pendientes" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO','ENTREGA_PARCIAL') AND p.Anulado = 0 ",
+                "listos" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso IN ('LISTO','ENTREGA_PARCIAL') AND p.Anulado = 0 ",
                 "entregados" => " WHERE p.SedeId = @SedeId AND p.EstadoProceso = 'ENTREGADO' ",
                 // "Otros": entregados + anulados + donados (todo lo que no es un pedido activo)
                 "otros" => " WHERE p.SedeId = @SedeId AND (p.EstadoProceso = 'ENTREGADO' OR p.Anulado = 1) ",
@@ -342,8 +349,8 @@ public class PedidoRepository : IPedidoRepository
 
         var where = filtro?.ToLowerInvariant() switch
         {
-            "pendientes" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
-            "en-proceso" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO') AND p.Anulado = 0 ",
+            "pendientes" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO','ENTREGA_PARCIAL') AND p.Anulado = 0 ",
+            "en-proceso" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso IN ('PENDIENTE','EN_PROCESO','LISTO','ENTREGA_PARCIAL') AND p.Anulado = 0 ",
             "con-deuda" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.Anulado = 0 AND p.MontoPagado + 0.01 < p.Total ",
             "entregados" => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId AND p.EstadoProceso = 'ENTREGADO' ",
             _ => " WHERE p.ClienteId = @ClienteId AND p.SedeId = @SedeId "
@@ -693,7 +700,7 @@ public class PedidoRepository : IPedidoRepository
                                       ELSE 'PENDIENTE'
                                     END
                  WHERE Id = @PedidoId AND SedeId = @SedeId AND Anulado = 0
-                   AND EstadoProceso NOT IN ('ENTREGADO', 'ANULADO', 'DONADO')
+                   AND EstadoProceso NOT IN ('ANULADO', 'DONADO')
                    AND MontoPagado + @Monto <= Total + 0.01";
             cmdPed.AddParam("@Monto", monto);
             cmdPed.AddParam("@PedidoId", pedidoId);
@@ -705,7 +712,7 @@ public class PedidoRepository : IPedidoRepository
                 cmdExiste.Transaction = tx;
                 cmdExiste.CommandText = @"
                     SELECT CASE
-                             WHEN Anulado = 1 OR EstadoProceso IN ('ENTREGADO','ANULADO','DONADO') THEN 2
+                             WHEN Anulado = 1 OR EstadoProceso IN ('ANULADO','DONADO') THEN 2
                              ELSE 1
                            END
                       FROM dbo.Pedido
@@ -715,7 +722,7 @@ public class PedidoRepository : IPedidoRepository
                 var resultado = await cmdExiste.ReadScalarAsync<int>(ct);
                 throw new InvalidOperationException(resultado switch
                 {
-                    2 => "El pedido está finalizado y no admite nuevos pagos.",
+                    2 => "El pedido está anulado o donado y no admite nuevos pagos.",
                     1 => "El monto excede el saldo pendiente del pedido.",
                     _ => "Pedido no encontrado."
                 });
@@ -743,6 +750,219 @@ public class PedidoRepository : IPedidoRepository
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+
+    public async Task<string> EntregarAsync(int pedidoId, List<(int PedidoItemId, decimal Cantidad)> items,
+        List<(string Metodo, decimal Monto)> pagos, string? recibidoPor, string? nota,
+        int usuarioId, int sedeId, CancellationToken ct = default)
+    {
+        var totalCobrado = pagos.Sum(p => p.Monto);
+
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            // 1) Sumar lo entregado a cada ítem (con tope atómico contra la cantidad total).
+            foreach (var (itemId, cantidad) in items)
+            {
+                await using var cmdItem = conn.CreateCommand();
+                cmdItem.Transaction = tx;
+                cmdItem.CommandText = @"
+                    UPDATE dbo.PedidoItem
+                       SET CantidadEntregada = CantidadEntregada + @Cant
+                     WHERE Id = @ItemId AND PedidoId = @PedidoId
+                       AND CantidadEntregada + @Cant <= Cantidad + 0.01";
+                cmdItem.AddParam("@Cant", cantidad);
+                cmdItem.AddParam("@ItemId", itemId);
+                cmdItem.AddParam("@PedidoId", pedidoId);
+                if (await cmdItem.ExecuteNonQueryAsync(ct) == 0)
+                    throw new InvalidOperationException("La cantidad a entregar de un ítem supera lo que queda pendiente. Actualiza el pedido e inténtalo de nuevo.");
+            }
+
+            // 2) ¿Cuánto queda pendiente por entregar y se llegó a entregar algo alguna vez?
+            await using var cmdPend = conn.CreateCommand();
+            cmdPend.Transaction = tx;
+            cmdPend.CommandText = @"
+                SELECT ISNULL(SUM(Cantidad - CantidadEntregada), 0) AS Pendiente,
+                       ISNULL(SUM(CantidadEntregada), 0) AS Entregado
+                FROM dbo.PedidoItem WHERE PedidoId = @PedidoId";
+            cmdPend.AddParam("@PedidoId", pedidoId);
+            decimal pendiente, entregadoTotal;
+            await using (var rp = await cmdPend.ExecuteReaderAsync(ct))
+            {
+                await rp.ReadAsync(ct);
+                pendiente = rp.GetDecimal(0);
+                entregadoTotal = rp.GetDecimal(1);
+            }
+
+            // Estado resultante: todo entregado => ENTREGADO; si se entregó algo pero falta => ENTREGA_PARCIAL;
+            // si no se entregó nada (solo se cobró) => se conserva el estado actual (LISTO / ENTREGA_PARCIAL).
+            await using var cmdEstadoActual = conn.CreateCommand();
+            cmdEstadoActual.Transaction = tx;
+            cmdEstadoActual.CommandText = "SELECT EstadoProceso FROM dbo.Pedido WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0";
+            cmdEstadoActual.AddParam("@Id", pedidoId);
+            cmdEstadoActual.AddParam("@SedeId", sedeId);
+            var estadoActual = (await cmdEstadoActual.ReadScalarAsync<string>(ct))
+                ?? throw new InvalidOperationException("Pedido no encontrado.");
+
+            var nuevoEstado = pendiente <= 0.01m ? "ENTREGADO"
+                : entregadoTotal > 0.01m ? "ENTREGA_PARCIAL"
+                : estadoActual;
+            var esFinal = nuevoEstado == "ENTREGADO";
+
+            // 3) Actualizar pedido: acumular pago, recalcular estado de pago y estado de proceso.
+            await using var cmdPed = conn.CreateCommand();
+            cmdPed.Transaction = tx;
+            cmdPed.CommandText = @"
+                UPDATE dbo.Pedido
+                   SET MontoPagado = MontoPagado + @Monto,
+                       EstadoPago = CASE
+                                      WHEN (MontoPagado + @Monto) >= Total THEN 'PAGADO'
+                                      WHEN (MontoPagado + @Monto) > 0 THEN 'PARCIAL'
+                                      ELSE 'PENDIENTE'
+                                    END,
+                       EstadoProceso = @Estado,
+                       FechaEntregaReal = CASE WHEN @Estado = 'ENTREGADO' THEN SYSDATETIME() ELSE FechaEntregaReal END,
+                       TokenRuta = CASE WHEN @Estado = 'ENTREGADO' THEN NULL ELSE TokenRuta END,
+                       TokenRutaExpiraEn = CASE WHEN @Estado = 'ENTREGADO' THEN NULL ELSE TokenRutaExpiraEn END
+                 WHERE Id = @Id AND SedeId = @SedeId AND Anulado = 0
+                   AND EstadoProceso NOT IN ('ANULADO', 'DONADO')
+                   AND MontoPagado + @Monto <= Total + 0.01";
+            cmdPed.AddParam("@Monto", totalCobrado);
+            cmdPed.AddParam("@Estado", nuevoEstado);
+            cmdPed.AddParam("@Id", pedidoId);
+            cmdPed.AddParam("@SedeId", sedeId);
+            if (await cmdPed.ExecuteNonQueryAsync(ct) == 0)
+                throw new InvalidOperationException("No se pudo registrar la entrega (el monto cobrado excede el saldo o el pedido cambió de estado).");
+
+            // 4) Registrar cada cobro en MovimientoCaja (pago mixto = varias filas).
+            foreach (var (metodo, monto) in pagos)
+            {
+                await using var cmdMov = conn.CreateCommand();
+                cmdMov.Transaction = tx;
+                cmdMov.CommandText = @"
+                    INSERT INTO dbo.MovimientoCaja
+                           (SedeId, Fecha, Tipo, MetodoPago, Monto, Descripcion, PedidoId, UsuarioId)
+                    VALUES (@SedeId, SYSDATETIME(), 'INGRESO', @Metodo, @Monto, @Descripcion, @PedidoId, @UsuarioId)";
+                cmdMov.AddParam("@SedeId", sedeId);
+                cmdMov.AddParam("@Metodo", metodo);
+                cmdMov.AddParam("@Monto", monto);
+                cmdMov.AddParam("@Descripcion", esFinal ? "Cobro en entrega del pedido" : "Cobro en entrega parcial");
+                cmdMov.AddParam("@PedidoId", pedidoId);
+                cmdMov.AddParam("@UsuarioId", usuarioId);
+                await cmdMov.ExecuteNonQueryAsync(ct);
+            }
+
+            // 5) Guardar la entrega (cabecera) y su detalle de ítems.
+            await using var cmdEnt = conn.CreateCommand();
+            cmdEnt.Transaction = tx;
+            cmdEnt.CommandText = @"
+                INSERT INTO dbo.PedidoEntrega (PedidoId, SedeId, Fecha, UsuarioId, RecibidoPor, Nota, EsFinal, MontoCobrado)
+                OUTPUT INSERTED.Id
+                VALUES (@PedidoId, @SedeId, SYSDATETIME(), @UsuarioId, @RecibidoPor, @Nota, @EsFinal, @Monto)";
+            cmdEnt.AddParam("@PedidoId", pedidoId);
+            cmdEnt.AddParam("@SedeId", sedeId);
+            cmdEnt.AddParam("@UsuarioId", usuarioId);
+            cmdEnt.AddParam("@RecibidoPor", recibidoPor);
+            cmdEnt.AddParam("@Nota", nota);
+            cmdEnt.AddParam("@EsFinal", esFinal);
+            cmdEnt.AddParam("@Monto", totalCobrado);
+            var entregaId = await cmdEnt.ReadScalarAsync<int>(ct);
+
+            foreach (var (itemId, cantidad) in items)
+            {
+                await using var cmdDet = conn.CreateCommand();
+                cmdDet.Transaction = tx;
+                cmdDet.CommandText = @"
+                    INSERT INTO dbo.PedidoEntregaDetalle (EntregaId, PedidoItemId, Cantidad)
+                    VALUES (@EntregaId, @ItemId, @Cant)";
+                cmdDet.AddParam("@EntregaId", entregaId);
+                cmdDet.AddParam("@ItemId", itemId);
+                cmdDet.AddParam("@Cant", cantidad);
+                await cmdDet.ExecuteNonQueryAsync(ct);
+            }
+
+            // 6) Historial legible del movimiento.
+            var notaHist = esFinal
+                ? (entregadoTotal > 0.01m && items.Count == 0 ? "Entrega final (sin prendas nuevas)" : "Entrega final: se completó la entrega del pedido")
+                : "Entrega parcial";
+            if (!string.IsNullOrWhiteSpace(nota)) notaHist += $" — {nota!.Trim()}";
+            if (!string.IsNullOrWhiteSpace(recibidoPor)) notaHist += $" (recibió: {recibidoPor!.Trim()})";
+            if (totalCobrado > 0) notaHist += $" · Cobrado S/ {totalCobrado:0.00}";
+
+            await RegistrarHistorialAsync(new PedidoHistorial
+            {
+                PedidoId = pedidoId,
+                AreaId = null,
+                EstadoProceso = nuevoEstado,
+                UsuarioId = usuarioId,
+                ActorTipo = "USUARIO",
+                ActorDescripcion = null,
+                Fecha = DateTime.Now,
+                Nota = notaHist
+            }, conn, tx, ct);
+
+            await tx.CommitAsync(ct);
+            return nuevoEstado;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<List<PedidoEntrega>> ObtenerEntregasAsync(int pedidoId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT e.Id, e.Fecha, e.RecibidoPor, e.Nota, e.EsFinal, e.MontoCobrado, u.NombreCompleto AS UsuarioNombre
+            FROM dbo.PedidoEntrega e
+            INNER JOIN dbo.Pedido p ON p.Id = e.PedidoId
+            LEFT JOIN dbo.Usuario u ON u.Id = e.UsuarioId
+            WHERE e.PedidoId = @PedidoId AND p.SedeId = @SedeId
+            ORDER BY e.Fecha ASC";
+        cmd.AddParam("@PedidoId", pedidoId);
+        cmd.AddParam("@SedeId", sedeId);
+        var entregas = await cmd.ReadListAsync(r => new PedidoEntrega
+        {
+            Id = r.GetInt32(r.GetOrdinal("Id")),
+            PedidoId = pedidoId,
+            Fecha = r.GetDateTime(r.GetOrdinal("Fecha")),
+            RecibidoPor = r.GetNullableString("RecibidoPor"),
+            Nota = r.GetNullableString("Nota"),
+            EsFinal = r.GetBoolean(r.GetOrdinal("EsFinal")),
+            MontoCobrado = r.GetDecimal(r.GetOrdinal("MontoCobrado")),
+            UsuarioNombre = r.GetNullableString("UsuarioNombre")
+        }, ct);
+
+        if (entregas.Count == 0) return entregas;
+
+        await using var cmdDet = conn.CreateCommand();
+        cmdDet.CommandText = @"
+            SELECT d.EntregaId, d.PedidoItemId, d.Cantidad, s.Nombre AS ServicioNombre, s.Unidad AS ServicioUnidad
+            FROM dbo.PedidoEntregaDetalle d
+            INNER JOIN dbo.PedidoEntrega e ON e.Id = d.EntregaId
+            INNER JOIN dbo.PedidoItem i ON i.Id = d.PedidoItemId
+            INNER JOIN dbo.Servicio s ON s.Id = i.ServicioId
+            WHERE e.PedidoId = @PedidoId";
+        cmdDet.AddParam("@PedidoId", pedidoId);
+        var detalles = await cmdDet.ReadListAsync(r => new PedidoEntregaDetalle
+        {
+            EntregaId = r.GetInt32(r.GetOrdinal("EntregaId")),
+            PedidoItemId = r.GetInt32(r.GetOrdinal("PedidoItemId")),
+            Cantidad = r.GetDecimal(r.GetOrdinal("Cantidad")),
+            ServicioNombre = r.GetNullableString("ServicioNombre"),
+            ServicioUnidad = r.GetNullableString("ServicioUnidad")
+        }, ct);
+
+        foreach (var e in entregas)
+            e.Items = detalles.Where(d => d.EntregaId == e.Id).ToList();
+        return entregas;
     }
 
     public async Task AgregarItemAsync(int pedidoId, PedidoItem item, int sedeId, CancellationToken ct = default)
@@ -1095,6 +1315,7 @@ public class PedidoRepository : IPedidoRepository
         Cantidad = r.GetDecimal(r.GetOrdinal("Cantidad")),
         PrecioUnit = r.GetDecimal(r.GetOrdinal("PrecioUnit")),
         Total = r.GetDecimal(r.GetOrdinal("Total")),
-        Descripcion = r.GetNullableString("Descripcion")
+        Descripcion = r.GetNullableString("Descripcion"),
+        CantidadEntregada = r.GetDecimal(r.GetOrdinal("CantidadEntregada"))
     };
 }

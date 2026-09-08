@@ -476,7 +476,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       );
       return;
     }
-    if (p.estadoProceso === 'LISTO') {
+    if (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL') {
       this.router.navigate(['/pedidos', p.id]);
       return;
     }
@@ -553,6 +553,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       'PENDIENTE': 'badge badge--gris',
       'EN_PROCESO': 'badge badge--azul',
       'LISTO': 'badge badge--verde',
+      'ENTREGA_PARCIAL': 'badge badge--ambar',
       'ENTREGADO': 'badge badge--verde-oscuro',
       'ANULADO': 'badge badge--rojo'
     } as Record<string, string>)[estado] ?? 'badge badge--gris';
@@ -563,6 +564,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
       'PENDIENTE': 'Pendiente',
       'EN_PROCESO': 'En proceso',
       'LISTO': 'Listo para recojo',
+      'ENTREGA_PARCIAL': 'Entrega parcial',
       'ENTREGADO': 'Entregado',
       'ANULADO': 'Anulado'
     } as Record<string, string>)[estado] ?? estado;
@@ -588,6 +590,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   botonAvanzarLabel(p: Pedido): string {
+    if (p.estadoProceso === 'ENTREGA_PARCIAL') return 'Entregar resto';
     if (p.estadoProceso === 'LISTO') return 'Marcar entregado';
     if (p.estadoProceso === 'PENDIENTE' && p.areaActualId == null) return 'Iniciar proceso';
     const areasList = this.areas();
@@ -597,6 +600,7 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   kanbanActionLabel(p: Pedido): string {
+    if (p.estadoProceso === 'ENTREGA_PARCIAL') return 'Entregar resto';
     if (p.estadoProceso === 'LISTO') return 'Entregar';
     if (p.estadoProceso === 'PENDIENTE' && p.areaActualId == null) return 'Iniciar';
     const areasList = this.areas();

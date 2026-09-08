@@ -301,6 +301,34 @@ public class PedidoItem
     public decimal PrecioUnit { get; set; }
     public decimal Total { get; set; }
     public string? Descripcion { get; set; }
+    /// <summary>Cantidad ya entregada al cliente (para entregas parciales). Lo pendiente = Cantidad - CantidadEntregada.</summary>
+    public decimal CantidadEntregada { get; set; }
+}
+
+/// <summary>Una entrega (parcial o final) que se le hace al cliente sobre un pedido.</summary>
+public class PedidoEntrega
+{
+    public int Id { get; set; }
+    public int PedidoId { get; set; }
+    public int SedeId { get; set; }
+    public DateTime Fecha { get; set; }
+    public int? UsuarioId { get; set; }
+    public string? UsuarioNombre { get; set; }
+    public string? RecibidoPor { get; set; }
+    public string? Nota { get; set; }
+    public bool EsFinal { get; set; }
+    public decimal MontoCobrado { get; set; }
+    public List<PedidoEntregaDetalle> Items { get; set; } = new();
+}
+
+public class PedidoEntregaDetalle
+{
+    public int Id { get; set; }
+    public int EntregaId { get; set; }
+    public int PedidoItemId { get; set; }
+    public decimal Cantidad { get; set; }
+    public string? ServicioNombre { get; set; }
+    public string? ServicioUnidad { get; set; }
 }
 
 public class PedidoHistorial
