@@ -102,11 +102,11 @@
             o contar billete por billete
           </button>
         } @else {
-          @if (guardado && (totalCerradoGuardado() ?? 0) > 0 && totalDenominaciones() === 0) {
+          @if (guardado && desgloseReconstruido()) {
             <p class="conteo__aviso-guardado">
-              Este turno ya se cerró con <strong>S/ {{ totalCerradoGuardado()! | number:'1.2-2' }}</strong> contado.
-              El detalle billete por billete no se guarda; usa
-              <b>«← volver a escribir el total directo»</b> para ver el monto registrado.
+              Este cierre se guardó por el <b>total</b> (<strong>S/ {{ totalCerradoGuardado()! | number:'1.2-2' }}</strong>).
+              El desglose que ves es una <b>reconstrucción aproximada</b> de ese monto; los cierres nuevos
+              guardan el detalle real billete por billete.
             </p>
           }
           <table class="tabla-denominaciones">

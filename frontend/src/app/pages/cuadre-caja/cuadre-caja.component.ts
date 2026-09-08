@@ -73,6 +73,9 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   // modo "billete por billete": como solo se guarda el total (no el desglose de billetes),
   // al reabrir un cierre en ese modo la tabla sale en 0 y parecía que no se había grabado.
   readonly totalCerradoGuardado = signal<number | null>(null);
+  // true cuando el desglose mostrado NO es el detalle real guardado, sino una reconstrucción
+  // del total (cierres antiguos que se guardaron solo con el monto). Sirve para avisarlo suave.
+  readonly desgloseReconstruido = signal(false);
   // false = solo los movimientos del colaborador seleccionado; true = toda la caja del día (todos).
   readonly verTodos = signal(false);
   readonly sugerenciaCajaInicial = signal<{ monto: number; usuarioNombre?: string; fecha: string } | null>(null);
@@ -208,9 +211,18 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
         // mostrarlo igual (cualquier día). Si se guardó por total directo, abre en modo rápido.
         this.totalContadoManual.set(c.totalContado ?? 0);
         this.totalCerradoGuardado.set(c.totalContado ?? 0);
+        this.desgloseReconstruido.set(false);
+        const total = c.totalContado ?? 0;
         let mapa: Record<string, number> | null = null;
         if (c.detalleConteo) {
           try { mapa = JSON.parse(c.detalleConteo) as Record<string, number>; } catch { mapa = null; }
+        }
+        // El desglose SIEMPRE se muestra al reabrir un cierre: si no se guardó el detalle real
+        // (cierres antiguos), se reconstruye del total para que nunca aparezca en 0 (un 0 asusta
+        // y parece que el cierre se borró, aunque el monto sí está guardado).
+        if (!mapa && total > 0) {
+          mapa = this.reconstruirDesglose(total);
+          this.desgloseReconstruido.set(true);
         }
         if (mapa) {
           const m = mapa;
@@ -223,6 +235,23 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
       },
       error: () => { this.guardado = false; this.totalCerradoGuardado.set(null); }
     });
+  }
+
+  /**
+   * Reparte un monto en billetes/monedas (mayor a menor) para mostrar SIEMPRE un desglose
+   * cuando el cierre se guardó solo con el total. Trabaja en céntimos para evitar errores de
+   * coma flotante. La suma del desglose es exactamente el total (el efectivo peruano es
+   * múltiplo de 0.10, así que no queda resto).
+   */
+  private reconstruirDesglose(total: number): Record<string, number> {
+    let cent = Math.round(total * 100);
+    const out: Record<string, number> = {};
+    for (const v of [100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1]) {
+      const vc = Math.round(v * 100);
+      const n = Math.floor(cent / vc);
+      if (n > 0) { out[String(v)] = n; cent -= n * vc; }
+    }
+    return out;
   }
 
   cargarSugerenciaCajaInicial() {
@@ -508,6 +537,7 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     this.nota = '';
     this.guardado = false;
     this.totalCerradoGuardado.set(null);
+    this.desgloseReconstruido.set(false);
     this.confirmarRegrabar.set(false);
   }
 }
