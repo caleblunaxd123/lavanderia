@@ -109,9 +109,9 @@
             <div class="ing-row">
               <span class="ing-fecha">{{ s.fecha | date:'dd/MM' }}</span>
               <span class="ing-bar">
-                @if (s.efectivo > 0) { <i class="seg seg--efe" [style.width.%]="pct(s.efectivo, maxIng())" [title]="s.efeN + ' cobro(s) en Efectivo · S/ ' + (s.efectivo | number:'1.2-2')"></i> }
-                @if (s.digital > 0) { <i class="seg seg--dig" [style.width.%]="pct(s.digital, maxIng())" [title]="s.digN + ' cobro(s) Yape/Plin/Transf. · S/ ' + (s.digital | number:'1.2-2')"></i> }
-                @if (s.tarjeta > 0) { <i class="seg seg--tar" [style.width.%]="pct(s.tarjeta, maxIng())" [title]="s.tarN + ' cobro(s) con Tarjeta · S/ ' + (s.tarjeta | number:'1.2-2')"></i> }
+                @if (s.efectivo > 0) { <i class="seg seg--efe" [style.width.%]="pct(s.efectivo, maxIng())" [title]="'Efectivo: ' + (s.efeN > 0 ? s.efeN + ' cobro(s) · ' : '') + 'S/ ' + (s.efectivo | number:'1.2-2')"></i> }
+                @if (s.digital > 0) { <i class="seg seg--dig" [style.width.%]="pct(s.digital, maxIng())" [title]="'Yape/Plin/Transf.: ' + (s.digN > 0 ? s.digN + ' cobro(s) · ' : '') + 'S/ ' + (s.digital | number:'1.2-2')"></i> }
+                @if (s.tarjeta > 0) { <i class="seg seg--tar" [style.width.%]="pct(s.tarjeta, maxIng())" [title]="'Tarjeta: ' + (s.tarN > 0 ? s.tarN + ' cobro(s) · ' : '') + 'S/ ' + (s.tarjeta | number:'1.2-2')"></i> }
               </span>
               <span class="ing-tot">S/ {{ (s.efectivo + s.digital + s.tarjeta) | number:'1.2-2' }}</span>
             </div>
@@ -122,15 +122,13 @@
 
     <!-- Formas de pago del mes + Resumen por trabajador -->
     <div class="paneles">
+      @if (formasMes().length > 0) {
       <div class="card panel">
         <div class="grafica__head">
           <h3>Formas de pago del mes</h3>
           <p class="hint">Cuántas operaciones y cuánto por cada método (cada forma de pago es distinta).</p>
         </div>
-        @if (formasMes().length === 0) {
-          <p class="hint">Sin cobros registrados este mes.</p>
-        } @else {
-          <div class="formas">
+        <div class="formas">
             @for (f of formasMes(); track f.metodo) {
               <div class="forma" [class]="'forma--' + metodoClase(f.metodo)">
                 <span class="forma__met"><i class="forma__punto"></i>{{ f.metodo }}</span>
@@ -140,8 +138,8 @@
             }
           </div>
           <p class="grafica__nota">{{ totalOperaciones() }} operaciones en total este mes.</p>
-        }
       </div>
+      }
 
       <div class="card panel">
         <div class="grafica__head">

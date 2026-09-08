@@ -129,11 +129,18 @@ export class ReporteCuadresDiariosComponent implements OnInit {
     const rows: { fecha: string; efectivo: number; digital: number; tarjeta: number; efeN: number; digN: number; tarN: number }[] = [];
     for (const d of this.data()?.dias ?? []) {
       let efectivo = 0, digital = 0, tarjeta = 0, efeN = 0, digN = 0, tarN = 0;
-      for (const f of d.formasPago ?? []) {
-        const label = this.metodoLabel(f.metodo);
-        if (label === 'Efectivo') { efectivo += f.monto; efeN += f.cantidad; }
-        else if (label === 'Tarjeta') { tarjeta += f.monto; tarN += f.cantidad; }
-        else { digital += f.monto; digN += f.cantidad; }
+      const formas = d.formasPago ?? [];
+      if (formas.length > 0) {
+        for (const f of formas) {
+          const label = this.metodoLabel(f.metodo);
+          if (label === 'Efectivo') { efectivo += f.monto; efeN += f.cantidad; }
+          else if (label === 'Tarjeta') { tarjeta += f.monto; tarN += f.cantidad; }
+          else { digital += f.monto; digN += f.cantidad; }
+        }
+      } else {
+        // Respaldo si el servidor aún no envía el desglose por método (backend previo):
+        // usa los montos del cuadre para que la gráfica de ingresos siga funcionando.
+        for (const c of d.cuadres) { efectivo += c.ingresosEfectivo; digital += c.ingresosDigital; tarjeta += c.ingresosTarjeta; }
       }
       if (efectivo + digital + tarjeta > 0) rows.push({ fecha: d.fecha, efectivo, digital, tarjeta, efeN, digN, tarN });
     }
