@@ -139,6 +139,10 @@
 
     <div class="card seccion activar">
       <label class="checkbox-row">
+        <input type="checkbox" [ngModel]="form().soloBoletas" (ngModelChange)="actualizarCampo('soloBoletas', $event)" />
+        Solo boletas (régimen NRUS/RUS) — oculta y bloquea la Factura, que SUNAT no permite en este régimen
+      </label>
+      <label class="checkbox-row">
         <input type="checkbox" [ngModel]="form().activo" (ngModelChange)="actualizarCampo('activo', $event)" />
         Activar facturación electrónica (habilita el botón "Emitir comprobante" en los pedidos)
       </label>

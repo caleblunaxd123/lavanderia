@@ -270,9 +270,11 @@
           <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('BOLETA')">
             <app-icon name="note" [size]="18"></app-icon> Emitir Boleta
           </button>
-          <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('FACTURA')">
-            <app-icon name="note" [size]="18"></app-icon> Emitir Factura
-          </button>
+          @if (!soloBoletas()) {
+            <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('FACTURA')">
+              <app-icon name="note" [size]="18"></app-icon> Emitir Factura
+            </button>
+          }
         }
         @if (!p.anulado && p.estadoProceso !== 'ENTREGADO') {
           <button type="button" class="btn btn--accion" (click)="abrirModalFecha()">
@@ -402,7 +404,9 @@
         <label><app-icon name="note" [size]="13"></app-icon> Comprobante a emitir</label>
         <div class="metodos">
           <button type="button" class="metodo" [class.is-active]="pagoComprobante==='BOLETA'" (click)="pagoComprobante='BOLETA'"><app-icon name="note" [size]="13"></app-icon> Boleta</button>
-          <button type="button" class="metodo" [class.is-active]="pagoComprobante==='FACTURA'" (click)="pagoComprobante='FACTURA'"><app-icon name="note" [size]="13"></app-icon> Factura</button>
+          @if (!soloBoletas()) {
+            <button type="button" class="metodo" [class.is-active]="pagoComprobante==='FACTURA'" (click)="pagoComprobante='FACTURA'"><app-icon name="note" [size]="13"></app-icon> Factura</button>
+          }
           <button type="button" class="metodo" [class.is-active]="pagoComprobante==='NINGUNO'" (click)="pagoComprobante='NINGUNO'"><app-icon name="ban" [size]="13"></app-icon> Sin comprobante</button>
         </div>
         @if (pagoComprobante==='FACTURA') {

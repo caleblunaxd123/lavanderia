@@ -457,6 +457,8 @@ public class ConfiguracionFacturacion
     public string SerieGuiaRemision { get; set; } = "T001";
     public int CorrelativoGuiaRemision { get; set; }
     public bool Activo { get; set; }
+    /// <summary>Régimen NRUS/RUS: solo puede emitir Boletas (no Factura ni Liquidación).</summary>
+    public bool SoloBoletas { get; set; }
     public string Proveedor { get; set; } = "SUNAT_DIRECTO";
     public string? ApiSunatPersonaId { get; set; }
     public string? ApiSunatTokenCifrado { get; set; }

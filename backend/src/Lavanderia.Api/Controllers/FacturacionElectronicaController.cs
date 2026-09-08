@@ -45,7 +45,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         {
             RazonSocial = c?.RazonSocial, RucEmisor = c?.RucEmisor, Ambiente = c?.Ambiente ?? "BETA",
             SolUsuario = c?.SolUsuario, SerieBoleta = c?.SerieBoleta ?? "B001", SerieFactura = c?.SerieFactura ?? "F001",
-            Activo = c?.Activo ?? false, TieneCertificado = c?.CertificadoPfx is { Length: > 0 },
+            Activo = c?.Activo ?? false, SoloBoletas = c?.SoloBoletas ?? false, TieneCertificado = c?.CertificadoPfx is { Length: > 0 },
             TieneCredencialesSol = !string.IsNullOrEmpty(c?.SolClaveCifrada), Proveedor = proveedor.Codigo,
             ApiSunatPersonaId = c?.ApiSunatPersonaId,
             TieneCredencialesApiSunat = !string.IsNullOrEmpty(c?.ApiSunatTokenCifrado),
@@ -108,6 +108,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         c.Proveedor = proveedor.Codigo; c.ApiSunatPersonaId = Limpiar(dto.ApiSunatPersonaId);
         c.DireccionFiscal = Limpiar(dto.DireccionFiscal); c.Ubigeo = ubigeo;
         c.CodigoEstablecimiento = establecimiento; c.EmailEmisor = Limpiar(dto.EmailEmisor); c.Activo = dto.Activo;
+        c.SoloBoletas = dto.SoloBoletas;
         if (!string.IsNullOrWhiteSpace(dto.SolClaveNueva)) c.SolClaveCifrada = _secretos.Proteger(dto.SolClaveNueva);
         if (!string.IsNullOrWhiteSpace(dto.ApiSunatTokenNuevo)) c.ApiSunatTokenCifrado = _secretos.Proteger(dto.ApiSunatTokenNuevo);
 
@@ -153,6 +154,17 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         return NoContent();
     }
 
+    /// <summary>Estado ligero para el punto de venta: si la facturación está activa y si el
+    /// negocio es "solo boletas" (RUS/NRUS). Lo consume el detalle del pedido para mostrar u
+    /// ocultar el botón de Factura. Accesible a quien puede emitir (módulo PEDIDOS).</summary>
+    [HttpGet("facturacion/estado")]
+    [Authorize(Policy = "Modulo:PEDIDOS")]
+    public async Task<ActionResult<object>> EstadoFacturacion(CancellationToken ct)
+    {
+        var c = await _repo.ObtenerConfigAsync(NegocioId, ct);
+        return Ok(new { activa = c?.Activo ?? false, soloBoletas = c?.SoloBoletas ?? false });
+    }
+
     [HttpPost("pedidos/{pedidoId:int}/comprobante")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<ComprobanteDto>> Emitir(int pedidoId, [FromBody] EmitirComprobanteRequest req, CancellationToken ct)
@@ -165,6 +177,8 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         if (pedido.EstadoPago != "PAGADO") return Bad("El pedido debe estar pagado por completo.");
         var config = await _repo.ObtenerConfigAsync(NegocioId, ct);
         if (config is null || !config.Activo) return Bad("Configura y activa la facturacion electronica primero.");
+        if (tipo == "FACTURA" && config.SoloBoletas)
+            return Bad("Este negocio está en régimen RUS/NRUS: solo puede emitir Boletas. La Factura no está disponible.");
         var provider = Seleccionar(config.Proveedor);
         var cliente = await _clientes.ObtenerPorIdAsync(pedido.ClienteId, NegocioId, ct);
         if (cliente is null) return Bad("El cliente asociado ya no existe.");

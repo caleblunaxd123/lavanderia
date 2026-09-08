@@ -55,7 +55,7 @@ public class FacturacionRepository : IFacturacionRepository
     private const string ConfigSelect = @"
         SELECT Id, NegocioId, RazonSocial, RucEmisor, Ambiente, SolUsuario, SolClaveCifrada,
                CertificadoPfx, CertificadoPasswordCifrada, SerieBoleta, SerieFactura,
-               CorrelativoBoleta, CorrelativoFactura, Activo, Proveedor, ApiSunatPersonaId,
+               CorrelativoBoleta, CorrelativoFactura, Activo, SoloBoletas, Proveedor, ApiSunatPersonaId,
                ApiSunatTokenCifrado, DireccionFiscal, Ubigeo, CodigoEstablecimiento, EmailEmisor,
                SerieNotaCreditoFactura, SerieNotaCreditoBoleta,
                CorrelativoNotaCreditoFactura, CorrelativoNotaCreditoBoleta,
@@ -80,6 +80,7 @@ public class FacturacionRepository : IFacturacionRepository
         CorrelativoBoleta = r.GetInt32(r.GetOrdinal("CorrelativoBoleta")),
         CorrelativoFactura = r.GetInt32(r.GetOrdinal("CorrelativoFactura")),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
+        SoloBoletas = r.GetBoolean(r.GetOrdinal("SoloBoletas")),
         Proveedor = r.GetString(r.GetOrdinal("Proveedor")),
         ApiSunatPersonaId = r.GetNullableString("ApiSunatPersonaId"),
         ApiSunatTokenCifrado = r.GetNullableString("ApiSunatTokenCifrado"),
@@ -134,15 +135,15 @@ public class FacturacionRepository : IFacturacionRepository
                 ApiSunatTokenCifrado = COALESCE(@ApiSunatTokenCifrado, target.ApiSunatTokenCifrado),
                 DireccionFiscal = @DireccionFiscal, Ubigeo = @Ubigeo,
                 CodigoEstablecimiento = @CodigoEstablecimiento, EmailEmisor = @EmailEmisor,
-                Activo = @Activo,
+                Activo = @Activo, SoloBoletas = @SoloBoletas,
                 FechaActualizacion = SYSDATETIME()
             WHEN NOT MATCHED THEN INSERT
                 (NegocioId, RazonSocial, RucEmisor, Ambiente, SolUsuario, SolClaveCifrada,
-                 CertificadoPfx, CertificadoPasswordCifrada, SerieBoleta, SerieFactura, Activo,
+                 CertificadoPfx, CertificadoPasswordCifrada, SerieBoleta, SerieFactura, Activo, SoloBoletas,
                  Proveedor, ApiSunatPersonaId, ApiSunatTokenCifrado, DireccionFiscal, Ubigeo, CodigoEstablecimiento, EmailEmisor)
                 VALUES
                 (@NegocioId, @RazonSocial, @RucEmisor, @Ambiente, @SolUsuario, @SolClaveCifrada,
-                 @CertificadoPfx, @CertificadoPasswordCifrada, @SerieBoleta, @SerieFactura, @Activo,
+                 @CertificadoPfx, @CertificadoPasswordCifrada, @SerieBoleta, @SerieFactura, @Activo, @SoloBoletas,
                  @Proveedor, @ApiSunatPersonaId, @ApiSunatTokenCifrado, @DireccionFiscal, @Ubigeo, @CodigoEstablecimiento, @EmailEmisor);";
         cmd.AddParam("@NegocioId", c.NegocioId);
         cmd.AddParam("@RazonSocial", c.RazonSocial);
@@ -155,6 +156,7 @@ public class FacturacionRepository : IFacturacionRepository
         cmd.AddParam("@SerieBoleta", c.SerieBoleta);
         cmd.AddParam("@SerieFactura", c.SerieFactura);
         cmd.AddParam("@Activo", c.Activo);
+        cmd.AddParam("@SoloBoletas", c.SoloBoletas);
         cmd.AddParam("@Proveedor", c.Proveedor);
         cmd.AddParam("@ApiSunatPersonaId", c.ApiSunatPersonaId);
         cmd.AddParam("@ApiSunatTokenCifrado", c.ApiSunatTokenCifrado);

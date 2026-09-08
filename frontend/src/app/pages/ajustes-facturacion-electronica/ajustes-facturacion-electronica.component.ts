@@ -19,6 +19,7 @@ const VACIO: ConfiguracionFacturacion = {
   serieBoleta: 'B001',
   serieFactura: 'F001',
   activo: false,
+  soloBoletas: false,
   tieneCertificado: false,
   tieneCredencialesSol: false,
   proveedor: 'APISUNAT',

@@ -84,6 +84,8 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   readonly procesando = signal(false);
   readonly avanzando = signal(false);
   readonly emitiendoComprobante = signal(false);
+  // Régimen del negocio: si es "solo boletas" (RUS/NRUS), se oculta la opción de Factura.
+  readonly soloBoletas = signal(false);
 
   // Delivery
   readonly convirtiendoDelivery = signal(false);
@@ -122,6 +124,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.catalogos.servicios().subscribe(s => this.servicios.set(s));
     this.whatsapp.cargar();
     this.motorizadosSvc.listarActivos().subscribe(m => this.motorizadosActivos.set(m));
+    this.facturacionSvc.estado().subscribe({ next: e => this.soloBoletas.set(e.soloBoletas), error: () => {} });
 
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const id = Number(params.get('id'));

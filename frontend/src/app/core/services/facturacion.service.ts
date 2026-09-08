@@ -14,6 +14,7 @@ export interface ConfiguracionFacturacion {
   serieBoleta: string;
   serieFactura: string;
   activo: boolean;
+  soloBoletas: boolean;
   tieneCertificado: boolean;
   tieneCredencialesSol: boolean;
   proveedor: 'SUNAT_DIRECTO' | 'APISUNAT';
@@ -125,6 +126,11 @@ export class FacturacionService {
 
   obtenerConfiguracion() {
     return this.http.get<ConfiguracionFacturacion>(`${this.base}/configuracion`);
+  }
+
+  /** Estado ligero para el punto de venta (lo puede leer la trabajadora). */
+  estado() {
+    return this.http.get<{ activa: boolean; soloBoletas: boolean }>(`${this.base}/estado`);
   }
 
   guardarConfiguracion(c: ConfiguracionFacturacion) {

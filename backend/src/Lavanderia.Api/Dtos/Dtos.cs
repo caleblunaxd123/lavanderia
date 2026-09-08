@@ -824,6 +824,8 @@ public class ConfiguracionFacturacionDto
     [StringLength(4, MinimumLength = 4)] public string SerieBoleta { get; set; } = "B001";
     [StringLength(4, MinimumLength = 4)] public string SerieFactura { get; set; } = "F001";
     public bool Activo { get; set; }
+    /// <summary>Régimen NRUS/RUS: solo boletas (sin Factura ni Liquidación).</summary>
+    public bool SoloBoletas { get; set; }
     public bool TieneCertificado { get; set; }
     public bool TieneCredencialesSol { get; set; }
     public string Proveedor { get; set; } = "SUNAT_DIRECTO";
