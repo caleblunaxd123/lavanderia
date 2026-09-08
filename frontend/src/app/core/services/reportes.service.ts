@@ -155,12 +155,19 @@ export interface CuadreDiarioFila {
   ingresosTarjeta: number;
 }
 
+export interface FormaPagoDia {
+  metodo: string;
+  cantidad: number;
+  monto: number;
+}
+
 export interface CuadreDiarioDia {
   fecha: string;
   cuadres: CuadreDiarioFila[];
   sinInformacion: boolean;
   noCuadradoIngresos: number;
   noCuadradoEgresos: number;
+  formasPago: FormaPagoDia[];
 }
 
 export interface CuadresDiariosReporte {

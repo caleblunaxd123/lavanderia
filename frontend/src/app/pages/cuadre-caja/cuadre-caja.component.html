@@ -223,8 +223,8 @@
 
         <!-- Detalle itemizado (opcional, colapsado) -->
         @if (detalleIngresos().length > 0) {
-          <details class="detalle-toggle">
-            <summary>Ver cada cobro del día ({{ ingresosDelDia().length }})</summary>
+          <details class="detalle-toggle" [open]="mostrarCobros()" (toggle)="mostrarCobros.set($any($event.target).open)">
+            <summary>{{ mostrarCobros() ? 'Ocultar' : 'Ver' }} cada cobro del día ({{ ingresosDelDia().length }})</summary>
             <div class="detalle-grid">
               @for (grupo of detalleIngresos(); track grupo.metodo) {
                 <div class="detalle-tabla" [class.detalle-tabla--efectivo]="grupo.metodo === 'EFECTIVO'">

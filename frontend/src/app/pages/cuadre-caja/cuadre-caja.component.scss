@@ -330,19 +330,26 @@
 // ---------- Detalle colapsable ----------
 .detalle-toggle {
   border-top: 1px solid #eef2f6;
-  padding-top: 12px;
+  padding-top: 14px;
   summary {
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--azul-oscuro, #053465);
+    padding: 8px 14px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    border-radius: 9px;
     list-style: revert;
+    user-select: none;
+    &:hover { background: #dbeafe; }
   }
   .detalle-grid {
-    margin-top: 12px;
+    margin-top: 14px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
   }
 }
 .detalle-tabla {
@@ -350,17 +357,19 @@
   border-radius: 10px;
   overflow: hidden;
   &__head {
-    display: flex; justify-content: space-between;
-    padding: 8px 11px; background: #f8fafc;
-    font-size: 13px; border-bottom: 1px solid #eef2f6;
-    strong { color: #334155; }
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 14px; background: #f8fafc;
+    font-size: 15px; font-weight: 700; border-bottom: 1px solid #eef2f6;
+    strong { color: #1e293b; }
+    span { font-variant-numeric: tabular-nums; color: #147a45; }
   }
   &--efectivo &__head { background: #f0fdf4; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th, td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #f1f5f9; }
-  th { color: #94a3b8; font-size: 10.5px; text-transform: uppercase; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .cli { color: #475569; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+  th { color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; font-weight: 700; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cli { color: #334155; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 // ---------- Paso 3 · cierre ----------

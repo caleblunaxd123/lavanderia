@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { CuadreDiarioDia, CuadresDiariosReporte, ReportesService } from '../../core/services/reportes.service';
+import { CuadreDiarioDia, CuadreDiarioFila, CuadresDiariosReporte, ReportesService } from '../../core/services/reportes.service';
 import { mesLocalIso } from '../../core/util/fecha-local';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -26,16 +26,30 @@ export class ReporteCuadresDiariosComponent implements OnInit {
   readonly cargando = signal(false);
   readonly expandido = signal(false);
 
+  // ===== Filtros =====
+  readonly trabajador = signal('todos');
+  readonly soloConDif = signal(false);
+
+  readonly usuarios = computed(() => {
+    const set = new Set<string>();
+    for (const d of this.data()?.dias ?? []) for (const c of d.cuadres) set.add(c.usuarioNombre);
+    return [...set].sort();
+  });
+  private pasaUsuario(nombre: string): boolean {
+    return this.trabajador() === 'todos' || this.trabajador() === nombre;
+  }
+
   // Días con dinero no cuadrado (sin cuadre guardado pero con movimientos).
   readonly noCuadrados = computed(() =>
     (this.data()?.dias ?? []).filter(d => d.sinInformacion && (d.noCuadradoIngresos > 0 || d.noCuadradoEgresos > 0))
   );
 
-  // ===== Resumen del mes (tarjetas KPI para el dueño) =====
+  // ===== Resumen del mes (tarjetas KPI para el dueño) — respeta filtro de trabajador =====
   readonly resumen = computed(() => {
     let efectivo = 0, digital = 0, tarjeta = 0, faltante = 0, sobrante = 0, cerrados = 0, cuadrados = 0;
     for (const d of this.data()?.dias ?? []) {
       for (const c of d.cuadres) {
+        if (!this.pasaUsuario(c.usuarioNombre)) continue;
         efectivo += c.ingresosEfectivo; digital += c.ingresosDigital; tarjeta += c.ingresosTarjeta;
         cerrados++;
         if (c.estado === 'FALTA') faltante += c.margenError;
@@ -43,18 +57,65 @@ export class ReporteCuadresDiariosComponent implements OnInit {
         else cuadrados++;
       }
     }
+    const pctCuadraron = cerrados > 0 ? Math.round((cuadrados / cerrados) * 100) : 0;
     return {
       efectivo, digital, tarjeta, faltante, sobrante,
       neto: sobrante - faltante, cerrados, cuadrados,
-      conDiferencia: cerrados - cuadrados, sinCuadrar: this.noCuadrados().length,
+      conDiferencia: cerrados - cuadrados, sinCuadrar: this.noCuadrados().length, pctCuadraron,
     };
   });
 
-  // ===== Serie de DIFERENCIAS por día (dónde está el error) =====
+  // ===== Resumen por TRABAJADOR (quién descuadra) =====
+  readonly resumenTrab = computed(() => {
+    const map = new Map<string, { usuario: string; ingresos: number; falto: number; sobro: number; descuadres: number; cierres: number }>();
+    for (const d of this.data()?.dias ?? []) {
+      for (const c of d.cuadres) {
+        const cur = map.get(c.usuarioNombre) ?? { usuario: c.usuarioNombre, ingresos: 0, falto: 0, sobro: 0, descuadres: 0, cierres: 0 };
+        cur.cierres++;
+        cur.ingresos += c.ingresosEfectivo + c.ingresosDigital + c.ingresosTarjeta;
+        if (c.estado === 'FALTA') { cur.falto += c.margenError; cur.descuadres++; }
+        else if (c.estado === 'SOBRA') { cur.sobro += c.margenError; cur.descuadres++; }
+        map.set(c.usuarioNombre, cur);
+      }
+    }
+    return [...map.values()].sort((a, b) => (b.falto + b.sobro) - (a.falto + a.sobro));
+  });
+
+  // ===== Formas de pago del mes (cuántas operaciones y monto por método) =====
+  readonly formasMes = computed(() => {
+    const map = new Map<string, { metodo: string; cantidad: number; monto: number }>();
+    for (const d of this.data()?.dias ?? []) {
+      for (const f of d.formasPago ?? []) {
+        const label = this.metodoLabel(f.metodo);
+        const cur = map.get(label) ?? { metodo: label, cantidad: 0, monto: 0 };
+        cur.cantidad += f.cantidad; cur.monto += f.monto;
+        map.set(label, cur);
+      }
+    }
+    const orden = ['Efectivo', 'Yape', 'Plin', 'Transferencia', 'Tarjeta'];
+    return [...map.values()].sort((a, b) => orden.indexOf(a.metodo) - orden.indexOf(b.metodo));
+  });
+  readonly totalOperaciones = computed(() => this.formasMes().reduce((s, f) => s + f.cantidad, 0));
+
+  metodoLabel(m: string): string {
+    const u = (m || '').toUpperCase();
+    if (u === 'EFECTIVO') return 'Efectivo';
+    if (u === 'YAPE') return 'Yape';
+    if (u === 'PLIN') return 'Plin';
+    if (u === 'TRANSFERENCIA') return 'Transferencia';
+    if (u === 'POS' || u === 'TARJETA') return 'Tarjeta';
+    return m || '—';
+  }
+  metodoClase(label: string): string {
+    return ({ Efectivo: 'm-efe', Yape: 'm-yape', Plin: 'm-plin', Transferencia: 'm-transf', Tarjeta: 'm-tar' } as Record<string, string>)[label] ?? 'm-otro';
+  }
+
+  // ===== Serie de DIFERENCIAS por día (dónde está el error) — respeta filtro =====
   readonly serieDif = computed(() => {
     const filas: { fecha: string; usuario: string; estado: string; valor: number }[] = [];
     for (const d of this.data()?.dias ?? []) {
       for (const c of d.cuadres) {
+        if (!this.pasaUsuario(c.usuarioNombre)) continue;
         const valor = c.estado === 'FALTA' ? -c.margenError : (c.estado === 'SOBRA' ? c.margenError : 0);
         filas.push({ fecha: d.fecha, usuario: c.usuarioNombre, estado: c.estado, valor });
       }
@@ -63,22 +124,67 @@ export class ReporteCuadresDiariosComponent implements OnInit {
   });
   readonly maxDifAbs = computed(() => Math.max(1, ...this.serieDif().map(f => Math.abs(f.valor))));
 
-  // ===== Serie de INGRESOS por día y método =====
+  // ===== Serie de INGRESOS por día y método (desde formasPago: incluye días sin cuadre) =====
   readonly serieIng = computed(() => {
-    const map = new Map<string, { fecha: string; efectivo: number; digital: number; tarjeta: number }>();
+    const rows: { fecha: string; efectivo: number; digital: number; tarjeta: number; efeN: number; digN: number; tarN: number }[] = [];
     for (const d of this.data()?.dias ?? []) {
-      for (const c of d.cuadres) {
-        const cur = map.get(d.fecha) ?? { fecha: d.fecha, efectivo: 0, digital: 0, tarjeta: 0 };
-        cur.efectivo += c.ingresosEfectivo; cur.digital += c.ingresosDigital; cur.tarjeta += c.ingresosTarjeta;
-        map.set(d.fecha, cur);
+      let efectivo = 0, digital = 0, tarjeta = 0, efeN = 0, digN = 0, tarN = 0;
+      for (const f of d.formasPago ?? []) {
+        const label = this.metodoLabel(f.metodo);
+        if (label === 'Efectivo') { efectivo += f.monto; efeN += f.cantidad; }
+        else if (label === 'Tarjeta') { tarjeta += f.monto; tarN += f.cantidad; }
+        else { digital += f.monto; digN += f.cantidad; }
       }
+      if (efectivo + digital + tarjeta > 0) rows.push({ fecha: d.fecha, efectivo, digital, tarjeta, efeN, digN, tarN });
     }
-    return [...map.values()].filter(s => s.efectivo + s.digital + s.tarjeta > 0);
+    return rows;
   });
   readonly maxIng = computed(() => Math.max(1, ...this.serieIng().map(s => s.efectivo + s.digital + s.tarjeta)));
 
+  // Días para la tabla: aplica filtro de trabajador y "solo con diferencia".
+  readonly diasTabla = computed(() => {
+    const out: { dia: CuadreDiarioDia; cuadres: CuadreDiarioFila[] }[] = [];
+    for (const d of this.data()?.dias ?? []) {
+      if (d.sinInformacion) {
+        if (this.trabajador() === 'todos' && !this.soloConDif()) out.push({ dia: d, cuadres: [] });
+        continue;
+      }
+      let cs = d.cuadres.filter(c => this.pasaUsuario(c.usuarioNombre));
+      if (this.soloConDif()) cs = cs.filter(c => c.estado !== 'CUADRA');
+      if (cs.length) out.push({ dia: d, cuadres: cs });
+    }
+    return out;
+  });
+
   /** Porcentaje (0-100) de un valor respecto al máximo, para el ancho de las barras. */
   pct(valor: number, max: number): number { return Math.round((Math.abs(valor) / max) * 100); }
+
+  /** Descarga el reporte del mes como CSV (Excel lo abre directo). */
+  exportarCsv() {
+    const rep = this.data();
+    if (!rep) return;
+    const filas: string[][] = [['Fecha', 'Trabajador', 'Estado', 'Caja inicial', 'Ingresos efectivo', 'Egresos', 'Contado', 'Corte', 'Caja final', 'Diferencia', 'Yape/Plin/Transf.', 'Tarjeta', 'Nota']];
+    for (const d of rep.dias) {
+      const fecha = d.fecha.slice(0, 10);
+      if (d.sinInformacion) {
+        if (d.noCuadradoIngresos > 0 || d.noCuadradoEgresos > 0)
+          filas.push([fecha, '', 'SIN CUADRE', '', String(d.noCuadradoIngresos), String(d.noCuadradoEgresos), '', '', '', '', '', '', 'Movimientos sin cuadrar']);
+        continue;
+      }
+      for (const c of d.cuadres) {
+        const dif = c.estado === 'FALTA' ? -c.margenError : (c.estado === 'SOBRA' ? c.margenError : 0);
+        filas.push([fecha, c.usuarioNombre, c.estado, String(c.cajaInicial), String(c.ingresosEfectivo), String(c.egresos),
+          String(c.montoEnCaja), String(c.corte), String(c.cajaFinal), String(dif), String(c.ingresosDigital), String(c.ingresosTarjeta), (c.nota ?? '').replace(/[\r\n;]+/g, ' ')]);
+      }
+    }
+    const csv = '﻿' + filas.map(f => f.map(v => `"${(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `cuadres-${rep.anio}-${String(rep.mes).padStart(2, '0')}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   ngOnInit() { this.cargar(); }
 

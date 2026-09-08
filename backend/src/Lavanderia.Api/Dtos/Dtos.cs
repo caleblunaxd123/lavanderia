@@ -796,12 +796,16 @@ public record CuadreDiarioFilaDto(
     decimal IngresosDigital,
     decimal IngresosTarjeta);
 
+/// <summary>Operaciones de un método de pago en un día: cuántas y por cuánto.</summary>
+public record FormaPagoDiaDto(string Metodo, int Cantidad, decimal Monto);
+
 public record CuadreDiarioDiaDto(
     DateOnly Fecha,
     List<CuadreDiarioFilaDto> Cuadres,
     bool SinInformacion,
     decimal NoCuadradoIngresos,   // movimientos de un día sin cuadre guardado
-    decimal NoCuadradoEgresos);
+    decimal NoCuadradoEgresos,
+    List<FormaPagoDiaDto> FormasPago);
 
 public record CuadresDiariosReporteDto(int Anio, int Mes, List<CuadreDiarioDiaDto> Dias);
 

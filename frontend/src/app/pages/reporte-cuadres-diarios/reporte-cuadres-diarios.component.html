@@ -1,18 +1,35 @@
 <div class="page">
   <app-page-header icono="calendar" color="verde" titulo="Reporte de cuadres diarios"
     subtitulo="Revisa los cierres de caja, ingresos digitales y días pendientes de cuadrar."
-    volverTexto="Reportes" (volver)="volver()">
-    <div class="cab__acciones">
+    volverTexto="Reportes" (volver)="volver()"></app-page-header>
+
+  <div class="toolbar">
+    <div class="campo-mes">
+      <label for="mes-cuadres">Mes</label>
+      <input id="mes-cuadres" type="month" [(ngModel)]="mesFiltro" (change)="cargar()" />
+    </div>
+    @if (usuarios().length > 1) {
       <div class="campo-mes">
-        <label for="mes-cuadres">Mes</label>
-        <input id="mes-cuadres" type="month" [(ngModel)]="mesFiltro" (change)="cargar()" />
+        <label for="filtro-trab">Trabajador</label>
+        <select id="filtro-trab" [ngModel]="trabajador()" (ngModelChange)="trabajador.set($event)">
+          <option value="todos">Todos</option>
+          @for (u of usuarios(); track u) { <option [value]="u">{{ u }}</option> }
+        </select>
       </div>
+    }
+    <div class="toolbar__botones">
+      <button type="button" class="btn btn--secundario" [class.is-on]="soloConDif()" (click)="soloConDif.set(!soloConDif())">
+        <app-icon name="warning" [size]="16"></app-icon> Solo con diferencia
+      </button>
       <button type="button" class="btn btn--secundario" [attr.aria-expanded]="expandido()" (click)="toggleExpandido()">
         <app-icon [name]="expandido() ? 'eye-off' : 'eye'" [size]="16"></app-icon>
         {{ expandido() ? 'Menos detalle' : 'Más detalle' }}
       </button>
+      <button type="button" class="btn btn--secundario" (click)="exportarCsv()">
+        <app-icon name="download" [size]="16"></app-icon> Exportar
+      </button>
     </div>
-  </app-page-header>
+  </div>
 
   @if (cargando()) {
     <div class="estado">Cargando…</div>
@@ -20,12 +37,34 @@
     @if (data(); as rep) {
     <!-- Resumen del mes -->
     <div class="kpis">
-      <div class="kpi"><span class="kpi__lbl">Efectivo del mes</span><span class="kpi__val">S/ {{ resumen().efectivo | number:'1.2-2' }}</span></div>
-      <div class="kpi"><span class="kpi__lbl">Yape / Plin / Transf.</span><span class="kpi__val">S/ {{ resumen().digital | number:'1.2-2' }}</span></div>
-      <div class="kpi"><span class="kpi__lbl">Tarjeta / POS</span><span class="kpi__val">S/ {{ resumen().tarjeta | number:'1.2-2' }}</span></div>
-      <div class="kpi kpi--falta"><span class="kpi__lbl">Faltó (acumulado)</span><span class="kpi__val">S/ {{ resumen().faltante | number:'1.2-2' }}</span></div>
-      <div class="kpi kpi--sobra"><span class="kpi__lbl">Sobró (acumulado)</span><span class="kpi__val">S/ {{ resumen().sobrante | number:'1.2-2' }}</span></div>
-      <div class="kpi"><span class="kpi__lbl">Días cerrados</span><span class="kpi__val">{{ resumen().cerrados }} <small>· {{ resumen().conDiferencia }} con dif.</small></span></div>
+      <div class="kpi kpi--efe">
+        <span class="kpi__ic"><app-icon name="cash" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Efectivo del mes</span><span class="kpi__val">S/ {{ resumen().efectivo | number:'1.2-2' }}</span></div>
+      </div>
+      <div class="kpi kpi--dig">
+        <span class="kpi__ic"><app-icon name="cash" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Yape / Plin / Transf.</span><span class="kpi__val">S/ {{ resumen().digital | number:'1.2-2' }}</span></div>
+      </div>
+      <div class="kpi kpi--tar">
+        <span class="kpi__ic"><app-icon name="cash" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Tarjeta / POS</span><span class="kpi__val">S/ {{ resumen().tarjeta | number:'1.2-2' }}</span></div>
+      </div>
+      <div class="kpi kpi--falta">
+        <span class="kpi__ic"><app-icon name="warning" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Faltó (acumulado)</span><span class="kpi__val">S/ {{ resumen().faltante | number:'1.2-2' }}</span></div>
+      </div>
+      <div class="kpi kpi--sobra">
+        <span class="kpi__ic"><app-icon name="warning" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Sobró (acumulado)</span><span class="kpi__val">S/ {{ resumen().sobrante | number:'1.2-2' }}</span></div>
+      </div>
+      <div class="kpi kpi--dias">
+        <span class="kpi__ic"><app-icon name="calendar" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Días cerrados</span><span class="kpi__val">{{ resumen().cerrados }} <small>· {{ resumen().conDiferencia }} con dif.</small></span></div>
+      </div>
+      <div class="kpi" [class.kpi--ok]="resumen().pctCuadraron >= 80" [class.kpi--falta]="resumen().pctCuadraron < 60 && resumen().cerrados > 0" [class.kpi--dias]="resumen().pctCuadraron >= 60 && resumen().pctCuadraron < 80">
+        <span class="kpi__ic"><app-icon name="check" [size]="18"></app-icon></span>
+        <div class="kpi__cont"><span class="kpi__lbl">Cuadraron</span><span class="kpi__val">{{ resumen().pctCuadraron }}% <small>· {{ resumen().cuadrados }}/{{ resumen().cerrados }}</small></span></div>
+      </div>
     </div>
 
     <!-- Gráficas -->
@@ -70,13 +109,62 @@
             <div class="ing-row">
               <span class="ing-fecha">{{ s.fecha | date:'dd/MM' }}</span>
               <span class="ing-bar">
-                @if (s.efectivo > 0) { <i class="seg seg--efe" [style.width.%]="pct(s.efectivo, maxIng())" [title]="'Efectivo S/ ' + (s.efectivo | number:'1.2-2')"></i> }
-                @if (s.digital > 0) { <i class="seg seg--dig" [style.width.%]="pct(s.digital, maxIng())" [title]="'Yape/Plin S/ ' + (s.digital | number:'1.2-2')"></i> }
-                @if (s.tarjeta > 0) { <i class="seg seg--tar" [style.width.%]="pct(s.tarjeta, maxIng())" [title]="'Tarjeta S/ ' + (s.tarjeta | number:'1.2-2')"></i> }
+                @if (s.efectivo > 0) { <i class="seg seg--efe" [style.width.%]="pct(s.efectivo, maxIng())" [title]="s.efeN + ' cobro(s) en Efectivo · S/ ' + (s.efectivo | number:'1.2-2')"></i> }
+                @if (s.digital > 0) { <i class="seg seg--dig" [style.width.%]="pct(s.digital, maxIng())" [title]="s.digN + ' cobro(s) Yape/Plin/Transf. · S/ ' + (s.digital | number:'1.2-2')"></i> }
+                @if (s.tarjeta > 0) { <i class="seg seg--tar" [style.width.%]="pct(s.tarjeta, maxIng())" [title]="s.tarN + ' cobro(s) con Tarjeta · S/ ' + (s.tarjeta | number:'1.2-2')"></i> }
               </span>
               <span class="ing-tot">S/ {{ (s.efectivo + s.digital + s.tarjeta) | number:'1.2-2' }}</span>
             </div>
           }
+        }
+      </div>
+    </div>
+
+    <!-- Formas de pago del mes + Resumen por trabajador -->
+    <div class="paneles">
+      <div class="card panel">
+        <div class="grafica__head">
+          <h3>Formas de pago del mes</h3>
+          <p class="hint">Cuántas operaciones y cuánto por cada método (cada forma de pago es distinta).</p>
+        </div>
+        @if (formasMes().length === 0) {
+          <p class="hint">Sin cobros registrados este mes.</p>
+        } @else {
+          <div class="formas">
+            @for (f of formasMes(); track f.metodo) {
+              <div class="forma" [class]="'forma--' + metodoClase(f.metodo)">
+                <span class="forma__met"><i class="forma__punto"></i>{{ f.metodo }}</span>
+                <span class="forma__cant">{{ f.cantidad }} <small>oper.</small></span>
+                <span class="forma__monto">S/ {{ f.monto | number:'1.2-2' }}</span>
+              </div>
+            }
+          </div>
+          <p class="grafica__nota">{{ totalOperaciones() }} operaciones en total este mes.</p>
+        }
+      </div>
+
+      <div class="card panel">
+        <div class="grafica__head">
+          <h3>Resumen por trabajador</h3>
+          <p class="hint">Ingresos y descuadres por persona, para saber dónde revisar.</p>
+        </div>
+        @if (resumenTrab().length === 0) {
+          <p class="hint">Sin cierres este mes.</p>
+        } @else {
+          <table class="tabla-trab">
+            <thead><tr><th>Trabajador</th><th class="num">Cierres</th><th class="num">Ingresos</th><th class="num">Faltó</th><th class="num">Sobró</th></tr></thead>
+            <tbody>
+              @for (t of resumenTrab(); track t.usuario) {
+                <tr>
+                  <td>{{ t.usuario }}</td>
+                  <td class="num">{{ t.cierres }} <small>· {{ t.descuadres }} dif.</small></td>
+                  <td class="num">S/ {{ t.ingresos | number:'1.2-2' }}</td>
+                  <td class="num rojo">{{ t.falto > 0 ? '−S/ ' + (t.falto | number:'1.2-2') : '—' }}</td>
+                  <td class="num ambar">{{ t.sobro > 0 ? '+S/ ' + (t.sobro | number:'1.2-2') : '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         }
       </div>
     </div>
@@ -107,23 +195,23 @@
             </tr>
           </thead>
           <tbody>
-            @for (dia of rep.dias; track dia.fecha) {
-              @if (dia.sinInformacion) {
+            @for (item of diasTabla(); track item.dia.fecha) {
+              @if (item.dia.sinInformacion) {
                 <tr class="fila-vacia">
-                  <td>{{ dia.fecha | date:'dd/MM/yyyy' }}</td>
+                  <td>{{ item.dia.fecha | date:'dd/MM/yyyy' }}</td>
                   <td [attr.colspan]="expandido() ? 12 : 4">
                     <span class="sin-info">Sin información</span>
-                    @if (dia.noCuadradoIngresos > 0 || dia.noCuadradoEgresos > 0) {
-                      <button type="button" class="link-nocuadrado" (click)="verDia(dia)">
+                    @if (item.dia.noCuadradoIngresos > 0 || item.dia.noCuadradoEgresos > 0) {
+                      <button type="button" class="link-nocuadrado" (click)="verDia(item.dia)">
                         · Hay movimientos sin cuadrar (ver)
                       </button>
                     }
                   </td>
                 </tr>
               } @else {
-                @for (c of dia.cuadres; track c.id) {
-                  <tr class="fila-click" (click)="verFecha(dia.fecha)" [title]="'Ver el cuadre del ' + (dia.fecha | date:'dd/MM/yyyy')">
-                    <td>{{ $first ? (dia.fecha | date:'dd/MM/yyyy') : '' }}</td>
+                @for (c of item.cuadres; track c.id) {
+                  <tr class="fila-click" (click)="verFecha(item.dia.fecha)" [title]="'Ver el cuadre del ' + (item.dia.fecha | date:'dd/MM/yyyy')">
+                    <td>{{ $first ? (item.dia.fecha | date:'dd/MM/yyyy') : '' }}</td>
                     <td>{{ c.usuarioNombre }}</td>
                     @if (expandido()) {
                       <td class="num">{{ c.cajaInicial | number:'1.2-2' }}</td>
@@ -147,6 +235,8 @@
                   </tr>
                 }
               }
+            } @empty {
+              <tr><td [attr.colspan]="expandido() ? 12 : 5" class="sin-info">Sin resultados con este filtro.</td></tr>
             }
           </tbody>
         </table>
@@ -154,20 +244,20 @@
 
       <!-- Vista de tarjetas (solo móvil) -->
       <div class="cards-rep">
-        @for (dia of rep.dias; track dia.fecha) {
-          @if (dia.sinInformacion) {
+        @for (item of diasTabla(); track item.dia.fecha) {
+          @if (item.dia.sinInformacion) {
             <div class="rep-card">
-              <div class="rep-card__titulo">{{ dia.fecha | date:'dd/MM/yyyy' }}</div>
+              <div class="rep-card__titulo">{{ item.dia.fecha | date:'dd/MM/yyyy' }}</div>
               <div class="rep-card__row"><span>Sin información</span><strong>—</strong></div>
-              @if (dia.noCuadradoIngresos > 0 || dia.noCuadradoEgresos > 0) {
-                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verDia(dia)">Hay movimientos sin cuadrar (ver)</button>
+              @if (item.dia.noCuadradoIngresos > 0 || item.dia.noCuadradoEgresos > 0) {
+                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verDia(item.dia)">Hay movimientos sin cuadrar (ver)</button>
               }
             </div>
           } @else {
-            @for (c of dia.cuadres; track c.id) {
+            @for (c of item.cuadres; track c.id) {
               <div class="rep-card">
                 <div class="rep-card__top">
-                  <div class="rep-card__titulo">{{ dia.fecha | date:'dd/MM/yyyy' }} · {{ c.usuarioNombre }}</div>
+                  <div class="rep-card__titulo">{{ item.dia.fecha | date:'dd/MM/yyyy' }} · {{ c.usuarioNombre }}</div>
                   <span [class]="claseEstado(c.estado)">{{ c.estado === 'CUADRA' ? 'Cuadró' : (c.estado === 'SOBRA' ? 'Sobra' : 'Falta') }}</span>
                 </div>
                 <div class="rep-card__row"><span>Caja inicial</span><strong>S/ {{ c.cajaInicial | number:'1.2-2' }}</strong></div>
@@ -180,7 +270,7 @@
                 <div class="rep-card__row"><span>Tarjeta</span><strong>S/ {{ c.ingresosTarjeta | number:'1.2-2' }}</strong></div>
                 <div class="rep-card__row"><span>Diferencia</span><strong class="dif-cel" [class.rojo]="c.estado === 'FALTA'" [class.ambar]="c.estado === 'SOBRA'">@if (c.estado === 'FALTA') { −S/ {{ c.margenError | number:'1.2-2' }} } @else if (c.estado === 'SOBRA') { +S/ {{ c.margenError | number:'1.2-2' }} } @else { S/ 0.00 }</strong></div>
                 <div class="rep-card__row"><span>Nota</span><strong>{{ c.nota || '—' }}</strong></div>
-                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verFecha(dia.fecha)">Ver detalle del día</button>
+                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verFecha(item.dia.fecha)">Ver detalle del día</button>
               </div>
             }
           }

@@ -76,6 +76,9 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   // true cuando el desglose mostrado NO es el detalle real guardado, sino una reconstrucción
   // del total (cierres antiguos que se guardaron solo con el monto). Sirve para avisarlo suave.
   readonly desgloseReconstruido = signal(false);
+  // El detalle "Ver cada cobro del día" lo abre/cierra el usuario y se queda así (no se
+  // colapsa solo con el refresco automático de cada 15s).
+  readonly mostrarCobros = signal(false);
   // false = solo los movimientos del colaborador seleccionado; true = toda la caja del día (todos).
   readonly verTodos = signal(false);
   readonly sugerenciaCajaInicial = signal<{ monto: number; usuarioNombre?: string; fecha: string } | null>(null);

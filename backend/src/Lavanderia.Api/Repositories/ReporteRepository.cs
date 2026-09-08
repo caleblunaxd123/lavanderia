@@ -263,6 +263,31 @@ public class ReporteRepository : IReporteRepository
                     (r.GetDecimal(r.GetOrdinal("Ingresos")), r.GetDecimal(r.GetOrdinal("Egresos")));
         }
 
+        // 2b) Ingresos por día y por MÉTODO de pago (cuántas operaciones y por cuánto).
+        var formasPorDia = new Dictionary<int, List<FormaPagoDiaDto>>();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT DAY(m.Fecha) AS Dia, m.MetodoPago, COUNT(*) AS Cant, SUM(m.Monto) AS Monto
+                FROM dbo.MovimientoCaja m
+                WHERE m.SedeId = @SedeId AND YEAR(m.Fecha) = @Anio AND MONTH(m.Fecha) = @Mes AND m.Tipo = 'INGRESO'
+                GROUP BY DAY(m.Fecha), m.MetodoPago";
+            cmd.AddParam("@SedeId", sedeId);
+            cmd.AddParam("@Anio", anio);
+            cmd.AddParam("@Mes", mes);
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            while (await r.ReadAsync(ct))
+            {
+                var dia = r.GetInt32(r.GetOrdinal("Dia"));
+                var forma = new FormaPagoDiaDto(
+                    r.GetString(r.GetOrdinal("MetodoPago")),
+                    r.GetInt32(r.GetOrdinal("Cant")),
+                    r.GetDecimal(r.GetOrdinal("Monto")));
+                if (!formasPorDia.TryGetValue(dia, out var lista)) { lista = new(); formasPorDia[dia] = lista; }
+                lista.Add(forma);
+            }
+        }
+
         // 3) Armar la lista día por día (hasta hoy si es el mes en curso).
         var hoy = DateTime.Today;
         int ultimoDia = DateTime.DaysInMonth(anio, mes);
@@ -272,14 +297,15 @@ public class ReporteRepository : IReporteRepository
         for (int d = 1; d <= ultimoDia; d++)
         {
             var fecha = new DateOnly(anio, mes, d);
+            var formas = formasPorDia.TryGetValue(d, out var f) ? f : new();
             if (cuadresPorDia.TryGetValue(d, out var cuadres) && cuadres.Count > 0)
             {
-                dias.Add(new CuadreDiarioDiaDto(fecha, cuadres, false, 0, 0));
+                dias.Add(new CuadreDiarioDiaDto(fecha, cuadres, false, 0, 0, formas));
             }
             else
             {
                 var (ing, egr) = movPorDia.TryGetValue(d, out var m) ? m : (0m, 0m);
-                dias.Add(new CuadreDiarioDiaDto(fecha, new(), true, ing, egr));
+                dias.Add(new CuadreDiarioDiaDto(fecha, new(), true, ing, egr, formas));
             }
         }
         return new CuadresDiariosReporteDto(anio, mes, dias);
