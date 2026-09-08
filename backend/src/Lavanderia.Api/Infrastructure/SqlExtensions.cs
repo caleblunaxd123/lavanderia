@@ -15,6 +15,18 @@ public static class SqlExtensions
         return cmd;
     }
 
+    /// <summary>
+    /// Parámetro binario (VARBINARY) con tipo explícito. AddWithValue infiere NVARCHAR para un
+    /// valor null, y SQL Server no convierte NVARCHAR→VARBINARY implícitamente (falla el INSERT/
+    /// UPDATE cuando el binario es null, p. ej. un certificado no cargado). Con el tipo explícito,
+    /// el null se envía como VARBINARY NULL correctamente.
+    /// </summary>
+    public static SqlCommand AddBinaryParam(this SqlCommand cmd, string name, byte[]? value)
+    {
+        cmd.Parameters.Add(new SqlParameter(name, SqlDbType.VarBinary, -1) { Value = (object?)value ?? DBNull.Value });
+        return cmd;
+    }
+
     public static async Task<T?> ReadScalarAsync<T>(this SqlCommand cmd, CancellationToken ct = default)
     {
         var result = await cmd.ExecuteScalarAsync(ct);

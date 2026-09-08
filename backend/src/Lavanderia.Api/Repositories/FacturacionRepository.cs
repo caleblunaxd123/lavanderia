@@ -150,7 +150,7 @@ public class FacturacionRepository : IFacturacionRepository
         cmd.AddParam("@Ambiente", c.Ambiente);
         cmd.AddParam("@SolUsuario", c.SolUsuario);
         cmd.AddParam("@SolClaveCifrada", c.SolClaveCifrada);
-        cmd.AddParam("@CertificadoPfx", c.CertificadoPfx);
+        cmd.AddBinaryParam("@CertificadoPfx", c.CertificadoPfx);
         cmd.AddParam("@CertificadoPasswordCifrada", c.CertificadoPasswordCifrada);
         cmd.AddParam("@SerieBoleta", c.SerieBoleta);
         cmd.AddParam("@SerieFactura", c.SerieFactura);
