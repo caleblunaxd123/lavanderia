@@ -18,6 +18,69 @@
     <div class="estado">Cargando…</div>
   } @else if (data()) {
     @if (data(); as rep) {
+    <!-- Resumen del mes -->
+    <div class="kpis">
+      <div class="kpi"><span class="kpi__lbl">Efectivo del mes</span><span class="kpi__val">S/ {{ resumen().efectivo | number:'1.2-2' }}</span></div>
+      <div class="kpi"><span class="kpi__lbl">Yape / Plin / Transf.</span><span class="kpi__val">S/ {{ resumen().digital | number:'1.2-2' }}</span></div>
+      <div class="kpi"><span class="kpi__lbl">Tarjeta / POS</span><span class="kpi__val">S/ {{ resumen().tarjeta | number:'1.2-2' }}</span></div>
+      <div class="kpi kpi--falta"><span class="kpi__lbl">Faltó (acumulado)</span><span class="kpi__val">S/ {{ resumen().faltante | number:'1.2-2' }}</span></div>
+      <div class="kpi kpi--sobra"><span class="kpi__lbl">Sobró (acumulado)</span><span class="kpi__val">S/ {{ resumen().sobrante | number:'1.2-2' }}</span></div>
+      <div class="kpi"><span class="kpi__lbl">Días cerrados</span><span class="kpi__val">{{ resumen().cerrados }} <small>· {{ resumen().conDiferencia }} con dif.</small></span></div>
+    </div>
+
+    <!-- Gráficas -->
+    <div class="graficas">
+      <div class="card grafica">
+        <div class="grafica__head">
+          <h3>¿Dónde está la diferencia?</h3>
+          <p class="hint">Rojo = faltó dinero · Ámbar = sobró · Verde = cuadró. Toca un día para ver el detalle.</p>
+        </div>
+        @if (serieDif().length === 0) {
+          <p class="hint">Sin cierres guardados este mes.</p>
+        } @else {
+          @for (f of serieDif(); track $index) {
+            <button type="button" class="dif-row" (click)="verFecha(f.fecha)" [title]="'Ver el cuadre del ' + (f.fecha | date:'dd/MM/yyyy')">
+              <span class="dif-fecha">{{ f.fecha | date:'dd/MM' }}</span>
+              <span class="dif-neg">@if (f.valor < 0) { <i class="dif-bar dif-bar--falta" [style.width.%]="pct(f.valor, maxDifAbs())"></i> }</span>
+              <span class="dif-pos">@if (f.valor > 0) { <i class="dif-bar dif-bar--sobra" [style.width.%]="pct(f.valor, maxDifAbs())"></i> }</span>
+              <span class="dif-val" [class.rojo]="f.valor < 0" [class.ambar]="f.valor > 0" [class.verde]="f.valor === 0">
+                @if (f.valor < 0) { −S/ {{ -f.valor | number:'1.2-2' }} }
+                @else if (f.valor > 0) { +S/ {{ f.valor | number:'1.2-2' }} }
+                @else { Cuadró }
+              </span>
+            </button>
+          }
+        }
+        <p class="grafica__nota">La diferencia es lo <b>contado</b> menos lo que <b>debería haber</b> (caja inicial + cobros en efectivo − gastos). Un faltante suele ser vuelto mal dado o un gasto sin registrar.</p>
+      </div>
+
+      <div class="card grafica">
+        <div class="grafica__head">
+          <h3>Ingresos por día</h3>
+          <div class="leyenda">
+            <span><i class="sw sw--efe"></i>Efectivo</span>
+            <span><i class="sw sw--dig"></i>Yape/Plin</span>
+            <span><i class="sw sw--tar"></i>Tarjeta</span>
+          </div>
+        </div>
+        @if (serieIng().length === 0) {
+          <p class="hint">Sin ingresos registrados este mes.</p>
+        } @else {
+          @for (s of serieIng(); track s.fecha) {
+            <div class="ing-row">
+              <span class="ing-fecha">{{ s.fecha | date:'dd/MM' }}</span>
+              <span class="ing-bar">
+                @if (s.efectivo > 0) { <i class="seg seg--efe" [style.width.%]="pct(s.efectivo, maxIng())" [title]="'Efectivo S/ ' + (s.efectivo | number:'1.2-2')"></i> }
+                @if (s.digital > 0) { <i class="seg seg--dig" [style.width.%]="pct(s.digital, maxIng())" [title]="'Yape/Plin S/ ' + (s.digital | number:'1.2-2')"></i> }
+                @if (s.tarjeta > 0) { <i class="seg seg--tar" [style.width.%]="pct(s.tarjeta, maxIng())" [title]="'Tarjeta S/ ' + (s.tarjeta | number:'1.2-2')"></i> }
+              </span>
+              <span class="ing-tot">S/ {{ (s.efectivo + s.digital + s.tarjeta) | number:'1.2-2' }}</span>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
     <div class="layout">
       <!-- Tabla principal -->
       <div class="card tabla-wrap">
@@ -35,7 +98,7 @@
                 <th class="num">Caja Final</th>
               }
               <th>Estado</th>
-              <th class="num">Margen Error</th>
+              <th class="num">Diferencia</th>
               <th>Nota</th>
               @if (expandido()) {
                 <th class="num">Transf. Móvil</th>
@@ -59,7 +122,7 @@
                 </tr>
               } @else {
                 @for (c of dia.cuadres; track c.id) {
-                  <tr>
+                  <tr class="fila-click" (click)="verFecha(dia.fecha)" [title]="'Ver el cuadre del ' + (dia.fecha | date:'dd/MM/yyyy')">
                     <td>{{ $first ? (dia.fecha | date:'dd/MM/yyyy') : '' }}</td>
                     <td>{{ c.usuarioNombre }}</td>
                     @if (expandido()) {
@@ -71,7 +134,11 @@
                       <td class="num">{{ c.cajaFinal | number:'1.2-2' }}</td>
                     }
                     <td><span [class]="claseEstado(c.estado)">{{ c.estado === 'CUADRA' ? 'Cuadró' : (c.estado === 'SOBRA' ? 'Sobra' : 'Falta') }}</span></td>
-                    <td class="num">S/ {{ c.margenError | number:'1.2-2' }}</td>
+                    <td class="num dif-cel" [class.rojo]="c.estado === 'FALTA'" [class.ambar]="c.estado === 'SOBRA'">
+                      @if (c.estado === 'FALTA') { −S/ {{ c.margenError | number:'1.2-2' }} }
+                      @else if (c.estado === 'SOBRA') { +S/ {{ c.margenError | number:'1.2-2' }} }
+                      @else { S/ 0.00 }
+                    </td>
                     <td class="nota">{{ c.nota || '—' }}</td>
                     @if (expandido()) {
                       <td class="num">{{ c.ingresosDigital | number:'1.2-2' }}</td>
@@ -111,8 +178,9 @@
                 <div class="rep-card__row"><span>Caja final</span><strong>S/ {{ c.cajaFinal | number:'1.2-2' }}</strong></div>
                 <div class="rep-card__row"><span>Transf. móvil</span><strong>S/ {{ c.ingresosDigital | number:'1.2-2' }}</strong></div>
                 <div class="rep-card__row"><span>Tarjeta</span><strong>S/ {{ c.ingresosTarjeta | number:'1.2-2' }}</strong></div>
-                <div class="rep-card__row"><span>Margen de error</span><strong>S/ {{ c.margenError | number:'1.2-2' }}</strong></div>
+                <div class="rep-card__row"><span>Diferencia</span><strong class="dif-cel" [class.rojo]="c.estado === 'FALTA'" [class.ambar]="c.estado === 'SOBRA'">@if (c.estado === 'FALTA') { −S/ {{ c.margenError | number:'1.2-2' }} } @else if (c.estado === 'SOBRA') { +S/ {{ c.margenError | number:'1.2-2' }} } @else { S/ 0.00 }</strong></div>
                 <div class="rep-card__row"><span>Nota</span><strong>{{ c.nota || '—' }}</strong></div>
+                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verFecha(dia.fecha)">Ver detalle del día</button>
               </div>
             }
           }

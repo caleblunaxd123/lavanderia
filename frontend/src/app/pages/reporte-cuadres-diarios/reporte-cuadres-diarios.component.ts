@@ -31,6 +31,55 @@ export class ReporteCuadresDiariosComponent implements OnInit {
     (this.data()?.dias ?? []).filter(d => d.sinInformacion && (d.noCuadradoIngresos > 0 || d.noCuadradoEgresos > 0))
   );
 
+  // ===== Resumen del mes (tarjetas KPI para el dueño) =====
+  readonly resumen = computed(() => {
+    let efectivo = 0, digital = 0, tarjeta = 0, faltante = 0, sobrante = 0, cerrados = 0, cuadrados = 0;
+    for (const d of this.data()?.dias ?? []) {
+      for (const c of d.cuadres) {
+        efectivo += c.ingresosEfectivo; digital += c.ingresosDigital; tarjeta += c.ingresosTarjeta;
+        cerrados++;
+        if (c.estado === 'FALTA') faltante += c.margenError;
+        else if (c.estado === 'SOBRA') sobrante += c.margenError;
+        else cuadrados++;
+      }
+    }
+    return {
+      efectivo, digital, tarjeta, faltante, sobrante,
+      neto: sobrante - faltante, cerrados, cuadrados,
+      conDiferencia: cerrados - cuadrados, sinCuadrar: this.noCuadrados().length,
+    };
+  });
+
+  // ===== Serie de DIFERENCIAS por día (dónde está el error) =====
+  readonly serieDif = computed(() => {
+    const filas: { fecha: string; usuario: string; estado: string; valor: number }[] = [];
+    for (const d of this.data()?.dias ?? []) {
+      for (const c of d.cuadres) {
+        const valor = c.estado === 'FALTA' ? -c.margenError : (c.estado === 'SOBRA' ? c.margenError : 0);
+        filas.push({ fecha: d.fecha, usuario: c.usuarioNombre, estado: c.estado, valor });
+      }
+    }
+    return filas;
+  });
+  readonly maxDifAbs = computed(() => Math.max(1, ...this.serieDif().map(f => Math.abs(f.valor))));
+
+  // ===== Serie de INGRESOS por día y método =====
+  readonly serieIng = computed(() => {
+    const map = new Map<string, { fecha: string; efectivo: number; digital: number; tarjeta: number }>();
+    for (const d of this.data()?.dias ?? []) {
+      for (const c of d.cuadres) {
+        const cur = map.get(d.fecha) ?? { fecha: d.fecha, efectivo: 0, digital: 0, tarjeta: 0 };
+        cur.efectivo += c.ingresosEfectivo; cur.digital += c.ingresosDigital; cur.tarjeta += c.ingresosTarjeta;
+        map.set(d.fecha, cur);
+      }
+    }
+    return [...map.values()].filter(s => s.efectivo + s.digital + s.tarjeta > 0);
+  });
+  readonly maxIng = computed(() => Math.max(1, ...this.serieIng().map(s => s.efectivo + s.digital + s.tarjeta)));
+
+  /** Porcentaje (0-100) de un valor respecto al máximo, para el ancho de las barras. */
+  pct(valor: number, max: number): number { return Math.round((Math.abs(valor) / max) * 100); }
+
   ngOnInit() { this.cargar(); }
 
   cargar() {
@@ -54,6 +103,11 @@ export class ReporteCuadresDiariosComponent implements OnInit {
 
   // Al hacer click en un día no cuadrado, ir al cuadre de esa fecha para guardarlo.
   verDia(dia: CuadreDiarioDia) {
-    this.router.navigate(['/cuadre-caja'], { queryParams: { fecha: dia.fecha.slice(0, 10) } });
+    this.verFecha(dia.fecha);
+  }
+
+  /** Abre el cuadre de una fecha concreta (para revisar el detalle del día). */
+  verFecha(fechaIso: string) {
+    this.router.navigate(['/cuadre-caja'], { queryParams: { fecha: fechaIso.slice(0, 10) } });
   }
 }
