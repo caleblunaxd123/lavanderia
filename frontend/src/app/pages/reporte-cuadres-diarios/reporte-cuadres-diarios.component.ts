@@ -241,14 +241,60 @@ export class ReporteCuadresDiariosComponent implements OnInit {
     });
   }
 
+  /** Todos los movimientos del día de ese cajero. */
+  movsDelDia(id: number): MovimientoCaja[] { return this.movsPorFila()[id] ?? []; }
+
   /** Movimientos que afectan el efectivo contado: cobros en efectivo y egresos (gastos). */
   movsEfectivo(id: number): MovimientoCaja[] {
-    return (this.movsPorFila()[id] ?? []).filter(
+    return this.movsDelDia(id).filter(
       m => (m.tipo === 'INGRESO' && (m.metodoPago || '').toUpperCase() === 'EFECTIVO') || m.tipo === 'GASTO'
     );
   }
+  /** Cobros digitales (Yape/Plin/Transf/POS): no afectan el efectivo, pero un pago mal clasificado sí descuadra. */
+  movsDigitales(id: number): MovimientoCaja[] {
+    return this.movsDelDia(id).filter(m => m.tipo === 'INGRESO' && (m.metodoPago || '').toUpperCase() !== 'EFECTIVO');
+  }
   /** ¿Ya se cargaron (aunque sea vacío) los movimientos de esta fila? */
   movsCargados(id: number): boolean { return this.movsPorFila()[id] !== undefined; }
+
+  /** ¿El monto de este movimiento coincide (casi exacto) con la diferencia? → posible causa a revisar. */
+  esCandidato(m: MovimientoCaja, c: CuadreDiarioFila): boolean {
+    const dif = Math.abs(this.diferenciaFirmada(c));
+    return dif > 0.01 && Math.abs(Math.abs(m.monto) - dif) < 0.05;
+  }
+
+  /** Pistas concretas de dónde puede estar el error, en lenguaje simple para el administrador. */
+  pistasError(c: CuadreDiarioFila, id: number): string[] {
+    const dif = this.diferenciaFirmada(c);
+    if (Math.abs(dif) < 0.01) return [];
+    const abs = Math.abs(dif);
+    const movs = this.movsDelDia(id);
+    const gastos = movs.filter(m => m.tipo === 'GASTO');
+    const candidatos = movs.filter(m => this.esCandidato(m, c));
+    const ref = (m: MovimientoCaja) => m.pedidoNumero ? `Pedido #${m.pedidoNumero}` : (m.tipoGastoNombre || m.descripcion || 'un movimiento');
+    const out: string[] = [];
+
+    if (dif < 0) { // FALTA: contó menos efectivo del que debía
+      if (gastos.length === 0)
+        out.push(`No hay ningún gasto ni retiro anotado este día. Si se sacó dinero de la caja sin registrarlo, ese sería el faltante de S/ ${abs.toFixed(2)}.`);
+      for (const m of candidatos) {
+        if (m.tipo === 'INGRESO' && (m.metodoPago || '').toUpperCase() === 'EFECTIVO')
+          out.push(`El cobro de ${ref(m)} por S/ ${m.monto.toFixed(2)} coincide con el faltante: confirma que ese pago sí entró en efectivo (no por Yape/Plin).`);
+        else if (m.tipo === 'INGRESO')
+          out.push(`El cobro de ${ref(m)} por S/ ${m.monto.toFixed(2)} (${this.metodoLabel(m.metodoPago || '')}) coincide con el faltante: si en realidad fue en efectivo, está con el método equivocado.`);
+      }
+    } else { // SOBRA: contó más efectivo del que debía
+      out.push('Sobró efectivo: puede haber una venta cobrada en efectivo que no se registró, o un gasto anotado que no se hizo.');
+      for (const m of candidatos) {
+        if (m.tipo === 'GASTO')
+          out.push(`El gasto de ${ref(m)} por S/ ${m.monto.toFixed(2)} coincide con el sobrante: revisa si ese gasto realmente salió de la caja.`);
+        else if (m.tipo === 'INGRESO' && (m.metodoPago || '').toUpperCase() !== 'EFECTIVO')
+          out.push(`El cobro de ${ref(m)} por S/ ${m.monto.toFixed(2)} (${this.metodoLabel(m.metodoPago || '')}) coincide con el sobrante: si en realidad fue en efectivo, está con el método equivocado.`);
+      }
+    }
+    out.push('Si nada de esto aplica, pudo ser un vuelto mal dado o un error al contar el efectivo.');
+    return out;
+  }
 
   claseEstado(estado: string): string {
     return ({ CUADRA: 'badge badge--verde', SOBRA: 'badge badge--naranja', FALTA: 'badge badge--rojo' } as Record<string, string>)[estado]

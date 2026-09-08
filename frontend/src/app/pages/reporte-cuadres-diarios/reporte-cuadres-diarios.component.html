@@ -256,38 +256,66 @@
                               </span>
                               <span class="num">{{ diferenciaFirmada(c) >= 0 ? '+' : '−' }}S/ {{ (diferenciaFirmada(c) < 0 ? -diferenciaFirmada(c) : diferenciaFirmada(c)) | number:'1.2-2' }}</span>
                             </div>
-                            @if (c.estado === 'FALTA') {
-                              <p class="detalle-error__ayuda">Contó <strong>menos</strong> efectivo del que debía. Revisa los cobros de abajo: puede faltar registrar una venta, un vuelto mal dado o un retiro no anotado.</p>
-                            } @else if (c.estado === 'SOBRA') {
-                              <p class="detalle-error__ayuda">Contó <strong>más</strong> efectivo del que debía. Revisa abajo: puede ser un cobro no registrado en el sistema o un egreso anotado de más.</p>
-                            } @else {
+                            @if (c.estado === 'CUADRA') {
                               <p class="detalle-error__ayuda">El efectivo contado coincide con lo esperado. 👍</p>
                             }
                           </div>
 
-                          <!-- Movimientos en efectivo del día (para auditar) -->
+                          <!-- Movimientos del día + posibles causas (para auditar) -->
                           <div class="detalle-error__movs">
-                            <h5>Movimientos en efectivo de {{ c.usuarioNombre }} <small>({{ item.dia.fecha | date:'dd/MM/yyyy' }})</small></h5>
                             @if (cargandoMovs() === c.id) {
                               <p class="detalle-error__cargando">Cargando movimientos…</p>
-                            } @else if (movsCargados(c.id) && movsEfectivo(c.id).length === 0) {
-                              <p class="hint">No hay cobros en efectivo ni egresos registrados este día. El descuadre no viene de un movimiento del sistema (revisa el conteo físico o la caja inicial).</p>
                             } @else {
-                              <ul class="movs">
-                                @for (m of movsEfectivo(c.id); track m.id) {
-                                  <li class="movs__item" [class.movs__item--gasto]="m.tipo === 'GASTO'">
-                                    <span class="movs__tipo">{{ m.tipo === 'GASTO' ? 'Egreso' : 'Cobro' }}</span>
-                                    <span class="movs__desc">
-                                      @if (m.pedidoNumero) { Pedido #{{ m.pedidoNumero }} }
-                                      @if (m.clienteNombre) { · {{ m.clienteNombre }} }
-                                      @if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }
-                                      @if (m.descripcion) { · {{ m.descripcion }} }
-                                    </span>
-                                    <span class="movs__hora">{{ m.fecha | date:'hh:mm a' }}</span>
-                                    <span class="movs__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
-                                  </li>
-                                }
-                              </ul>
+                              <!-- Posibles causas: dónde revisar -->
+                              @if (c.estado !== 'CUADRA' && movsCargados(c.id)) {
+                                <div class="pistas">
+                                  <h5 class="pistas__titulo"><app-icon name="warning" [size]="14"></app-icon> ¿Dónde puede estar el error?</h5>
+                                  <ul class="pistas__lista">
+                                    @for (p of pistasError(c, c.id); track $index) { <li>{{ p }}</li> }
+                                  </ul>
+                                </div>
+                              }
+
+                              <h5>Movimientos en efectivo <small>({{ item.dia.fecha | date:'dd/MM/yyyy' }})</small></h5>
+                              @if (movsEfectivo(c.id).length === 0) {
+                                <p class="hint">No hay cobros en efectivo ni egresos registrados este día.</p>
+                              } @else {
+                                <ul class="movs">
+                                  @for (m of movsEfectivo(c.id); track m.id) {
+                                    <li class="movs__item" [class.movs__item--gasto]="m.tipo === 'GASTO'" [class.movs__item--candidato]="esCandidato(m, c)">
+                                      <span class="movs__tipo">{{ m.tipo === 'GASTO' ? 'Egreso' : 'Cobro' }}</span>
+                                      <span class="movs__desc">
+                                        @if (m.pedidoNumero) { Pedido #{{ m.pedidoNumero }} }
+                                        @if (m.clienteNombre) { · {{ m.clienteNombre }} }
+                                        @if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }
+                                        @if (m.descripcion) { · {{ m.descripcion }} }
+                                        @if (esCandidato(m, c)) { <span class="movs__flag">⚠ coincide con la diferencia</span> }
+                                      </span>
+                                      <span class="movs__hora">{{ m.fecha | date:'hh:mm a' }}</span>
+                                      <span class="movs__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
+                                    </li>
+                                  }
+                                </ul>
+                              }
+
+                              <!-- Pagos digitales: no afectan el efectivo, pero pueden estar con el método equivocado -->
+                              @if (movsDigitales(c.id).length > 0) {
+                                <h5 class="movs-titulo-sec">Otros pagos del día <small>(Yape/Plin — no afectan el efectivo)</small></h5>
+                                <ul class="movs movs--digital">
+                                  @for (m of movsDigitales(c.id); track m.id) {
+                                    <li class="movs__item" [class.movs__item--candidato]="esCandidato(m, c)">
+                                      <span class="movs__tipo movs__tipo--dig">{{ metodoLabel(m.metodoPago || '') }}</span>
+                                      <span class="movs__desc">
+                                        @if (m.pedidoNumero) { Pedido #{{ m.pedidoNumero }} }
+                                        @if (m.clienteNombre) { · {{ m.clienteNombre }} }
+                                        @if (esCandidato(m, c)) { <span class="movs__flag">⚠ coincide con la diferencia</span> }
+                                      </span>
+                                      <span class="movs__hora">{{ m.fecha | date:'hh:mm a' }}</span>
+                                      <span class="movs__monto">S/ {{ m.monto | number:'1.2-2' }}</span>
+                                    </li>
+                                  }
+                                </ul>
+                              }
                             }
                             <button type="button" class="btn btn--outline-primary btn--sm" (click)="verFecha(item.dia.fecha); $event.stopPropagation()">
                               <app-icon name="cash" [size]="14"></app-icon> Abrir cuadre completo del día
@@ -359,21 +387,43 @@
                       </div>
                     </div>
                     <div class="detalle-error__movs">
-                      <h5>Movimientos en efectivo</h5>
                       @if (cargandoMovs() === c.id) {
                         <p class="detalle-error__cargando">Cargando…</p>
-                      } @else if (movsCargados(c.id) && movsEfectivo(c.id).length === 0) {
-                        <p class="hint">No hay cobros en efectivo ni egresos este día.</p>
                       } @else {
-                        <ul class="movs">
-                          @for (m of movsEfectivo(c.id); track m.id) {
-                            <li class="movs__item" [class.movs__item--gasto]="m.tipo === 'GASTO'">
-                              <span class="movs__tipo">{{ m.tipo === 'GASTO' ? 'Egreso' : 'Cobro' }}</span>
-                              <span class="movs__desc">@if (m.pedidoNumero) { #{{ m.pedidoNumero }} }@if (m.clienteNombre) { {{ m.clienteNombre }} }@if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }@if (m.descripcion) { {{ m.descripcion }} }</span>
-                              <span class="movs__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
-                            </li>
-                          }
-                        </ul>
+                        @if (c.estado !== 'CUADRA' && movsCargados(c.id)) {
+                          <div class="pistas">
+                            <h5 class="pistas__titulo">⚠ ¿Dónde puede estar el error?</h5>
+                            <ul class="pistas__lista">
+                              @for (p of pistasError(c, c.id); track $index) { <li>{{ p }}</li> }
+                            </ul>
+                          </div>
+                        }
+                        <h5>Movimientos en efectivo</h5>
+                        @if (movsEfectivo(c.id).length === 0) {
+                          <p class="hint">No hay cobros en efectivo ni egresos este día.</p>
+                        } @else {
+                          <ul class="movs">
+                            @for (m of movsEfectivo(c.id); track m.id) {
+                              <li class="movs__item" [class.movs__item--gasto]="m.tipo === 'GASTO'" [class.movs__item--candidato]="esCandidato(m, c)">
+                                <span class="movs__tipo">{{ m.tipo === 'GASTO' ? 'Egreso' : 'Cobro' }}</span>
+                                <span class="movs__desc">@if (m.pedidoNumero) { #{{ m.pedidoNumero }} }@if (m.clienteNombre) { {{ m.clienteNombre }} }@if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }@if (esCandidato(m, c)) { <span class="movs__flag">⚠</span> }</span>
+                                <span class="movs__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
+                              </li>
+                            }
+                          </ul>
+                        }
+                        @if (movsDigitales(c.id).length > 0) {
+                          <h5 class="movs-titulo-sec">Otros pagos (Yape/Plin)</h5>
+                          <ul class="movs movs--digital">
+                            @for (m of movsDigitales(c.id); track m.id) {
+                              <li class="movs__item" [class.movs__item--candidato]="esCandidato(m, c)">
+                                <span class="movs__tipo movs__tipo--dig">{{ metodoLabel(m.metodoPago || '') }}</span>
+                                <span class="movs__desc">@if (m.pedidoNumero) { #{{ m.pedidoNumero }} }@if (m.clienteNombre) { {{ m.clienteNombre }} }@if (esCandidato(m, c)) { <span class="movs__flag">⚠</span> }</span>
+                                <span class="movs__monto">S/ {{ m.monto | number:'1.2-2' }}</span>
+                              </li>
+                            }
+                          </ul>
+                        }
                       }
                     </div>
                     <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verFecha(item.dia.fecha)">Abrir cuadre completo</button>
