@@ -4,7 +4,7 @@ import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { CajaService } from '../../core/services/caja.service';
-import { ClaseInsumo, Insumo, InsumosService, MovimientoInsumo } from '../../core/services/insumos.service';
+import { ClaseInsumo, Insumo, InsumosService, MovimientoInsumo, RegistrarMovimientoInsumoRequest } from '../../core/services/insumos.service';
 import { MiniBarrasComponent, PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { ToastService } from '../../core/services/toast.service';
 import { TipoGasto } from '../../core/models/models';
@@ -121,13 +121,17 @@ export class InventarioComponent implements OnInit, OnDestroy {
   // ---------- Registrar movimiento ----------
   readonly modalMovimiento = signal(false);
   insumoMovimiento: Insumo | null = null;
-  movTipo: 'COMPRA' | 'CONSUMO' | 'AJUSTE' = 'COMPRA';
+  // 'MEDICION' es un modo de la UI: se ingresa el peso actual y se convierte a CONSUMO o AJUSTE al guardar.
+  movTipo: 'COMPRA' | 'CONSUMO' | 'MEDICION' | 'AJUSTE' = 'COMPRA';
   movCantidad = 0;
   movCosto = 0;
   movMetodoPago: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS' = 'EFECTIVO';
   movTipoGastoId: number | '' = '';
   movDescripcion = '';
   movFecha = '';  // fecha de la compra (opcional, solo COMPRA)
+  // Modo Medición por peso:
+  movPesoActual = 0;        // peso medido hoy, en la unidad de contenido (Kg/Lt) o en la unidad base
+  movEsCorreccion = false;  // true = ajusta el stock sin contarlo como consumo del día
   guardandoMovimiento = signal(false);
 
   constructor() {
@@ -385,8 +389,34 @@ export class InventarioComponent implements OnInit, OnDestroy {
     this.movMetodoPago = 'EFECTIVO';
     this.movTipoGastoId = '';
     this.movDescripcion = '';
+    this.movPesoActual = 0;
+    this.movEsCorreccion = false;
     this.movFecha = this.formatoFecha(new Date());  // por defecto hoy
     this.modalMovimiento.set(true);
+  }
+
+  // ===== Medición por peso =====
+  /** Unidad en la que se mide el peso: la del contenido (Kg/Lt) o, si no hay, la unidad base. */
+  get unidadPeso(): string {
+    const i = this.insumoMovimiento;
+    return (i?.contenidoValor && i.contenidoValor > 0 && i.contenidoUnidad) ? i.contenidoUnidad : (i?.unidadMedida ?? '');
+  }
+  /** Cuántas unidades base (ej. Bidón) equivale 1 unidad de peso. Si no hay contenido, 1. */
+  private get factorPeso(): number {
+    const i = this.insumoMovimiento;
+    return (i?.contenidoValor && i.contenidoValor > 0) ? i.contenidoValor : 1;
+  }
+  /** Stock actual expresado en peso (Kg/Lt). */
+  get stockActualPeso(): number {
+    return Math.round((this.insumoMovimiento?.stockActual ?? 0) * this.factorPeso * 1000) / 1000;
+  }
+  /** La medición ingresada, convertida a unidades base (Bidón). */
+  private get medicionEnBase(): number {
+    return Math.round(((Number(this.movPesoActual) || 0) / this.factorPeso) * 10000) / 10000;
+  }
+  /** Consumo del día en peso (positivo = consumió; negativo = aumentó). */
+  get consumoDelDiaPeso(): number {
+    return Math.round((this.stockActualPeso - (Number(this.movPesoActual) || 0)) * 1000) / 1000;
   }
 
   cerrarModalMovimiento() {
@@ -394,13 +424,20 @@ export class InventarioComponent implements OnInit, OnDestroy {
   }
 
   get puedeRegistrarMovimiento(): boolean {
+    if (this.guardandoMovimiento()) return false;
+    if (this.movTipo === 'MEDICION') {
+      const peso = Number(this.movPesoActual);
+      if (!Number.isFinite(peso) || peso < 0 || peso > 1_000_000) return false;
+      // Debe haber un cambio real respecto al stock actual.
+      return Math.abs(this.consumoDelDiaPeso) > 0.0001;
+    }
     if (!Number.isFinite(this.movCantidad) || !Number.isFinite(this.movCosto)) return false;
     if (this.movCantidad === 0) return false;
     if (this.movTipo !== 'AJUSTE' && this.movCantidad <= 0) return false;
     if (Math.abs(this.movCantidad) > 1_000_000 || this.movCosto < 0 || this.movCosto > 1_000_000) return false;
     if (this.movTipo === 'CONSUMO' && this.movCantidad > (this.insumoMovimiento?.stockActual ?? 0)) return false;
     if (this.movTipo === 'COMPRA' && this.movFecha > this.formatoFecha(new Date())) return false;
-    return !this.guardandoMovimiento();
+    return true;
   }
 
   confirmarMovimiento() {
@@ -408,15 +445,19 @@ export class InventarioComponent implements OnInit, OnDestroy {
     if (!i || !this.puedeRegistrarMovimiento) return;
     this.guardandoMovimiento.set(true);
 
-    this.svc.registrarMovimiento(i.id, {
-      tipo: this.movTipo,
-      cantidad: this.movCantidad,
-      costoTotal: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movCosto : null,
-      metodoPago: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movMetodoPago : null,
-      tipoGastoId: this.movTipoGastoId ? (this.movTipoGastoId as number) : null,
-      descripcion: this.movDescripcion.trim() || null,
-      fecha: this.movTipo === 'COMPRA' && this.movFecha ? this.movFecha : null
-    }).subscribe({
+    const req = this.movTipo === 'MEDICION'
+      ? this.construirRequestMedicion(i)
+      : {
+          tipo: this.movTipo,
+          cantidad: this.movCantidad,
+          costoTotal: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movCosto : null,
+          metodoPago: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movMetodoPago : null,
+          tipoGastoId: this.movTipoGastoId ? (this.movTipoGastoId as number) : null,
+          descripcion: this.movDescripcion.trim() || null,
+          fecha: this.movTipo === 'COMPRA' && this.movFecha ? this.movFecha : null
+        };
+
+    this.svc.registrarMovimiento(i.id, req).subscribe({
       next: () => {
         this.guardandoMovimiento.set(false);
         this.modalMovimiento.set(false);
@@ -436,6 +477,40 @@ export class InventarioComponent implements OnInit, OnDestroy {
         this.toast.desdeHttp(err, 'No se pudo registrar el movimiento.');
       }
     });
+  }
+
+  /**
+   * Convierte una medición por peso al movimiento correcto:
+   * - Corrección o el stock subió → AJUSTE (deja el stock igual al peso medido, sin contar como consumo).
+   * - El stock bajó (uso normal del día) → CONSUMO por la diferencia.
+   * La cantidad siempre se envía en la unidad base (ej. Bidón).
+   */
+  private construirRequestMedicion(i: Insumo): RegistrarMovimientoInsumoRequest {
+    const factor = (i.contenidoValor && i.contenidoValor > 0) ? i.contenidoValor : 1;
+    const medicionBase = Math.round(((Number(this.movPesoActual) || 0) / factor) * 10000) / 10000;
+    const deltaBase = Math.round((i.stockActual - medicionBase) * 10000) / 10000; // >0 consumió
+    const unidad = this.unidadPeso;
+    const peso = Number(this.movPesoActual) || 0;
+    const nota = this.movDescripcion.trim();
+    const sufijo = nota ? ` — ${nota}` : '';
+
+    if (this.movEsCorreccion || deltaBase <= 0) {
+      // AJUSTE: deja el stock exactamente en la medición (cantidad con signo).
+      const cantidad = Math.round((medicionBase - i.stockActual) * 10000) / 10000;
+      const motivo = this.movEsCorreccion
+        ? `Corrección por medición: quedó en ${peso} ${unidad}`
+        : `Medición: subió a ${peso} ${unidad}`;
+      return { tipo: 'AJUSTE', cantidad, costoTotal: null, metodoPago: null, tipoGastoId: null, descripcion: `${motivo}${sufijo}`, fecha: null };
+    }
+    // CONSUMO del día por la diferencia.
+    const consumoPeso = Math.round(deltaBase * factor * 1000) / 1000;
+    return {
+      tipo: 'CONSUMO',
+      cantidad: deltaBase,
+      costoTotal: null, metodoPago: null, tipoGastoId: null,
+      descripcion: `Medición: pesó ${peso} ${unidad}. Consumo del día: ${consumoPeso} ${unidad}${sufijo}`,
+      fecha: null
+    };
   }
 
   etiquetaTipo(tipo: string): string {

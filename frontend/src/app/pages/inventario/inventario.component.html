@@ -351,13 +351,46 @@
         <label>Tipo de movimiento</label>
         <div class="tipo-row">
           <button type="button" class="tipo-btn" [class.is-active]="movTipo==='COMPRA'" (click)="movTipo='COMPRA'">Compra</button>
+          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='MEDICION'" (click)="movTipo='MEDICION'">Medición</button>
           <button type="button" class="tipo-btn" [class.is-active]="movTipo==='CONSUMO'" (click)="movTipo='CONSUMO'">Consumo</button>
           <button type="button" class="tipo-btn" [class.is-active]="movTipo==='AJUSTE'" (click)="movTipo='AJUSTE'">Ajuste</button>
         </div>
 
-        <label>Cantidad ({{ insumoMovimiento?.unidadMedida }}) {{ movTipo === 'AJUSTE' ? '· usa negativo para restar' : '' }}</label>
-        <input type="number" step="0.01" [min]="movTipo === 'AJUSTE' ? -1000000 : 0.01" max="1000000"
-          inputmode="decimal" required [(ngModel)]="movCantidad" name="cantidad" />
+        @if (movTipo === 'MEDICION') {
+          <p class="hint medicion-ayuda">Pesa el insumo y escribe cuánto queda hoy. El sistema calcula solo el consumo del día (peso de ayer − peso de hoy) y lo resta.</p>
+
+          <label>Peso actual medido ({{ unidadPeso }})</label>
+          <input type="number" step="0.001" min="0" max="1000000" inputmode="decimal" required
+            [(ngModel)]="movPesoActual" name="pesoActual" placeholder="Ej: 10.900" />
+
+          <div class="medicion-preview">
+            <div class="medicion-preview__fila"><span>Había registrado</span><strong>{{ stockActualPeso | number:'1.0-3' }} {{ unidadPeso }}</strong></div>
+            <div class="medicion-preview__fila"><span>Pesaste hoy</span><strong>{{ (movPesoActual || 0) | number:'1.0-3' }} {{ unidadPeso }}</strong></div>
+            @if (consumoDelDiaPeso > 0.0001) {
+              <div class="medicion-preview__fila medicion-preview__fila--consumo">
+                <span>Consumo del día</span><strong>{{ consumoDelDiaPeso | number:'1.0-3' }} {{ unidadPeso }}</strong>
+              </div>
+            } @else if (consumoDelDiaPeso < -0.0001) {
+              <div class="medicion-preview__fila medicion-preview__fila--sube">
+                <span>Aumentó</span><strong>+{{ (-consumoDelDiaPeso) | number:'1.0-3' }} {{ unidadPeso }}</strong>
+              </div>
+            } @else {
+              <div class="medicion-preview__fila"><span>Sin cambio</span><strong>—</strong></div>
+            }
+          </div>
+
+          <label class="check-correccion">
+            <input type="checkbox" [(ngModel)]="movEsCorreccion" name="esCorreccion" />
+            Es una corrección del stock (no contar como consumo del día)
+          </label>
+          @if (movEsCorreccion) {
+            <p class="hint">Úsalo la primera vez, para dejar el stock igual al peso real sin que aparezca un consumo enorme en el gráfico.</p>
+          }
+        } @else {
+          <label>Cantidad ({{ insumoMovimiento?.unidadMedida }}) {{ movTipo === 'AJUSTE' ? '· usa negativo para restar' : '' }}</label>
+          <input type="number" step="0.01" [min]="movTipo === 'AJUSTE' ? -1000000 : 0.01" max="1000000"
+            inputmode="decimal" required [(ngModel)]="movCantidad" name="cantidad" />
+        }
 
         @if (movTipo === 'COMPRA') {
           <label>Fecha de compra <small class="hint">(puedes registrar una compra anterior)</small></label>
@@ -404,7 +437,7 @@
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" (click)="cerrarModalMovimiento()">Cancelar</button>
         <button type="submit" class="btn btn--primario" [disabled]="!puedeRegistrarMovimiento">
-          {{ guardandoMovimiento() ? 'Guardando…' : 'Registrar' }}
+          {{ guardandoMovimiento() ? 'Guardando…' : (movTipo === 'MEDICION' ? 'Registrar medición' : 'Registrar') }}
         </button>
       </div>
     </form>

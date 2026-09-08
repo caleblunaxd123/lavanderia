@@ -685,3 +685,28 @@
 }
 // Nota: los estilos de color de los botones (.btn--editar/--desactivar/--eliminar) y el
 // layout de las acciones de tarjeta viven en styles.scss (globales, commit 180bdca).
+
+// ---------- Modo Medición por peso ----------
+.medicion-ayuda { margin: 4px 0 10px; }
+
+.medicion-preview {
+  margin: 10px 0 6px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e7eef6;
+  border-radius: 10px;
+
+  &__fila {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    font-size: 13px; color: #334155; padding: 3px 0;
+    strong { font-variant-numeric: tabular-nums; }
+    &--consumo { margin-top: 4px; padding-top: 8px; border-top: 1px dashed #cbd5e1; color: #147a45; strong { font-size: 15px; } }
+    &--sube { margin-top: 4px; padding-top: 8px; border-top: 1px dashed #cbd5e1; color: #b45309; strong { font-size: 15px; } }
+  }
+}
+
+.check-correccion {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; font-size: 13px; color: #334155; cursor: pointer;
+  input { width: 16px; height: 16px; }
+}
