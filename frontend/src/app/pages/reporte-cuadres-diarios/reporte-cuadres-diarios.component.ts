@@ -3,6 +3,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CuadreDiarioDia, CuadreDiarioFila, CuadresDiariosReporte, ReportesService } from '../../core/services/reportes.service';
+import { CajaService } from '../../core/services/caja.service';
+import { MovimientoCaja } from '../../core/models/models';
 import { mesLocalIso } from '../../core/util/fecha-local';
 import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -16,6 +18,7 @@ import { PageHeaderComponent } from '../../shared/page-header/page-header.compon
 })
 export class ReporteCuadresDiariosComponent implements OnInit {
   private readonly svc = inject(ReportesService);
+  private readonly caja = inject(CajaService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -208,6 +211,44 @@ export class ReporteCuadresDiariosComponent implements OnInit {
   toggleExpandido() { this.expandido.set(!this.expandido()); }
 
   volver() { this.router.navigate(['/reportes']); }
+
+  // ===== Drill-down "¿dónde está el error?" =====
+  /** id del cuadre cuya fila está desplegada (una a la vez). */
+  readonly filaAbierta = signal<number | null>(null);
+  /** Cache de movimientos por cuadre (id → movimientos del día de ese cajero). */
+  private readonly movsPorFila = signal<Record<number, MovimientoCaja[]>>({});
+  /** id del cuadre cuyos movimientos se están cargando. */
+  readonly cargandoMovs = signal<number | null>(null);
+
+  /** Efectivo que DEBÍA haber en caja = inicial + ingresos efectivo − egresos. */
+  esperadoCaja(c: CuadreDiarioFila): number {
+    return Math.round((c.cajaInicial + c.ingresosEfectivo - c.egresos) * 100) / 100;
+  }
+  /** Diferencia con signo: contado − esperado (negativa = falta, positiva = sobra). */
+  diferenciaFirmada(c: CuadreDiarioFila): number {
+    return Math.round((c.montoEnCaja - this.esperadoCaja(c)) * 100) / 100;
+  }
+
+  /** Abre/cierra el detalle de una fila; al abrir, carga los movimientos del día de ese cajero. */
+  toggleDetalle(dia: CuadreDiarioDia, c: CuadreDiarioFila) {
+    if (this.filaAbierta() === c.id) { this.filaAbierta.set(null); return; }
+    this.filaAbierta.set(c.id);
+    if (this.movsPorFila()[c.id]) return; // ya cacheado
+    this.cargandoMovs.set(c.id);
+    this.caja.movimientos(dia.fecha.slice(0, 10), c.usuarioId).subscribe({
+      next: ms => { this.movsPorFila.update(m => ({ ...m, [c.id]: ms })); this.cargandoMovs.set(null); },
+      error: () => { this.movsPorFila.update(m => ({ ...m, [c.id]: [] })); this.cargandoMovs.set(null); }
+    });
+  }
+
+  /** Movimientos que afectan el efectivo contado: cobros en efectivo y egresos (gastos). */
+  movsEfectivo(id: number): MovimientoCaja[] {
+    return (this.movsPorFila()[id] ?? []).filter(
+      m => (m.tipo === 'INGRESO' && (m.metodoPago || '').toUpperCase() === 'EFECTIVO') || m.tipo === 'GASTO'
+    );
+  }
+  /** ¿Ya se cargaron (aunque sea vacío) los movimientos de esta fila? */
+  movsCargados(id: number): boolean { return this.movsPorFila()[id] !== undefined; }
 
   claseEstado(estado: string): string {
     return ({ CUADRA: 'badge badge--verde', SOBRA: 'badge badge--naranja', FALTA: 'badge badge--rojo' } as Record<string, string>)[estado]

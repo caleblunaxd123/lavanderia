@@ -208,9 +208,14 @@
                 </tr>
               } @else {
                 @for (c of item.cuadres; track c.id) {
-                  <tr class="fila-click" (click)="verFecha(item.dia.fecha)" [title]="'Ver el cuadre del ' + (item.dia.fecha | date:'dd/MM/yyyy')">
+                  <tr class="fila-click" [class.fila-abierta]="filaAbierta() === c.id"
+                      (click)="toggleDetalle(item.dia, c)" [attr.aria-expanded]="filaAbierta() === c.id"
+                      title="Clic para ver de dónde viene el resultado">
                     <td>{{ $first ? (item.dia.fecha | date:'dd/MM/yyyy') : '' }}</td>
-                    <td>{{ c.usuarioNombre }}</td>
+                    <td>
+                      <app-icon name="chevron-right" [size]="12" class="caret" [class.caret--abierto]="filaAbierta() === c.id"></app-icon>
+                      {{ c.usuarioNombre }}
+                    </td>
                     @if (expandido()) {
                       <td class="num">{{ c.cajaInicial | number:'1.2-2' }}</td>
                       <td class="num">{{ c.ingresosEfectivo | number:'1.2-2' }}</td>
@@ -231,6 +236,67 @@
                       <td class="num">{{ c.ingresosTarjeta | number:'1.2-2' }}</td>
                     }
                   </tr>
+
+                  @if (filaAbierta() === c.id) {
+                    <tr class="fila-detalle">
+                      <td [attr.colspan]="expandido() ? 13 : 5">
+                        <div class="detalle-error">
+                          <!-- La cuenta: de dónde sale el resultado -->
+                          <div class="detalle-error__cuenta">
+                            <h5>¿De dónde viene el {{ c.estado === 'FALTA' ? 'faltante' : (c.estado === 'SOBRA' ? 'sobrante' : 'resultado') }}?</h5>
+                            <div class="cuenta-fila"><span>Caja inicial (día anterior)</span><span class="num">S/ {{ c.cajaInicial | number:'1.2-2' }}</span></div>
+                            <div class="cuenta-fila"><span>+ Cobros en efectivo</span><span class="num">S/ {{ c.ingresosEfectivo | number:'1.2-2' }}</span></div>
+                            <div class="cuenta-fila"><span>− Egresos / gastos</span><span class="num">S/ {{ c.egresos | number:'1.2-2' }}</span></div>
+                            <div class="cuenta-fila cuenta-fila--sub"><span>= Debía haber en caja</span><span class="num">S/ {{ esperadoCaja(c) | number:'1.2-2' }}</span></div>
+                            <div class="cuenta-fila"><span>Contó físicamente</span><span class="num">S/ {{ c.montoEnCaja | number:'1.2-2' }}</span></div>
+                            <div class="cuenta-fila cuenta-fila--res"
+                                 [class.rojo]="c.estado === 'FALTA'" [class.ambar]="c.estado === 'SOBRA'" [class.verde]="c.estado === 'CUADRA'">
+                              <span>
+                                @if (c.estado === 'FALTA') { Faltó dinero } @else if (c.estado === 'SOBRA') { Sobró dinero } @else { Cuadró perfecto }
+                              </span>
+                              <span class="num">{{ diferenciaFirmada(c) >= 0 ? '+' : '−' }}S/ {{ (diferenciaFirmada(c) < 0 ? -diferenciaFirmada(c) : diferenciaFirmada(c)) | number:'1.2-2' }}</span>
+                            </div>
+                            @if (c.estado === 'FALTA') {
+                              <p class="detalle-error__ayuda">Contó <strong>menos</strong> efectivo del que debía. Revisa los cobros de abajo: puede faltar registrar una venta, un vuelto mal dado o un retiro no anotado.</p>
+                            } @else if (c.estado === 'SOBRA') {
+                              <p class="detalle-error__ayuda">Contó <strong>más</strong> efectivo del que debía. Revisa abajo: puede ser un cobro no registrado en el sistema o un egreso anotado de más.</p>
+                            } @else {
+                              <p class="detalle-error__ayuda">El efectivo contado coincide con lo esperado. 👍</p>
+                            }
+                          </div>
+
+                          <!-- Movimientos en efectivo del día (para auditar) -->
+                          <div class="detalle-error__movs">
+                            <h5>Movimientos en efectivo de {{ c.usuarioNombre }} <small>({{ item.dia.fecha | date:'dd/MM/yyyy' }})</small></h5>
+                            @if (cargandoMovs() === c.id) {
+                              <p class="detalle-error__cargando">Cargando movimientos…</p>
+                            } @else if (movsCargados(c.id) && movsEfectivo(c.id).length === 0) {
+                              <p class="hint">No hay cobros en efectivo ni egresos registrados este día. El descuadre no viene de un movimiento del sistema (revisa el conteo físico o la caja inicial).</p>
+                            } @else {
+                              <ul class="movs">
+                                @for (m of movsEfectivo(c.id); track m.id) {
+                                  <li class="movs__item" [class.movs__item--gasto]="m.tipo === 'GASTO'">
+                                    <span class="movs__tipo">{{ m.tipo === 'GASTO' ? 'Egreso' : 'Cobro' }}</span>
+                                    <span class="movs__desc">
+                                      @if (m.pedidoNumero) { Pedido #{{ m.pedidoNumero }} }
+                                      @if (m.clienteNombre) { · {{ m.clienteNombre }} }
+                                      @if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }
+                                      @if (m.descripcion) { · {{ m.descripcion }} }
+                                    </span>
+                                    <span class="movs__hora">{{ m.fecha | date:'hh:mm a' }}</span>
+                                    <span class="movs__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
+                                  </li>
+                                }
+                              </ul>
+                            }
+                            <button type="button" class="btn btn--outline-primary btn--sm" (click)="verFecha(item.dia.fecha); $event.stopPropagation()">
+                              <app-icon name="cash" [size]="14"></app-icon> Abrir cuadre completo del día
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               }
             } @empty {
@@ -268,7 +334,51 @@
                 <div class="rep-card__row"><span>Tarjeta</span><strong>S/ {{ c.ingresosTarjeta | number:'1.2-2' }}</strong></div>
                 <div class="rep-card__row"><span>Diferencia</span><strong class="dif-cel" [class.rojo]="c.estado === 'FALTA'" [class.ambar]="c.estado === 'SOBRA'">@if (c.estado === 'FALTA') { −S/ {{ c.margenError | number:'1.2-2' }} } @else if (c.estado === 'SOBRA') { +S/ {{ c.margenError | number:'1.2-2' }} } @else { S/ 0.00 }</strong></div>
                 <div class="rep-card__row"><span>Nota</span><strong>{{ c.nota || '—' }}</strong></div>
-                <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verFecha(item.dia.fecha)">Ver detalle del día</button>
+
+                @if (c.estado !== 'CUADRA') {
+                  <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="toggleDetalle(item.dia, c)">
+                    {{ filaAbierta() === c.id ? 'Ocultar' : '¿Dónde está el error?' }}
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="toggleDetalle(item.dia, c)">
+                    {{ filaAbierta() === c.id ? 'Ocultar' : 'Ver el detalle' }}
+                  </button>
+                }
+
+                @if (filaAbierta() === c.id) {
+                  <div class="detalle-error detalle-error--card">
+                    <div class="detalle-error__cuenta">
+                      <div class="cuenta-fila"><span>Caja inicial</span><span class="num">S/ {{ c.cajaInicial | number:'1.2-2' }}</span></div>
+                      <div class="cuenta-fila"><span>+ Cobros efectivo</span><span class="num">S/ {{ c.ingresosEfectivo | number:'1.2-2' }}</span></div>
+                      <div class="cuenta-fila"><span>− Egresos</span><span class="num">S/ {{ c.egresos | number:'1.2-2' }}</span></div>
+                      <div class="cuenta-fila cuenta-fila--sub"><span>= Debía haber</span><span class="num">S/ {{ esperadoCaja(c) | number:'1.2-2' }}</span></div>
+                      <div class="cuenta-fila"><span>Contó</span><span class="num">S/ {{ c.montoEnCaja | number:'1.2-2' }}</span></div>
+                      <div class="cuenta-fila cuenta-fila--res" [class.rojo]="c.estado === 'FALTA'" [class.ambar]="c.estado === 'SOBRA'" [class.verde]="c.estado === 'CUADRA'">
+                        <span>@if (c.estado === 'FALTA') { Faltó } @else if (c.estado === 'SOBRA') { Sobró } @else { Cuadró }</span>
+                        <span class="num">{{ diferenciaFirmada(c) >= 0 ? '+' : '−' }}S/ {{ (diferenciaFirmada(c) < 0 ? -diferenciaFirmada(c) : diferenciaFirmada(c)) | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+                    <div class="detalle-error__movs">
+                      <h5>Movimientos en efectivo</h5>
+                      @if (cargandoMovs() === c.id) {
+                        <p class="detalle-error__cargando">Cargando…</p>
+                      } @else if (movsCargados(c.id) && movsEfectivo(c.id).length === 0) {
+                        <p class="hint">No hay cobros en efectivo ni egresos este día.</p>
+                      } @else {
+                        <ul class="movs">
+                          @for (m of movsEfectivo(c.id); track m.id) {
+                            <li class="movs__item" [class.movs__item--gasto]="m.tipo === 'GASTO'">
+                              <span class="movs__tipo">{{ m.tipo === 'GASTO' ? 'Egreso' : 'Cobro' }}</span>
+                              <span class="movs__desc">@if (m.pedidoNumero) { #{{ m.pedidoNumero }} }@if (m.clienteNombre) { {{ m.clienteNombre }} }@if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }@if (m.descripcion) { {{ m.descripcion }} }</span>
+                              <span class="movs__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                    <button type="button" class="btn btn--outline-primary btn--sm rep-card__accion" (click)="verFecha(item.dia.fecha)">Abrir cuadre completo</button>
+                  </div>
+                }
               </div>
             }
           }

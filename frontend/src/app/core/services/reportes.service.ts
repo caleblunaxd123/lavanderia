@@ -141,6 +141,7 @@ export class ReportesService {
 
 export interface CuadreDiarioFila {
   id: number;
+  usuarioId: number;
   usuarioNombre: string;
   cajaInicial: number;
   ingresosEfectivo: number;

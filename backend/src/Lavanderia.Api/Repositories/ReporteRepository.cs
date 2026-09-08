@@ -208,7 +208,7 @@ public class ReporteRepository : IReporteRepository
         await using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = @"
-                SELECT c.Id, c.Fecha, u.NombreCompleto AS Usuario, c.CajaInicial, c.PedidosPagadosEfect,
+                SELECT c.Id, c.Fecha, c.UsuarioId, u.NombreCompleto AS Usuario, c.CajaInicial, c.PedidosPagadosEfect,
                        c.Gastos, c.TotalContado, c.Corte, c.CajaFinal, c.Diferencia, c.Nota,
                        c.IngresosDigital, c.IngresosTarjeta
                 FROM dbo.CuadreCaja c
@@ -226,6 +226,7 @@ public class ReporteRepository : IReporteRepository
                 var estado = Math.Abs(dif) < 0.01m ? "CUADRA" : (dif > 0 ? "SOBRA" : "FALTA");
                 var fila = new CuadreDiarioFilaDto(
                     r.GetInt32(r.GetOrdinal("Id")),
+                    r.GetInt32(r.GetOrdinal("UsuarioId")),
                     r.GetString(r.GetOrdinal("Usuario")),
                     r.GetDecimal(r.GetOrdinal("CajaInicial")),
                     r.GetDecimal(r.GetOrdinal("PedidosPagadosEfect")),

@@ -833,6 +833,7 @@ public record UsuarioDelDiaDto(int Id, string NombreCompleto, string RolNombre, 
 // ---------- Reporte de Cuadres Diarios (pantalla dedicada) ----------
 public record CuadreDiarioFilaDto(
     int Id,
+    int UsuarioId,
     string UsuarioNombre,
     decimal CajaInicial,
     decimal IngresosEfectivo,

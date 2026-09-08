@@ -378,3 +378,61 @@
 /* Barras un poco más altas y con esquinas suaves */
 .ing-bar { height: 17px; }
 .dif-bar { height: 16px; }
+
+// ---------- Drill-down: "¿dónde está el error?" ----------
+.fila-click {
+  cursor: pointer;
+  .caret { color: #94a3b8; transition: transform .15s ease; vertical-align: middle; margin-right: 2px; }
+  .caret--abierto { transform: rotate(90deg); color: #053465; }
+  &:hover { background: #f5f9ff; }
+  &.fila-abierta { background: #eef4ff; }
+}
+
+.fila-detalle > td { background: #f8fafc; padding: 0; border-bottom: 2px solid #e2e8f0; }
+
+.detalle-error {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.4fr);
+  gap: 18px;
+  padding: 16px 18px;
+
+  h5 { margin: 0 0 8px; font-size: 13px; color: #0f2748; }
+
+  &--card { grid-template-columns: 1fr; padding: 12px 4px 4px; gap: 12px; }
+
+  &__ayuda { margin: 8px 0 0; font-size: 12px; color: #475569; line-height: 1.4; }
+  &__cargando { font-size: 12px; color: #64748b; }
+}
+
+.cuenta-fila {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 4px 0; font-size: 13px; color: #334155;
+  .num { font-variant-numeric: tabular-nums; }
+  &--sub { border-top: 1px dashed #cbd5e1; margin-top: 2px; padding-top: 6px; font-weight: 600; color: #0f2748; }
+  &--res {
+    margin-top: 6px; padding: 8px 10px; border-radius: 8px; font-weight: 700; font-size: 14px;
+    background: #eef2f7;
+    &.rojo { background: #fde8e8; color: #c0392b; }
+    &.ambar { background: #fef3c7; color: #92400e; }
+    &.verde { background: #e6f9ee; color: #147a45; }
+  }
+}
+
+.movs {
+  list-style: none; margin: 0 0 10px; padding: 0; max-height: 220px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+  &__item {
+    display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px;
+    padding: 6px 8px; background: #fff; border: 1px solid #e7eef6; border-radius: 8px; font-size: 12px;
+    &--gasto { background: #fff8f8; border-color: #f3d6d6; }
+  }
+  &__tipo { font-weight: 700; color: #147a45; font-size: 11px; }
+  &__item--gasto &__tipo { color: #c0392b; }
+  &__desc { color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__hora { color: #94a3b8; font-size: 11px; }
+  &__monto { font-weight: 700; color: #147a45; font-variant-numeric: tabular-nums; &.rojo { color: #c0392b; } }
+}
+
+@media (max-width: 720px) {
+  .detalle-error { grid-template-columns: 1fr; }
+}
