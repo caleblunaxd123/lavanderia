@@ -1,3 +1,4 @@
+using System.Reflection;
 using Lavanderia.Api.Domain;
 using QRCoder;
 using QuestPDF.Fluent;
@@ -8,6 +9,10 @@ namespace Lavanderia.Api.Services.Facturacion;
 
 public class ComprobantePdfGenerator
 {
+    // Logo de marca Lavixa optimizado para impresión (trazo oscuro sobre fondo transparente:
+    // se ve nítido y de alto contraste en hojas blanco y negro). Se carga una sola vez.
+    private static readonly byte[]? LogoLavixa = CargarLogoLavixa();
+
     public byte[] Generar(ComprobanteElectronico c, ConfiguracionNegocio negocio)
     {
         var qr = Qr(c);
@@ -16,6 +21,9 @@ public class ComprobantePdfGenerator
             page.Size(PageSizes.A4); page.Margin(30); page.DefaultTextStyle(x => x.FontSize(10));
             page.Header().Row(row =>
             {
+                // Logo de marca Lavixa. Trazo oscuro sobre transparente => sale limpio en B/N.
+                if (LogoLavixa is not null)
+                    row.ConstantItem(132).MaxHeight(52).PaddingRight(14).AlignMiddle().Image(LogoLavixa).FitArea();
                 row.RelativeItem().Column(col =>
                 {
                     col.Item().Text(c.RazonSocialEmisor ?? negocio.NombreNegocio).FontSize(15).Bold();
@@ -75,6 +83,23 @@ public class ComprobantePdfGenerator
 
     private static void FilaTotal(ColumnDescriptor col, string label, decimal value) =>
         col.Item().Row(r => { r.RelativeItem().Text(label); r.ConstantItem(100).AlignRight().Text($"S/ {value:0.00}"); });
+
+    /// <summary>Carga el logo de marca Lavixa embebido en el ensamblado (o null si falla).</summary>
+    private static byte[]? CargarLogoLavixa()
+    {
+        try
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var recurso = Array.Find(asm.GetManifestResourceNames(), n => n.EndsWith("lavixa-logo-ticket.png", StringComparison.OrdinalIgnoreCase));
+            if (recurso is null) return null;
+            using var s = asm.GetManifestResourceStream(recurso);
+            if (s is null) return null;
+            using var ms = new MemoryStream();
+            s.CopyTo(ms);
+            return ms.Length > 0 ? ms.ToArray() : null;
+        }
+        catch { return null; }
+    }
 
     private static byte[] Qr(ComprobanteElectronico c)
     {
