@@ -88,7 +88,15 @@
     <div class="grid">
       <div class="grid__col">
         <!-- Cliente -->
-        <section class="card seccion" data-tour="detalle-cliente"><h4>Cliente</h4>
+        <section class="card seccion" data-tour="detalle-cliente">
+          <div class="seccion__head">
+            <h4>Cliente</h4>
+            @if (!p.anulado) {
+              <button type="button" class="btn btn--ghost btn--sm" (click)="abrirEditarCliente()">
+                <app-icon name="edit" [size]="13"></app-icon> Editar
+              </button>
+            }
+          </div>
           <strong class="cliente-nombre">{{ p.clienteNombre }}</strong>
           <div class="cliente-contacto">
             @if (p.clienteCelular) {
@@ -561,6 +569,42 @@
           } @else {
             Registrar entrega parcial
           }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: editar datos del cliente -->
+@if (modalCliente()) {
+  <div class="modal-backdrop" (click)="cerrarModalCliente()"></div>
+  <div class="modal-simple" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-cliente">
+    <div class="modal-simple__head">
+      <h3 id="titulo-editar-cliente"><app-icon name="edit" [size]="15"></app-icon> Editar cliente</h3>
+      <button type="button" aria-label="Cerrar" (click)="cerrarModalCliente()"><app-icon name="close" [size]="15"></app-icon></button>
+    </div>
+    <div class="modal-simple__body">
+      <p class="hint">Los cambios actualizan la ficha del cliente en todo el sistema, no solo en este pedido.</p>
+
+      <label>Nombre *</label>
+      <input type="text" maxlength="120" [(ngModel)]="clienteForm.nombre" placeholder="Nombre completo" [disabled]="cargandoCliente()" />
+
+      <label>Celular</label>
+      <app-telefono-pais [(ngModel)]="clienteForm.celular" name="clienteCelular" inputId="cliente-celular"></app-telefono-pais>
+
+      <label>DNI</label>
+      <input type="text" inputmode="numeric" maxlength="15" [(ngModel)]="clienteForm.dni" placeholder="DNI (opcional)" [disabled]="cargandoCliente()" />
+
+      <label>Documento fiscal (RUC)</label>
+      <input type="text" inputmode="numeric" maxlength="11" [(ngModel)]="clienteForm.documentoFiscal" placeholder="RUC de 11 dígitos (opcional)" [disabled]="cargandoCliente()" />
+
+      <label>Dirección</label>
+      <input type="text" maxlength="250" [(ngModel)]="clienteForm.direccion" placeholder="Dirección (opcional)" [disabled]="cargandoCliente()" />
+
+      <div class="modal-simple__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModalCliente()">Cancelar</button>
+        <button type="button" class="btn btn--primario" [disabled]="guardandoCliente() || cargandoCliente()" (click)="guardarCliente()">
+          {{ guardandoCliente() ? 'Guardando…' : 'Guardar cambios' }}
         </button>
       </div>
     </div>

@@ -6,7 +6,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { DISTRITOS_LIMA_CALLAO } from '../../core/constants/distritos-lima-callao';
-import { AreaLavado, Pedido, Servicio } from '../../core/models/models';
+import { AreaLavado, Cliente, Pedido, Servicio } from '../../core/models/models';
+import { ClientesService } from '../../core/services/clientes.service';
+import { esCelularValido } from '../../core/util/telefono';
+import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ConfiguracionService } from '../../core/services/configuracion.service';
@@ -49,12 +52,13 @@ export interface LineaPagoEntrega {
  */
 @Component({
   selector: 'app-pedido-detalle',
-  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, SkeletonComponent],
+  imports: [CommonModule, FormsModule, IconComponent, MapaUbicacionComponent, SkeletonComponent, TelefonoPaisComponent],
   templateUrl: './pedido-detalle.component.html',
   styleUrl: './pedido-detalle.component.scss'
 })
 export class PedidoDetalleComponent implements OnInit, OnDestroy {
   private readonly service = inject(PedidosService);
+  private readonly clientesSvc = inject(ClientesService);
   private readonly catalogos = inject(CatalogosService);
   private readonly toast = inject(ToastService);
   private readonly whatsapp = inject(WhatsappService);
@@ -371,6 +375,61 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.entregaItems.set([]);
     this.entregaPagos.set([]);
     this.entregaNota = '';
+  }
+
+  // ---------- Editar datos del cliente ----------
+  readonly modalCliente = signal(false);
+  readonly cargandoCliente = signal(false);
+  readonly guardandoCliente = signal(false);
+  clienteForm: Partial<Cliente> = {};
+
+  abrirEditarCliente() {
+    const p = this.pedido();
+    if (!p) return;
+    // Base inmediata desde el pedido (por si falla la carga completa).
+    this.clienteForm = { id: p.clienteId, nombre: p.clienteNombre ?? '', celular: p.clienteCelular ?? '', dni: p.clienteDni ?? '' };
+    this.modalCliente.set(true);
+    this.cargandoCliente.set(true);
+    this.clientesSvc.obtener(p.clienteId).subscribe({
+      next: c => { this.clienteForm = { ...c }; this.cargandoCliente.set(false); },
+      error: () => { this.cargandoCliente.set(false); } // se queda con la base del pedido
+    });
+  }
+
+  cerrarModalCliente() { if (!this.guardandoCliente()) this.modalCliente.set(false); }
+
+  guardarCliente() {
+    const p = this.pedido();
+    if (!p || this.guardandoCliente()) return;
+    const nombre = (this.clienteForm.nombre ?? '').toString().trim();
+    if (!nombre) { this.toast.advertencia('Ingresa el nombre del cliente.'); return; }
+    if (!esCelularValido(this.clienteForm.celular)) {
+      this.toast.advertencia('El celular no es válido. Usa 9 dígitos (Perú) o el código de país para el extranjero.');
+      return;
+    }
+    const aNull = (v: unknown) => { const t = (v ?? '').toString().trim(); return t ? t : null; };
+    const payload: Partial<Cliente> = {
+      ...this.clienteForm,
+      nombre,
+      celular: aNull(this.clienteForm.celular),
+      dni: aNull(this.clienteForm.dni),
+      documentoFiscal: aNull(this.clienteForm.documentoFiscal),
+      direccion: aNull(this.clienteForm.direccion),
+      fechaNacimiento: aNull(this.clienteForm.fechaNacimiento),
+    };
+    this.guardandoCliente.set(true);
+    this.clientesSvc.actualizar(p.clienteId, payload).subscribe({
+      next: () => {
+        this.guardandoCliente.set(false);
+        this.modalCliente.set(false);
+        this.toast.exito('Datos del cliente actualizados');
+        this.refrescar(); // el nombre/celular del pedido se recargan desde el servidor
+      },
+      error: (err: HttpErrorResponse) => {
+        this.guardandoCliente.set(false);
+        this.toast.desdeHttp(err, 'No se pudo actualizar el cliente.');
+      }
+    });
   }
 
   confirmarEntregaNueva() {
@@ -970,6 +1029,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     if (this.procesando()) return;
     this.modalPago.set(false);
     this.modalEntrega.set(false);
+    this.modalCliente.set(false);
     this.modalItem.set(false);
     this.modalFecha.set(false);
     this.modalAnular.set(false);
