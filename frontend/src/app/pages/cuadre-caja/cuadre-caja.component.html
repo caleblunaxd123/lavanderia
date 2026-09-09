@@ -73,6 +73,13 @@
               [ngModel]="cajaInicial()" (ngModelChange)="cajaInicial.set(+$event || 0)" />
           </div>
         </div>
+        @if (cajaInicialNoCoincide() && sugerenciaCajaInicial(); as s) {
+          <p class="aviso-caja-inicial">
+            <app-icon name="warning" [size]="13"></app-icon>
+            No coincide con el cierre anterior (<strong>S/ {{ s.monto.toFixed(2) }}</strong>).
+            Si abriste con ese monto, <button type="button" class="link-btn" (click)="usarSugerenciaCajaInicial()">usarlo</button>.
+          </p>
+        }
         <div class="cascada__fila">
           <span>+ Cobros en efectivo hoy</span>
           <span class="txt-verde">S/ {{ pedidosPagadosEfectivo().toFixed(2) }}</span>

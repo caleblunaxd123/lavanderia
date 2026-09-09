@@ -270,6 +270,13 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     if (s) this.cajaInicial.set(s.monto);
   }
 
+  /** La caja inicial escrita no coincide con el cierre anterior (causa #1 de descuadre). */
+  readonly cajaInicialNoCoincide = computed(() => {
+    const s = this.sugerenciaCajaInicial();
+    if (!s || this.guardado) return false;
+    return Math.abs(this.cajaInicial() - s.monto) > 0.01;
+  });
+
   alternarVerTodos() {
     this.verTodos.set(!this.verTodos());
     this.cargarMovimientos();
@@ -463,6 +470,13 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     if (this.guardando()) return;
     if (!this.usuarioSeleccionadoId()) {
       this.toast.advertencia('Selecciona el colaborador cuyo turno deseas cuadrar.');
+      return;
+    }
+    // En "Toda la caja del día" con varios colaboradores, los totales en pantalla son
+    // del día completo (no de un turno): cerrar aquí guardaría un conteo que no
+    // corresponde a una sola persona. Se exige elegir el turno.
+    if (this.verTodos() && this.usuariosDelDia().length > 1) {
+      this.toast.advertencia('Estás viendo “Toda la caja del día”. Para cerrar caja, elige el turno de un colaborador (botón “Solo …”).');
       return;
     }
     if (!Number.isFinite(this.cajaInicial()) || this.cajaInicial() < 0) {

@@ -449,3 +449,11 @@
   .scope-toggle { width: 100%; .scope-btn { flex: 1; } }
   .monto-input input { width: 100%; }
 }
+
+// Aviso: la caja inicial no coincide con el cierre anterior (causa común de descuadre)
+.aviso-caja-inicial{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  margin:6px 0 0; padding:7px 10px; font-size:12px; line-height:1.4;
+  background:#fffbeb; border:1px solid #fde68a; border-radius:8px; color:#92400e;
+  .link-btn{ color:#053465; }
+}
