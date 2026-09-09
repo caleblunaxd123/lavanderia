@@ -410,9 +410,9 @@ export class InventarioComponent implements OnInit, OnDestroy {
   get stockActualPeso(): number {
     return Math.round((this.insumoMovimiento?.stockActual ?? 0) * this.factorPeso * 1000) / 1000;
   }
-  /** La medición ingresada, convertida a unidades base (Bidón). */
+  /** La medición ingresada, convertida a unidades base (Bidón). Redondeada a 3 decimales (precisión del stock). */
   private get medicionEnBase(): number {
-    return Math.round(((Number(this.movPesoActual) || 0) / this.factorPeso) * 10000) / 10000;
+    return Math.round(((Number(this.movPesoActual) || 0) / this.factorPeso) * 1000) / 1000;
   }
   /** Consumo del día en peso (positivo = consumió; negativo = aumentó). */
   get consumoDelDiaPeso(): number {
@@ -487,8 +487,8 @@ export class InventarioComponent implements OnInit, OnDestroy {
    */
   private construirRequestMedicion(i: Insumo): RegistrarMovimientoInsumoRequest {
     const factor = (i.contenidoValor && i.contenidoValor > 0) ? i.contenidoValor : 1;
-    const medicionBase = Math.round(((Number(this.movPesoActual) || 0) / factor) * 10000) / 10000;
-    const deltaBase = Math.round((i.stockActual - medicionBase) * 10000) / 10000; // >0 consumió
+    const medicionBase = Math.round(((Number(this.movPesoActual) || 0) / factor) * 1000) / 1000;
+    const deltaBase = Math.round((i.stockActual - medicionBase) * 1000) / 1000; // >0 consumió
     const unidad = this.unidadPeso;
     const peso = Number(this.movPesoActual) || 0;
     const nota = this.movDescripcion.trim();
