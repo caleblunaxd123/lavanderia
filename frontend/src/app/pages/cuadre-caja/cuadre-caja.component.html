@@ -212,7 +212,9 @@
         <div class="gastos-bloque">
           <div class="gastos-bloque__head">
             <label>Gastos registrados</label>
-            <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalGasto()">+ Registrar gasto</button>
+            <button type="button" class="btn-registrar-gasto" (click)="abrirModalGasto()">
+              <app-icon name="cash" [size]="17"></app-icon> Registrar gasto
+            </button>
           </div>
           @if (gastosDelDia().length === 0) {
             <p class="hint">Sin gastos registrados este día.</p>

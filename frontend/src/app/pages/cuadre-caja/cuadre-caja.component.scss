@@ -457,3 +457,21 @@
   background:#fffbeb; border:1px solid #fde68a; border-radius:8px; color:#92400e;
   .link-btn{ color:#053465; }
 }
+
+// Botón "Registrar gasto": sólido y visible (antes en outline se perdía sobre el fondo blanco)
+.btn-registrar-gasto {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: #ea580c;            // naranja: acción de salida de dinero (gasto)
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, .35);
+  transition: background .15s ease, box-shadow .15s ease, transform .1s ease;
+
+  &:hover { background: #c2410c; box-shadow: 0 3px 10px rgba(234, 88, 12, .45); }
+  &:active { transform: translateY(1px); }
+  app-icon { display: inline-flex; }
+}
