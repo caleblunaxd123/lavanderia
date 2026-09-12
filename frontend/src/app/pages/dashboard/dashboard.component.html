@@ -160,20 +160,30 @@
 
       @if (puedeVerFinanzas()) {
         <section class="panel chart" aria-labelledby="week-title">
-          <div class="panel__header"><div><span class="section-kicker">Tendencia</span><h2 id="week-title">Ventas esta semana</h2></div></div>
+          <div class="panel__header">
+            <div><span class="section-kicker">Tendencia</span><h2 id="week-title">Ventas</h2></div>
+            <div class="rango-ventas" role="group" aria-label="Rango de la tendencia de ventas">
+              @for (r of rangosVentas; track r.dias) {
+                <button type="button" class="rango-ventas__btn" [class.is-active]="rangoVentas() === r.dias"
+                  (click)="cambiarRangoVentas(r.dias)">{{ r.etiqueta }}</button>
+              }
+            </div>
+          </div>
           @if (!semana().hayVentas) {
-            <div class="empty-state">Sin ventas registradas esta semana.</div>
+            <div class="empty-state">Sin ventas registradas en este periodo.</div>
           } @else {
             <svg class="area-chart" [attr.viewBox]="'0 0 ' + semana().W + ' ' + semana().H" preserveAspectRatio="none"
-                 role="img" aria-label="Curva de ventas de la semana">
+                 role="img" aria-label="Curva de ventas del periodo">
               <path [attr.d]="semana().areaPath" class="area-chart__fill" />
               <path [attr.d]="semana().linePath" class="area-chart__line" />
-              @for (p of semana().puntos; track p.label) {
-                <circle [attr.cx]="p.x" [attr.cy]="p.y" r="3" class="area-chart__dot" />
+              @if (semana().mostrarPuntos) {
+                @for (p of semana().puntos; track p.fecha) {
+                  <circle [attr.cx]="p.x" [attr.cy]="p.y" r="3" class="area-chart__dot" />
+                }
               }
             </svg>
             <div class="area-chart__labels">
-              @for (p of semana().puntos; track p.label) { <span>{{ p.label }}</span> }
+              @for (l of semana().labels; track $index) { <span>{{ l }}</span> }
             </div>
           }
         </section>

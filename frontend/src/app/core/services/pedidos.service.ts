@@ -166,6 +166,11 @@ export class PedidosService {
     return this.http.get<Dashboard>(`${this.base}/dashboard`);
   }
 
+  /** Tendencia de ventas (S/ por día) para el rango de días indicado (dashboard). */
+  ventasTendencia(dias: number) {
+    return this.http.get<Array<{ fecha: string; total: number }>>(`${this.base}/ventas-tendencia`, { params: { dias } });
+  }
+
   contadores() {
     return this.http.get<PedidoContadores>(`${this.base}/contadores`);
   }

@@ -698,3 +698,21 @@
 @media (max-width: 420px) {
   .stat-cards { grid-template-columns: 1fr; }
 }
+
+/* --- Selector de rango de la tendencia de ventas --- */
+.panel.chart .panel__header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.rango-ventas {
+  display: inline-flex; gap: 4px; background: #f1f5f9; border-radius: 999px; padding: 3px;
+}
+.rango-ventas__btn {
+  border: 0; background: transparent; cursor: pointer;
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #64748b;
+  transition: background .15s ease, color .15s ease;
+  &:hover { color: #0f2748; }
+  &.is-active { background: #fff; color: #053465; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+}
+@media (max-width: 480px) {
+  .rango-ventas__btn { padding: 5px 9px; font-size: 11px; }
+}

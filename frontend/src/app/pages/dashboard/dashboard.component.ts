@@ -99,25 +99,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const d = this.data(); return d ? this.pctDelta(d.clientesNuevosMes, d.clientesNuevosMesAnterior) : null;
   });
 
-  /** Serie de ventas de la semana como coordenadas SVG (viewBox 0 0 320 120). */
+  // ===== Tendencia de ventas con rango seleccionable =====
+  readonly rangosVentas = [
+    { dias: 7, etiqueta: '7 días' },
+    { dias: 14, etiqueta: '14 días' },
+    { dias: 30, etiqueta: '30 días' },
+    { dias: 90, etiqueta: '90 días' },
+  ];
+  readonly rangoVentas = signal(30);
+  readonly ventasSerie = signal<Array<{ fecha: string; total: number }>>([]);
+  readonly cargandoTendencia = signal(false);
+
+  cambiarRangoVentas(dias: number) {
+    if (this.rangoVentas() === dias) return;
+    this.rangoVentas.set(dias);
+    this.cargarTendenciaVentas();
+  }
+
+  private cargarTendenciaVentas() {
+    if (!this.puedeVerFinanzas()) return;
+    this.cargandoTendencia.set(true);
+    this.svc.ventasTendencia(this.rangoVentas()).subscribe({
+      next: s => { this.ventasSerie.set(s); this.cargandoTendencia.set(false); },
+      error: () => this.cargandoTendencia.set(false)
+    });
+  }
+
+  /** Serie de ventas del rango elegido como coordenadas SVG (viewBox 0 0 320 120). */
   readonly semana = computed(() => {
-    const serie = this.data()?.ventasSemana ?? [];
+    const serie = this.ventasSerie();
     const W = 320, H = 120, padX = 10, padY = 14;
-    const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
     const max = Math.max(1, ...serie.map(p => p.total));
     const n = Math.max(1, serie.length);
     const stepX = (W - padX * 2) / Math.max(1, n - 1);
+    const fmtFecha = (iso: string) => { const p = iso.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}` : iso; };
     const puntos = serie.map((p, i) => ({
       x: Math.round(padX + i * stepX),
       y: Math.round(H - padY - (p.total / max) * (H - padY * 2)),
       total: p.total,
-      label: dias[i] ?? ''
+      fecha: p.fecha
     }));
+    // Etiquetas espaciadas (máx ~7) para que no se amontonen en rangos largos.
+    const maxLabels = 7;
+    const paso = Math.max(1, Math.ceil(n / maxLabels));
+    const labels = serie.map((p, i) => ({ i, text: fmtFecha(p.fecha) }))
+      .filter(l => l.i % paso === 0 || l.i === n - 1)
+      .map(l => l.text);
     const linePath = puntos.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x} ${pt.y}`).join(' ');
     const areaPath = puntos.length
       ? `${linePath} L${puntos[puntos.length - 1].x} ${H - padY} L${puntos[0].x} ${H - padY} Z`
       : '';
-    return { puntos, linePath, areaPath, max, W, H, hayVentas: max > 1 || serie.some(p => p.total > 0) };
+    return { puntos, linePath, areaPath, max, W, H, labels, mostrarPuntos: n <= 14, hayVentas: serie.some(p => p.total > 0) };
   });
 
   /** Dona de servicios (stroke-dasharray sobre un círculo r=54). */
@@ -309,6 +341,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     else this.cargando.set(true);
 
     this.cargarEstadoCaja();
+    this.cargarTendenciaVentas();
     this.svc.dashboard().subscribe({
       next: d => {
         if (version !== this.versionCarga) return;

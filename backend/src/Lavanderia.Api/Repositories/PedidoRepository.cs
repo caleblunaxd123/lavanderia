@@ -26,6 +26,8 @@ public interface IPedidoRepository
     Task<Dictionary<string, int>> ContadoresPorEstadoAsync(int sedeId, CancellationToken ct = default);
     Task<Dictionary<int, int>> ConteoPorAreaAsync(int sedeId, CancellationToken ct = default);
     Task<decimal> VentasDelDiaAsync(DateTime fecha, int sedeId, CancellationToken ct = default);
+    /// <summary>Ventas (suma de Total de pedidos no anulados) por día desde una fecha, para la tendencia.</summary>
+    Task<Dictionary<DateTime, decimal>> VentasPorDiaAsync(DateTime desde, int sedeId, CancellationToken ct = default);
     Task<int> PedidosDelMesAsync(DateTime fecha, int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, decimal monto, string metodo, int usuarioId, string? descripcion, int sedeId, CancellationToken ct = default);
     /// <summary>Registra una entrega (parcial o final): actualiza CantidadEntregada de cada ítem, guarda
@@ -638,6 +640,26 @@ public class PedidoRepository : IPedidoRepository
         cmd.AddParam("@Fecha", fecha.Date);
         cmd.AddParam("@SedeId", sedeId);
         return await cmd.ReadScalarAsync<decimal>(ct);
+    }
+
+    public async Task<Dictionary<DateTime, decimal>> VentasPorDiaAsync(DateTime desde, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        // FechaIngreso >= @Desde (sargable, usa índice) y se agrupa por día.
+        cmd.CommandText = @"
+            SELECT CAST(FechaIngreso AS DATE) AS Dia, ISNULL(SUM(Total), 0) AS Total
+            FROM dbo.Pedido
+            WHERE Anulado = 0 AND SedeId = @SedeId AND FechaIngreso >= @Desde
+            GROUP BY CAST(FechaIngreso AS DATE)";
+        cmd.AddParam("@SedeId", sedeId);
+        cmd.AddParam("@Desde", desde.Date);
+        var dict = new Dictionary<DateTime, decimal>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+            dict[reader.GetDateTime(0).Date] = reader.GetDecimal(1);
+        return dict;
     }
 
     public async Task<Dictionary<DateTime, int>> ContarPorDiaAsync(DateTime desde, bool porEntrega, int sedeId, CancellationToken ct = default)

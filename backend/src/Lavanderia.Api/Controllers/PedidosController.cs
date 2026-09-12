@@ -35,6 +35,23 @@ public class PedidosController : TenantAwareControllerBase
             Lavanderia.Api.Infrastructure.TendenciaBuilder.SerieDiaria(entregados, dias)));
     }
 
+    /// <summary>Tendencia de ventas (S/ por día) del dashboard, para el rango de días elegido.</summary>
+    [HttpGet("ventas-tendencia")]
+    [Authorize(Policy = "Modulo:INICIO")]
+    public async Task<ActionResult<List<PuntoTendenciaDto>>> VentasTendencia([FromQuery] int dias = 30, CancellationToken ct = default)
+    {
+        dias = Math.Clamp(dias, 7, 180);
+        var desde = DateTime.Today.AddDays(-(dias - 1));
+        var porDia = await _pedidos.VentasPorDiaAsync(desde, SedeRequeridaId, ct);
+        var serie = new List<PuntoTendenciaDto>(dias);
+        for (var i = 0; i < dias; i++)
+        {
+            var d = desde.AddDays(i);
+            serie.Add(new PuntoTendenciaDto(d.ToString("yyyy-MM-dd"), porDia.TryGetValue(d.Date, out var v) ? v : 0m));
+        }
+        return Ok(serie);
+    }
+
     [HttpGet]
     [Authorize(Policy = "Modulo:PEDIDOS")]
     public async Task<ActionResult<PagedResultDto<PedidoDto>>> Listar(
