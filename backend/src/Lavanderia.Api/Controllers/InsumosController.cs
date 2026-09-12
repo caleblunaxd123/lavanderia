@@ -38,6 +38,7 @@ public class InsumosController : TenantAwareControllerBase
     }
 
     [HttpPost]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")] // crear el catálogo es tarea del administrador
     public async Task<ActionResult<InsumoDto>> Crear([FromBody] InsumoDto dto, CancellationToken ct)
     {
         var nombre = dto.Nombre.Trim();
@@ -66,6 +67,7 @@ public class InsumosController : TenantAwareControllerBase
     /// <summary>Carga masiva de insumos. Valida fila por fila, omite duplicados por nombre
     /// (dentro del archivo y contra la sede) y filas inválidas, sin abortar el resto.</summary>
     [HttpPost("importar")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ImportarInsumosResultado>> Importar([FromBody] ImportarInsumosRequest req, CancellationToken ct)
     {
         if (req.Filas is null || req.Filas.Count == 0)
@@ -115,6 +117,7 @@ public class InsumosController : TenantAwareControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")] // editar el insumo: solo administrador
     public async Task<IActionResult> Actualizar(int id, [FromBody] InsumoDto dto, CancellationToken ct)
     {
         var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
@@ -138,6 +141,7 @@ public class InsumosController : TenantAwareControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
     {
         var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
@@ -149,6 +153,7 @@ public class InsumosController : TenantAwareControllerBase
     }
 
     [HttpPatch("{id:int}/estado")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoUsuarioRequest req, CancellationToken ct)
     {
         var existente = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);

@@ -1,7 +1,7 @@
 <div class="page">
   <app-page-header icono="package" color="morado" titulo="Inventario" tourId="inventario"
     subtitulo="Stock de consumibles: detergente, bolsas, suavizante, etc.">
-    @if (tab() === 'insumos') {
+    @if (tab() === 'insumos' && esAdmin()) {
       <button type="button" class="btn btn--ghost" (click)="abrirImportar()">
         <app-icon name="clipboard" [size]="15"></app-icon> Importar
       </button>
@@ -32,8 +32,10 @@
         <button class="btn btn--primario" (click)="cargar()">Reintentar</button>
       </app-empty-state>
     } @else if (insumos().length === 0) {
-      <app-empty-state icono="lista" titulo="Sin insumos aún" mensaje="Registra el primer consumible para empezar a controlar tu stock.">
-        <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
+      <app-empty-state icono="lista" titulo="Sin insumos aún" [mensaje]="esAdmin() ? 'Registra el primer consumible para empezar a controlar tu stock.' : 'Aún no hay insumos. Pídele al administrador que los registre.'">
+        @if (esAdmin()) {
+          <button class="btn btn--primario" (click)="abrirCrearInsumo()">+ Nuevo insumo</button>
+        }
       </app-empty-state>
     } @else {
       <div class="inventory-summary" [class.inventory-summary--warning]="insumosBajoStock() > 0" role="status">
@@ -142,17 +144,19 @@
               <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">
                 <app-icon name="refresh" [size]="14"></app-icon> Movimiento
               </button>
-              <button type="button" class="btn btn--sm btn--editar" (click)="abrirEditarInsumo(i)" [attr.aria-label]="'Editar ' + i.nombre">
-                <app-icon name="edit" [size]="14"></app-icon> Editar
-              </button>
-              <button type="button" class="btn btn--sm btn--desactivar" (click)="toggleActivo(i)" [attr.aria-label]="(i.activo ? 'Desactivar ' : 'Reactivar ') + i.nombre">
-                @if (i.activo) { <app-icon name="disable" [size]="14"></app-icon> Desactivar }
-                @else { <app-icon name="refresh" [size]="14"></app-icon> Reactivar }
-              </button>
-              <button type="button" class="btn btn--sm btn--eliminar" (click)="pedirEliminar(i)" [disabled]="i.enUso"
-                [title]="i.enUso ? 'Tiene movimientos registrados — solo puedes desactivarlo' : 'Eliminar'" [attr.aria-label]="'Eliminar ' + i.nombre">
-                <app-icon name="trash" [size]="14"></app-icon> Eliminar
-              </button>
+              @if (esAdmin()) {
+                <button type="button" class="btn btn--sm btn--editar" (click)="abrirEditarInsumo(i)" [attr.aria-label]="'Editar ' + i.nombre">
+                  <app-icon name="edit" [size]="14"></app-icon> Editar
+                </button>
+                <button type="button" class="btn btn--sm btn--desactivar" (click)="toggleActivo(i)" [attr.aria-label]="(i.activo ? 'Desactivar ' : 'Reactivar ') + i.nombre">
+                  @if (i.activo) { <app-icon name="disable" [size]="14"></app-icon> Desactivar }
+                  @else { <app-icon name="refresh" [size]="14"></app-icon> Reactivar }
+                </button>
+                <button type="button" class="btn btn--sm btn--eliminar" (click)="pedirEliminar(i)" [disabled]="i.enUso"
+                  [title]="i.enUso ? 'Tiene movimientos registrados — solo puedes desactivarlo' : 'Eliminar'" [attr.aria-label]="'Eliminar ' + i.nombre">
+                  <app-icon name="trash" [size]="14"></app-icon> Eliminar
+                </button>
+              }
             </div>
           </article>
           }
