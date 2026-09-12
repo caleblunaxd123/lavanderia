@@ -310,4 +310,24 @@ export class ReporteCuadresDiariosComponent implements OnInit {
   verFecha(fechaIso: string) {
     this.router.navigate(['/cuadre-caja'], { queryParams: { fecha: fechaIso.slice(0, 10) } });
   }
+
+  // ===== Detalle de "montos no cuadrados": los movimientos del día sin cuadre guardado =====
+  readonly modalNoCuadrado = signal<CuadreDiarioDia | null>(null);
+  readonly movsNoCuadrado = signal<MovimientoCaja[]>([]);
+  readonly cargandoNoCuadrado = signal(false);
+
+  verDetalleNoCuadrado(d: CuadreDiarioDia) {
+    this.modalNoCuadrado.set(d);
+    this.cargandoNoCuadrado.set(true);
+    this.movsNoCuadrado.set([]);
+    this.caja.movimientos(d.fecha.slice(0, 10)).subscribe({
+      next: ms => { this.movsNoCuadrado.set(ms); this.cargandoNoCuadrado.set(false); },
+      error: () => this.cargandoNoCuadrado.set(false)
+    });
+  }
+  cerrarNoCuadrado() { this.modalNoCuadrado.set(null); }
+
+  /** Ingresos del día mostrado en el modal de no cuadrados. */
+  readonly ncIngresos = computed(() => this.movsNoCuadrado().filter(m => m.tipo === 'INGRESO').reduce((a, m) => a + m.monto, 0));
+  readonly ncEgresos = computed(() => this.movsNoCuadrado().filter(m => m.tipo === 'GASTO').reduce((a, m) => a + m.monto, 0));
 }

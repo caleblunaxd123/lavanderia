@@ -155,6 +155,7 @@ export interface MovimientoCaja {
   pedidoId?: number | null;
   pedidoNumero?: number | null;
   clienteNombre?: string | null;
+  usuarioNombre?: string | null;
   tipoGastoId?: number | null;
   tipoGastoNombre?: string | null;
 }

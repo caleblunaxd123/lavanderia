@@ -450,9 +450,14 @@
                   <span class="nc-ing">Ingresos S/ {{ d.noCuadradoIngresos | number:'1.2-2' }}</span>
                   <span class="nc-egr">Egresos S/ {{ d.noCuadradoEgresos | number:'1.2-2' }}</span>
                 </div>
-                <button type="button" class="btn-icon" (click)="verDia(d)" title="Ir a cuadrar este día" aria-label="Ir a cuadrar este día">
-                  <app-icon name="arrow-right" [size]="15"></app-icon>
-                </button>
+                <div class="nc-acciones">
+                  <button type="button" class="btn-icon" (click)="verDetalleNoCuadrado(d)" title="Ver los movimientos de este día" aria-label="Ver movimientos del día">
+                    <app-icon name="eye" [size]="15"></app-icon>
+                  </button>
+                  <button type="button" class="btn-icon" (click)="verDia(d)" title="Ir a cuadrar este día" aria-label="Ir a cuadrar este día">
+                    <app-icon name="arrow-right" [size]="15"></app-icon>
+                  </button>
+                </div>
               </li>
             }
           </ul>
@@ -462,3 +467,57 @@
     }
   }
 </div>
+
+<!-- Modal: movimientos no cuadrados de un día (los que aún no están en un cuadre guardado) -->
+@if (modalNoCuadrado(); as d) {
+  <div class="modal-backdrop" (click)="cerrarNoCuadrado()"></div>
+  <div class="modal-nc" role="dialog" aria-modal="true" aria-labelledby="titulo-nc">
+    <div class="modal-nc__head">
+      <div>
+        <h3 id="titulo-nc">Movimientos sin cuadrar</h3>
+        <span class="modal-nc__fecha">{{ d.fecha | date:'EEEE d \'de\' MMMM, y' }}</span>
+      </div>
+      <button type="button" aria-label="Cerrar" (click)="cerrarNoCuadrado()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal-nc__body">
+      @if (cargandoNoCuadrado()) {
+        <p class="detalle-error__cargando">Cargando movimientos…</p>
+      } @else if (movsNoCuadrado().length === 0) {
+        <p class="hint">No se encontraron movimientos para este día.</p>
+      } @else {
+        <p class="hint">Estos movimientos ya están registrados pero el día aún <strong>no tiene un cuadre guardado</strong>. Ciérralo para dejarlo cuadrado.</p>
+        <ul class="nc-movs">
+          @for (m of movsNoCuadrado(); track m.id) {
+            <li class="nc-mov" [class.nc-mov--gasto]="m.tipo === 'GASTO'">
+              <span class="nc-mov__check"><app-icon [name]="m.tipo === 'GASTO' ? 'warning' : 'check'" [size]="14"></app-icon></span>
+              <div class="nc-mov__info">
+                <div class="nc-mov__linea1">
+                  <strong>{{ m.tipo === 'GASTO' ? 'Egreso' : 'Ingreso' }}</strong>
+                  <span class="nc-mov__metodo" [class]="'m-' + (m.metodoPago || '').toLowerCase()">{{ metodoLabel(m.metodoPago || '') }}</span>
+                </div>
+                <div class="nc-mov__linea2">
+                  @if (m.pedidoNumero) { Orden N° {{ m.pedidoNumero }} }
+                  @if (m.clienteNombre) { · {{ m.clienteNombre }} }
+                  @if (m.tipoGastoNombre) { {{ m.tipoGastoNombre }} }
+                  @if (m.descripcion && !m.pedidoNumero) { · {{ m.descripcion }} }
+                </div>
+                <div class="nc-mov__meta">
+                  {{ m.fecha | date:'hh:mm a' }}@if (m.usuarioNombre) { · {{ m.usuarioNombre }} }
+                </div>
+              </div>
+              <span class="nc-mov__monto" [class.rojo]="m.tipo === 'GASTO'">{{ m.tipo === 'GASTO' ? '−' : '+' }}S/ {{ m.monto | number:'1.2-2' }}</span>
+            </li>
+          }
+        </ul>
+        <div class="nc-totales">
+          <div><span>Ingresos</span><strong class="txt-verde">S/ {{ ncIngresos() | number:'1.2-2' }}</strong></div>
+          <div><span>Egresos</span><strong class="rojo">S/ {{ ncEgresos() | number:'1.2-2' }}</strong></div>
+        </div>
+      }
+    </div>
+    <div class="modal-nc__actions">
+      <button type="button" class="btn btn--ghost" (click)="cerrarNoCuadrado()">Cerrar</button>
+      <button type="button" class="btn btn--primario" (click)="verDia(d)"><app-icon name="cash" [size]="15"></app-icon> Ir a cuadrar este día</button>
+    </div>
+  </div>
+}

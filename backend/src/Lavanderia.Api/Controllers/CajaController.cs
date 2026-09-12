@@ -157,6 +157,7 @@ public class CajaController : TenantAwareControllerBase
         PedidoId = m.PedidoId,
         PedidoNumero = m.PedidoNumero,
         ClienteNombre = m.ClienteNombre,
+        UsuarioNombre = m.UsuarioNombre,
         TipoGastoId = m.TipoGastoId,
         TipoGastoNombre = m.TipoGastoNombre
     };

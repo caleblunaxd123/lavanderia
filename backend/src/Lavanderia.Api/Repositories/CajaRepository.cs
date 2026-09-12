@@ -68,12 +68,13 @@ public class CajaRepository : ICajaRepository
         // termina escaneando toda la tabla en vez de un seek acotado al dia).
         cmd.CommandText = @$"
             SELECT m.Id, m.Fecha, m.Tipo, m.MetodoPago, m.Monto, m.Descripcion, m.PedidoId, p.Numero AS PedidoNumero,
-                   cl.Nombre AS ClienteNombre, m.UsuarioId,
+                   cl.Nombre AS ClienteNombre, m.UsuarioId, u.NombreCompleto AS UsuarioNombre,
                    m.TipoGastoId, tg.Nombre AS TipoGastoNombre
             FROM dbo.MovimientoCaja m
             LEFT JOIN dbo.TipoGasto tg ON tg.Id = m.TipoGastoId
             LEFT JOIN dbo.Pedido p ON p.Id = m.PedidoId
             LEFT JOIN dbo.Cliente cl ON cl.Id = p.ClienteId
+            LEFT JOIN dbo.Usuario u ON u.Id = m.UsuarioId
             WHERE m.Fecha >= @Fecha AND m.Fecha < @FechaSiguiente AND m.SedeId = @SedeId {whereUsuario}
             ORDER BY m.Fecha DESC";
         cmd.AddParam("@Fecha", fecha.Date);
@@ -92,6 +93,7 @@ public class CajaRepository : ICajaRepository
             PedidoNumero = r.GetNullableInt("PedidoNumero"),
             ClienteNombre = r.GetNullableString("ClienteNombre"),
             UsuarioId = r.GetInt32(r.GetOrdinal("UsuarioId")),
+            UsuarioNombre = r.GetNullableString("UsuarioNombre"),
             TipoGastoId = r.GetNullableInt("TipoGastoId"),
             TipoGastoNombre = r.GetNullableString("TipoGastoNombre")
         }, ct);

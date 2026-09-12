@@ -359,6 +359,7 @@ public class MovimientoCaja
     public int? PedidoNumero { get; set; }
     public string? ClienteNombre { get; set; }
     public int UsuarioId { get; set; }
+    public string? UsuarioNombre { get; set; }
     public int? TipoGastoId { get; set; }
     public string? TipoGastoNombre { get; set; }
 }
