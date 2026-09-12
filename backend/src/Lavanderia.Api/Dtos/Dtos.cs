@@ -516,6 +516,8 @@ public class InsumoDto
     [Range(0, 1000000)] public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime? UltimaCompra { get; set; }
+    /// <summary>Fecha de vencimiento/caducidad (opcional), formato YYYY-MM-DD.</summary>
+    public DateOnly? FechaVencimiento { get; set; }
     /// <summary>True si tiene movimientos registrados: no se puede eliminar, solo desactivar.</summary>
     public bool EnUso { get; set; }
 }
@@ -528,8 +530,15 @@ public class RegistrarMovimientoInsumoRequest
     [StringLength(30)] public string? MetodoPago { get; set; }
     public int? TipoGastoId { get; set; }
     [StringLength(300)] public string? Descripcion { get; set; }
-    /// <summary>Fecha de la compra (solo COMPRA). Si es null se usa la fecha/hora actual.</summary>
+    /// <summary>Fecha del movimiento (cualquier tipo). Si es null se usa la fecha/hora actual.</summary>
     public DateTime? Fecha { get; set; }
+}
+
+/// <summary>Corrección de un movimiento ya registrado: solo fecha y nota (no toca el stock).</summary>
+public class EditarMovimientoInsumoRequest
+{
+    [Required] public DateTime Fecha { get; set; }
+    [StringLength(300)] public string? Descripcion { get; set; }
 }
 
 public class MovimientoInsumoDto

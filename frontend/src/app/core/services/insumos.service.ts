@@ -16,6 +16,8 @@ export interface Insumo {
   stockMinimo: number;
   activo: boolean;
   ultimaCompra?: string | null;
+  /** Fecha de vencimiento/caducidad (YYYY-MM-DD), opcional. */
+  fechaVencimiento?: string | null;
   enUso?: boolean;
 }
 
@@ -61,6 +63,16 @@ export class InsumosService {
 
   registrarMovimiento(insumoId: number, req: RegistrarMovimientoInsumoRequest) {
     return this.http.post<{ id: number; mensaje: string }>(`${this.base}/${insumoId}/movimientos`, req);
+  }
+
+  /** Corrige fecha y nota de un movimiento (solo admin). No cambia el stock. */
+  editarMovimiento(movimientoId: number, req: { fecha: string; descripcion?: string | null }) {
+    return this.http.put<void>(`${this.base}/movimientos/${movimientoId}`, req);
+  }
+
+  /** Elimina un movimiento y revierte su efecto en el stock (solo admin). */
+  eliminarMovimiento(movimientoId: number) {
+    return this.http.delete<{ mensaje: string }>(`${this.base}/movimientos/${movimientoId}`);
   }
 
   movimientos(insumoId?: number, desde?: string, hasta?: string) {

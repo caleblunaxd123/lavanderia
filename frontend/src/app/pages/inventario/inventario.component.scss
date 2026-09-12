@@ -710,3 +710,25 @@
   margin-top: 10px; font-size: 13px; color: #334155; cursor: pointer;
   input { width: 16px; height: 16px; }
 }
+
+// ---------- Aviso de vencimiento en la tarjeta ----------
+.insumo-card__venc[data-venc="por-vencer"] {
+  strong { color: #b45309; font-weight: 700; }
+}
+.insumo-card__venc[data-venc="vencido"] {
+  strong { color: #c0392b; font-weight: 700; }
+}
+
+// ---------- Acciones de movimiento en el historial (admin) ----------
+.mov-acciones { white-space: nowrap; display: flex; gap: 6px; }
+.btn-mini {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 5px 8px; border: 1px solid #cbd5e1; background: #fff; border-radius: 8px;
+  color: #053465; cursor: pointer;
+  &:hover { background: #eef4ff; }
+  &--peligro { color: #c0392b; border-color: #f2c7c7; &:hover { background: #fdf2f2; } }
+}
+.movimiento-card__acciones {
+  display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eef2f7;
+  .btn { flex: 1; justify-content: center; }
+}

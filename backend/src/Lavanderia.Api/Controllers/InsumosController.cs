@@ -55,7 +55,8 @@ public class InsumosController : TenantAwareControllerBase
             ContenidoUnidad = string.IsNullOrWhiteSpace(dto.ContenidoUnidad) ? null : dto.ContenidoUnidad.Trim(),
             StockActual = Math.Max(0, dto.StockActual),
             StockMinimo = Math.Max(0, dto.StockMinimo),
-            Activo = dto.Activo
+            Activo = dto.Activo,
+            FechaVencimiento = dto.FechaVencimiento
         }, ct);
         var creado = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         return CreatedAtAction(nameof(Listar), Map(creado!));
@@ -129,6 +130,7 @@ public class InsumosController : TenantAwareControllerBase
         existente.ContenidoUnidad = string.IsNullOrWhiteSpace(dto.ContenidoUnidad) ? null : dto.ContenidoUnidad.Trim();
         existente.StockMinimo = Math.Max(0, dto.StockMinimo);
         existente.Activo = dto.Activo;
+        existente.FechaVencimiento = dto.FechaVencimiento;
         await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
         return NoContent();
     }
@@ -202,8 +204,9 @@ public class InsumosController : TenantAwareControllerBase
             Tipo = req.Tipo,
             Cantidad = req.Cantidad,
             CostoTotal = req.CostoTotal,
-            // Solo COMPRA permite fechar en el pasado (registrar una compra anterior).
-            Fecha = req.Tipo == "COMPRA" && req.Fecha is DateTime f ? f.Date + DateTime.Now.TimeOfDay : DateTime.Now,
+            // Cualquier tipo puede fecharse en el pasado (registrar un movimiento atrasado).
+            // La hora se pone "ahora" para conservar el orden dentro del día.
+            Fecha = req.Fecha is DateTime f ? f.Date + DateTime.Now.TimeOfDay : DateTime.Now,
             UsuarioId = UsuarioId,
             Descripcion = req.Descripcion
         };
@@ -212,6 +215,34 @@ public class InsumosController : TenantAwareControllerBase
         {
             var movimientoId = await _repo.RegistrarMovimientoAsync(movimiento, req.MetodoPago, req.TipoGastoId, ct);
             return Ok(new { id = movimientoId, mensaje = "Movimiento registrado." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
+    /// <summary>Corrige la fecha y la nota de un movimiento ya registrado (no cambia el stock). Solo ADMIN.</summary>
+    [HttpPut("movimientos/{id:int}")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> EditarMovimiento(int id, [FromBody] EditarMovimientoInsumoRequest req, CancellationToken ct)
+    {
+        if (req.Fecha.Date > DateTime.Today)
+            return BadRequest(new { mensaje = "La fecha no puede estar en el futuro." });
+        var descripcion = string.IsNullOrWhiteSpace(req.Descripcion) ? null : req.Descripcion.Trim();
+        var ok = await _repo.EditarMovimientoAsync(id, req.Fecha, descripcion, SedeRequeridaId, ct);
+        return ok ? NoContent() : NotFound();
+    }
+
+    /// <summary>Elimina un movimiento y revierte su efecto en el stock (y el gasto de caja vinculado). Solo ADMIN.</summary>
+    [HttpDelete("movimientos/{id:int}")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> EliminarMovimiento(int id, CancellationToken ct)
+    {
+        try
+        {
+            var ok = await _repo.EliminarMovimientoAsync(id, SedeRequeridaId, ct);
+            return ok ? Ok(new { mensaje = "Movimiento eliminado y stock corregido." }) : NotFound();
         }
         catch (InvalidOperationException ex)
         {
@@ -255,6 +286,7 @@ public class InsumosController : TenantAwareControllerBase
         StockMinimo = i.StockMinimo,
         Activo = i.Activo,
         UltimaCompra = i.UltimaCompra,
+        FechaVencimiento = i.FechaVencimiento,
         EnUso = i.EnUso
     };
 

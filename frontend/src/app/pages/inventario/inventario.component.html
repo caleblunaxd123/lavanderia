@@ -120,6 +120,17 @@
               <strong>{{ i.ultimaCompra ? (i.ultimaCompra | date:'dd MMM yyyy') : 'Sin compras registradas' }}</strong>
             </div>
 
+            @if (i.fechaVencimiento) {
+              <div class="insumo-card__meta insumo-card__venc" [attr.data-venc]="estadoVencimiento(i)">
+                <span>Vence</span>
+                <strong>
+                  {{ i.fechaVencimiento | date:'dd MMM yyyy' }}
+                  @if (estadoVencimiento(i) === 'vencido') { · ¡Vencido! }
+                  @else if (estadoVencimiento(i) === 'por-vencer') { · faltan {{ diasParaVencer(i) }} día(s) }
+                </strong>
+              </div>
+            }
+
             <div class="insumo-card__acciones">
               <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirModalMovimiento(i)" [disabled]="!i.activo">
                 <app-icon name="refresh" [size]="14"></app-icon> Movimiento
@@ -173,7 +184,7 @@
       <div class="card tabla-wrap">
         <table class="tabla">
           <thead>
-            <tr><th>Fecha</th><th>Insumo</th><th>Tipo</th><th>Cantidad</th><th>Costo</th><th>Usuario</th><th>Descripción</th></tr>
+            <tr><th>Fecha</th><th>Insumo</th><th>Tipo</th><th>Cantidad</th><th>Costo</th><th>Usuario</th><th>Descripción</th>@if (esAdmin()) { <th>Acciones</th> }</tr>
           </thead>
           <tbody>
             @for (m of movimientosPaginados(); track m.id) {
@@ -185,6 +196,16 @@
                 <td class="mono">{{ m.costoTotal ? ('S/ ' + (m.costoTotal | number:'1.2-2')) : '—' }}</td>
                 <td>{{ m.usuarioNombre }}</td>
                 <td>{{ m.descripcion || '—' }}</td>
+                @if (esAdmin()) {
+                  <td class="mov-acciones">
+                    <button type="button" class="btn-mini" title="Corregir fecha o nota" (click)="abrirEditarMovimiento(m)">
+                      <app-icon name="edit" [size]="14"></app-icon>
+                    </button>
+                    <button type="button" class="btn-mini btn-mini--peligro" title="Eliminar (corrige el stock)" (click)="pedirEliminarMovimiento(m)">
+                      <app-icon name="trash" [size]="14"></app-icon>
+                    </button>
+                  </td>
+                }
               </tr>
             }
           </tbody>
@@ -208,6 +229,16 @@
                 <div class="movimiento-card__desc"><span>Nota:</span> {{ m.descripcion }}</div>
               }
             </div>
+            @if (esAdmin()) {
+              <div class="movimiento-card__acciones">
+                <button type="button" class="btn btn--outline-primary btn--sm" (click)="abrirEditarMovimiento(m)">
+                  <app-icon name="edit" [size]="14"></app-icon> Corregir
+                </button>
+                <button type="button" class="btn btn--danger btn--sm" (click)="pedirEliminarMovimiento(m)">
+                  <app-icon name="trash" [size]="14"></app-icon> Eliminar
+                </button>
+              </div>
+            }
           </div>
         }
       </div>
@@ -274,6 +305,9 @@
               [(ngModel)]="formInsumo.contenidoUnidad" name="contenidoUnidad" placeholder="Ej: litros, kg, ml" aria-label="Unidad del contenido" />
           </div>
         </div>
+
+        <label for="insumo-vencimiento">Fecha de vencimiento <small class="hint">(opcional — para avisar antes de que caduque)</small></label>
+        <input id="insumo-vencimiento" type="date" [(ngModel)]="formInsumo.fechaVencimiento" name="fechaVencimiento" />
 
         @if (!editandoInsumo()) {
           <label for="insumo-inicial">Stock inicial</label>
@@ -392,10 +426,10 @@
             inputmode="decimal" required [(ngModel)]="movCantidad" name="cantidad" />
         }
 
-        @if (movTipo === 'COMPRA') {
-          <label>Fecha de compra <small class="hint">(puedes registrar una compra anterior)</small></label>
-          <input type="date" [(ngModel)]="movFecha" name="fechaCompra" [max]="hastaHistorial" />
+        <label>Fecha del movimiento <small class="hint">(puedes registrar uno de días anteriores)</small></label>
+        <input type="date" [(ngModel)]="movFecha" name="fechaMovimiento" [max]="hastaHistorial" />
 
+        @if (movTipo === 'COMPRA') {
           <div class="row-2">
             <div>
               <label>Costo total (opcional)</label>
@@ -453,4 +487,53 @@
     (cerrar)="cerrarImportar()"
     (confirmar)="importarInsumos($event)">
   </app-importador-masivo>
+}
+
+<!-- Modal: corregir movimiento (fecha / nota) — solo admin -->
+@if (modalEditarMov()) {
+  <div class="modal-backdrop" (click)="cerrarEditarMov()"></div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-mov">
+    <div class="modal__header">
+      <h3 id="titulo-editar-mov">Corregir movimiento</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar" (click)="cerrarEditarMov()"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p class="hint">{{ editMovInfo }}</p>
+      <p class="hint">Solo cambia la <strong>fecha</strong> y la <strong>nota</strong>; no altera el stock. Para cambiar el monto, elimina el movimiento y regístralo de nuevo.</p>
+
+      <label for="editmov-fecha">Fecha</label>
+      <input id="editmov-fecha" type="date" [(ngModel)]="editMovFecha" name="editMovFecha" [max]="hastaHistorial" />
+
+      <label for="editmov-desc">Descripción / nota</label>
+      <input id="editmov-desc" type="text" maxlength="300" [(ngModel)]="editMovDescripcion" name="editMovDesc" placeholder="Ej: compra de bolsas en Makro" />
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarEditarMov()">Cancelar</button>
+        <button type="button" class="btn btn--primario" [disabled]="guardandoEditMov()" (click)="guardarEditarMovimiento()">
+          {{ guardandoEditMov() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: confirmar eliminación de movimiento — solo admin -->
+@if (confirmarEliminarMov(); as m) {
+  <div class="modal-backdrop" (click)="confirmarEliminarMov.set(null)"></div>
+  <div class="modal modal--sm" role="dialog" aria-modal="true" aria-labelledby="titulo-elim-mov">
+    <div class="modal__header">
+      <h3 id="titulo-elim-mov">¿Eliminar movimiento?</h3>
+      <button type="button" class="modal__close" aria-label="Cerrar" (click)="confirmarEliminarMov.set(null)"><app-icon name="close" [size]="16"></app-icon></button>
+    </div>
+    <div class="modal__body">
+      <p>Vas a eliminar: <strong>{{ etiquetaTipo(m.tipo) }} · {{ m.insumoNombre }} · {{ m.cantidad }}</strong>.</p>
+      <p class="hint">El stock se corrige automáticamente (se revierte este movimiento). Si era una compra con costo, también se quita su gasto de la caja. Esta acción no se puede deshacer.</p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" (click)="confirmarEliminarMov.set(null)">Cancelar</button>
+        <button type="button" class="btn btn--danger" [disabled]="eliminandoMov()" (click)="ejecutarEliminarMovimiento()">
+          {{ eliminandoMov() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
 }

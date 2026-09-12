@@ -14,6 +14,13 @@ public interface IInsumoRepository
     Task ActualizarAsync(Insumo i, int sedeId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int sedeId, CancellationToken ct = default);
     Task<int> RegistrarMovimientoAsync(MovimientoInsumo m, string? metodoPagoParaGasto, int? tipoGastoIdParaGasto, CancellationToken ct = default);
+    /// <summary>Corrige solo la fecha y la nota de un movimiento (no afecta el stock). Si tenía un
+    /// gasto de caja vinculado, también le actualiza la fecha para mantener el cuadre consistente.
+    /// Devuelve false si el movimiento no existe en la sede.</summary>
+    Task<bool> EditarMovimientoAsync(int movimientoId, DateTime fecha, string? descripcion, int sedeId, CancellationToken ct = default);
+    /// <summary>Elimina un movimiento y revierte su efecto en el stock (y borra el gasto de caja
+    /// vinculado si lo tenía). Lanza InvalidOperationException si revertir dejaría el stock negativo.</summary>
+    Task<bool> EliminarMovimientoAsync(int movimientoId, int sedeId, CancellationToken ct = default);
     Task<List<MovimientoInsumo>> ListarMovimientosAsync(int? insumoId, DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default);
     /// <summary>Suma de cantidades consumidas por día (para las barras de tendencia).</summary>
     Task<Dictionary<DateTime, int>> ContarConsumoPorDiaAsync(DateTime desde, int sedeId, CancellationToken ct = default);
@@ -36,10 +43,11 @@ public class InsumoRepository : IInsumoRepository
         StockMinimo = r.GetDecimal(r.GetOrdinal("StockMinimo")),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
         UltimaCompra = r.GetNullableDateTime("UltimaCompra"),
+        FechaVencimiento = r.GetNullableDateTime("FechaVencimiento") is DateTime fv ? DateOnly.FromDateTime(fv) : null,
         EnUso = r.GetBoolean(r.GetOrdinal("EnUso"))
     };
 
-    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo,
+    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaVencimiento,
         (SELECT MAX(m.Fecha) FROM dbo.MovimientoInsumo m WHERE m.InsumoId = dbo.Insumo.Id AND m.Tipo = 'COMPRA') AS UltimaCompra,
         CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.MovimientoInsumo mu WHERE mu.InsumoId = dbo.Insumo.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Insumo";
@@ -98,9 +106,9 @@ public class InsumoRepository : IInsumoRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Insumo (SedeId, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo)
+            INSERT INTO dbo.Insumo (SedeId, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaVencimiento)
             OUTPUT INSERTED.Id
-            VALUES (@SedeId, @Nombre, @UnidadMedida, @Clase, @ContenidoValor, @ContenidoUnidad, @StockActual, @StockMinimo, @Activo)";
+            VALUES (@SedeId, @Nombre, @UnidadMedida, @Clase, @ContenidoValor, @ContenidoUnidad, @StockActual, @StockMinimo, @Activo, @FechaVencimiento)";
         cmd.AddParam("@SedeId", i.SedeId);
         cmd.AddParam("@Nombre", i.Nombre);
         cmd.AddParam("@UnidadMedida", i.UnidadMedida);
@@ -110,6 +118,7 @@ public class InsumoRepository : IInsumoRepository
         cmd.AddParam("@StockActual", i.StockActual);
         cmd.AddParam("@StockMinimo", i.StockMinimo);
         cmd.AddParam("@Activo", i.Activo);
+        cmd.AddParam("@FechaVencimiento", (object?)(i.FechaVencimiento?.ToDateTime(TimeOnly.MinValue)) ?? DBNull.Value);
         return await cmd.ReadScalarAsync<int>(ct);
     }
 
@@ -122,7 +131,7 @@ public class InsumoRepository : IInsumoRepository
             UPDATE dbo.Insumo
             SET Nombre = @Nombre, UnidadMedida = @UnidadMedida, Clase = @Clase,
                 ContenidoValor = @ContenidoValor, ContenidoUnidad = @ContenidoUnidad,
-                StockMinimo = @StockMinimo, Activo = @Activo
+                StockMinimo = @StockMinimo, Activo = @Activo, FechaVencimiento = @FechaVencimiento
             WHERE Id = @Id AND SedeId = @SedeId";
         cmd.AddParam("@Id", i.Id);
         cmd.AddParam("@Nombre", i.Nombre);
@@ -132,6 +141,7 @@ public class InsumoRepository : IInsumoRepository
         cmd.AddParam("@ContenidoUnidad", (object?)i.ContenidoUnidad ?? DBNull.Value);
         cmd.AddParam("@StockMinimo", i.StockMinimo);
         cmd.AddParam("@Activo", i.Activo);
+        cmd.AddParam("@FechaVencimiento", (object?)(i.FechaVencimiento?.ToDateTime(TimeOnly.MinValue)) ?? DBNull.Value);
         cmd.AddParam("@SedeId", sedeId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
@@ -234,6 +244,116 @@ public class InsumoRepository : IInsumoRepository
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+
+    public async Task<bool> EditarMovimientoAsync(int movimientoId, DateTime fecha, string? descripcion, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            // Lee el movimiento (para conservar la hora y ubicar el gasto de caja vinculado).
+            await using var cmdGet = conn.CreateCommand();
+            cmdGet.Transaction = tx;
+            cmdGet.CommandText = "SELECT Fecha, MovimientoCajaId FROM dbo.MovimientoInsumo WHERE Id = @Id AND SedeId = @SedeId";
+            cmdGet.AddParam("@Id", movimientoId);
+            cmdGet.AddParam("@SedeId", sedeId);
+            DateTime horaOriginal; int? movCajaId = null;
+            await using (var r = await cmdGet.ExecuteReaderAsync(ct))
+            {
+                if (!await r.ReadAsync(ct)) { await tx.RollbackAsync(ct); return false; }
+                horaOriginal = r.GetDateTime(0);
+                if (!r.IsDBNull(1)) movCajaId = r.GetInt32(1);
+            }
+            var nuevaFecha = fecha.Date + horaOriginal.TimeOfDay; // conserva la hora, cambia el día
+
+            await using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "UPDATE dbo.MovimientoInsumo SET Fecha = @Fecha, Descripcion = @Desc WHERE Id = @Id AND SedeId = @SedeId";
+            cmd.AddParam("@Fecha", nuevaFecha);
+            cmd.AddParam("@Desc", (object?)descripcion ?? DBNull.Value);
+            cmd.AddParam("@Id", movimientoId);
+            cmd.AddParam("@SedeId", sedeId);
+            await cmd.ExecuteNonQueryAsync(ct);
+
+            // Mantener el gasto de caja vinculado en la misma fecha (para que salga en el cuadre correcto).
+            if (movCajaId is int cajaId)
+            {
+                await using var cmdCaja = conn.CreateCommand();
+                cmdCaja.Transaction = tx;
+                cmdCaja.CommandText = "UPDATE dbo.MovimientoCaja SET Fecha = @Fecha WHERE Id = @Id AND SedeId = @SedeId";
+                cmdCaja.AddParam("@Fecha", nuevaFecha);
+                cmdCaja.AddParam("@Id", cajaId);
+                cmdCaja.AddParam("@SedeId", sedeId);
+                await cmdCaja.ExecuteNonQueryAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+            return true;
+        }
+        catch { await tx.RollbackAsync(ct); throw; }
+    }
+
+    public async Task<bool> EliminarMovimientoAsync(int movimientoId, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            await using var cmdGet = conn.CreateCommand();
+            cmdGet.Transaction = tx;
+            cmdGet.CommandText = "SELECT InsumoId, Tipo, Cantidad, MovimientoCajaId FROM dbo.MovimientoInsumo WHERE Id = @Id AND SedeId = @SedeId";
+            cmdGet.AddParam("@Id", movimientoId);
+            cmdGet.AddParam("@SedeId", sedeId);
+            int insumoId; string tipo; decimal cantidad; int? movCajaId = null;
+            await using (var r = await cmdGet.ExecuteReaderAsync(ct))
+            {
+                if (!await r.ReadAsync(ct)) { await tx.RollbackAsync(ct); return false; }
+                insumoId = r.GetInt32(0);
+                tipo = r.GetString(1);
+                cantidad = r.GetDecimal(2);
+                if (!r.IsDBNull(3)) movCajaId = r.GetInt32(3);
+            }
+
+            // Efecto original en stock: COMPRA +, CONSUMO −, AJUSTE con su signo. Para revertir, el opuesto.
+            var deltaOriginal = tipo switch { "COMPRA" => cantidad, "CONSUMO" => -cantidad, _ => cantidad };
+            var reversa = -deltaOriginal;
+
+            await using var cmdStock = conn.CreateCommand();
+            cmdStock.Transaction = tx;
+            cmdStock.CommandText = @"
+                UPDATE dbo.Insumo SET StockActual = StockActual + @Delta
+                 WHERE Id = @InsumoId AND SedeId = @SedeId AND StockActual + @Delta >= 0";
+            cmdStock.AddParam("@Delta", reversa);
+            cmdStock.AddParam("@InsumoId", insumoId);
+            cmdStock.AddParam("@SedeId", sedeId);
+            if (await cmdStock.ExecuteNonQueryAsync(ct) == 0)
+                throw new InvalidOperationException("No se puede eliminar: al revertirlo el stock quedaría negativo. Primero ajusta el stock.");
+
+            await using var cmdDel = conn.CreateCommand();
+            cmdDel.Transaction = tx;
+            cmdDel.CommandText = "DELETE FROM dbo.MovimientoInsumo WHERE Id = @Id AND SedeId = @SedeId";
+            cmdDel.AddParam("@Id", movimientoId);
+            cmdDel.AddParam("@SedeId", sedeId);
+            await cmdDel.ExecuteNonQueryAsync(ct);
+
+            // Si tenía un gasto de caja vinculado (compra con costo), también se elimina.
+            if (movCajaId is int cajaId)
+            {
+                await using var cmdCaja = conn.CreateCommand();
+                cmdCaja.Transaction = tx;
+                cmdCaja.CommandText = "DELETE FROM dbo.MovimientoCaja WHERE Id = @Id AND SedeId = @SedeId";
+                cmdCaja.AddParam("@Id", cajaId);
+                cmdCaja.AddParam("@SedeId", sedeId);
+                await cmdCaja.ExecuteNonQueryAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+            return true;
+        }
+        catch { await tx.RollbackAsync(ct); throw; }
     }
 
     public async Task<List<MovimientoInsumo>> ListarMovimientosAsync(int? insumoId, DateTime desde, DateTime hasta, int sedeId, CancellationToken ct = default)
