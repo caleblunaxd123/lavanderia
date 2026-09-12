@@ -16,6 +16,8 @@ export interface Insumo {
   stockMinimo: number;
   activo: boolean;
   ultimaCompra?: string | null;
+  /** Fecha de ingreso/registro al inventario (YYYY-MM-DD), opcional. */
+  fechaIngreso?: string | null;
   /** Fecha de vencimiento/caducidad (YYYY-MM-DD), opcional. */
   fechaVencimiento?: string | null;
   enUso?: boolean;

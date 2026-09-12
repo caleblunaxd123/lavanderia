@@ -322,7 +322,8 @@ export class InventarioComponent implements OnInit, OnDestroy {
     if (this.err.hay) { this.errorFormInsumo.set('Revisa los campos marcados en rojo.'); return; }
     // Fecha vacía → null (el input date da '' al borrarla, y el servidor espera fecha o null).
     const fechaVencimiento = this.formInsumo.fechaVencimiento || null;
-    this.formInsumo = { ...this.formInsumo, nombre, unidadMedida: unidad, stockMinimo, stockActual, fechaVencimiento };
+    const fechaIngreso = this.formInsumo.fechaIngreso || null;
+    this.formInsumo = { ...this.formInsumo, nombre, unidadMedida: unidad, stockMinimo, stockActual, fechaIngreso, fechaVencimiento };
     this.guardandoInsumo.set(true);
     this.errorFormInsumo.set(null);
 
@@ -397,7 +398,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
   }
 
   private formInsumoVacio(): Partial<Insumo> {
-    return { nombre: '', unidadMedida: '', clase: 'INSUMO', stockActual: 0, stockMinimo: 0, activo: true };
+    return { nombre: '', unidadMedida: '', clase: 'INSUMO', stockActual: 0, stockMinimo: 0, activo: true, fechaIngreso: this.formatoFecha(new Date()) };
   }
 
   // ---------- Registrar movimiento ----------

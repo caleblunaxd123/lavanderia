@@ -516,6 +516,8 @@ public class InsumoDto
     [Range(0, 1000000)] public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime? UltimaCompra { get; set; }
+    /// <summary>Fecha de ingreso/registro al inventario (opcional), formato YYYY-MM-DD.</summary>
+    public DateOnly? FechaIngreso { get; set; }
     /// <summary>Fecha de vencimiento/caducidad (opcional), formato YYYY-MM-DD.</summary>
     public DateOnly? FechaVencimiento { get; set; }
     /// <summary>True si tiene movimientos registrados: no se puede eliminar, solo desactivar.</summary>

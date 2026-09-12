@@ -43,11 +43,12 @@ public class InsumoRepository : IInsumoRepository
         StockMinimo = r.GetDecimal(r.GetOrdinal("StockMinimo")),
         Activo = r.GetBoolean(r.GetOrdinal("Activo")),
         UltimaCompra = r.GetNullableDateTime("UltimaCompra"),
+        FechaIngreso = r.GetNullableDateTime("FechaIngreso") is DateTime fi ? DateOnly.FromDateTime(fi) : null,
         FechaVencimiento = r.GetNullableDateTime("FechaVencimiento") is DateTime fv ? DateOnly.FromDateTime(fv) : null,
         EnUso = r.GetBoolean(r.GetOrdinal("EnUso"))
     };
 
-    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaVencimiento,
+    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaIngreso, FechaVencimiento,
         (SELECT MAX(m.Fecha) FROM dbo.MovimientoInsumo m WHERE m.InsumoId = dbo.Insumo.Id AND m.Tipo = 'COMPRA') AS UltimaCompra,
         CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.MovimientoInsumo mu WHERE mu.InsumoId = dbo.Insumo.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Insumo";
@@ -106,9 +107,9 @@ public class InsumoRepository : IInsumoRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO dbo.Insumo (SedeId, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaVencimiento)
+            INSERT INTO dbo.Insumo (SedeId, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaIngreso, FechaVencimiento)
             OUTPUT INSERTED.Id
-            VALUES (@SedeId, @Nombre, @UnidadMedida, @Clase, @ContenidoValor, @ContenidoUnidad, @StockActual, @StockMinimo, @Activo, @FechaVencimiento)";
+            VALUES (@SedeId, @Nombre, @UnidadMedida, @Clase, @ContenidoValor, @ContenidoUnidad, @StockActual, @StockMinimo, @Activo, @FechaIngreso, @FechaVencimiento)";
         cmd.AddParam("@SedeId", i.SedeId);
         cmd.AddParam("@Nombre", i.Nombre);
         cmd.AddParam("@UnidadMedida", i.UnidadMedida);
@@ -118,6 +119,7 @@ public class InsumoRepository : IInsumoRepository
         cmd.AddParam("@StockActual", i.StockActual);
         cmd.AddParam("@StockMinimo", i.StockMinimo);
         cmd.AddParam("@Activo", i.Activo);
+        cmd.AddParam("@FechaIngreso", (object?)(i.FechaIngreso?.ToDateTime(TimeOnly.MinValue)) ?? DBNull.Value);
         cmd.AddParam("@FechaVencimiento", (object?)(i.FechaVencimiento?.ToDateTime(TimeOnly.MinValue)) ?? DBNull.Value);
         return await cmd.ReadScalarAsync<int>(ct);
     }
@@ -131,7 +133,7 @@ public class InsumoRepository : IInsumoRepository
             UPDATE dbo.Insumo
             SET Nombre = @Nombre, UnidadMedida = @UnidadMedida, Clase = @Clase,
                 ContenidoValor = @ContenidoValor, ContenidoUnidad = @ContenidoUnidad,
-                StockMinimo = @StockMinimo, Activo = @Activo, FechaVencimiento = @FechaVencimiento
+                StockMinimo = @StockMinimo, Activo = @Activo, FechaIngreso = @FechaIngreso, FechaVencimiento = @FechaVencimiento
             WHERE Id = @Id AND SedeId = @SedeId";
         cmd.AddParam("@Id", i.Id);
         cmd.AddParam("@Nombre", i.Nombre);
@@ -141,6 +143,7 @@ public class InsumoRepository : IInsumoRepository
         cmd.AddParam("@ContenidoUnidad", (object?)i.ContenidoUnidad ?? DBNull.Value);
         cmd.AddParam("@StockMinimo", i.StockMinimo);
         cmd.AddParam("@Activo", i.Activo);
+        cmd.AddParam("@FechaIngreso", (object?)(i.FechaIngreso?.ToDateTime(TimeOnly.MinValue)) ?? DBNull.Value);
         cmd.AddParam("@FechaVencimiento", (object?)(i.FechaVencimiento?.ToDateTime(TimeOnly.MinValue)) ?? DBNull.Value);
         cmd.AddParam("@SedeId", sedeId);
         await cmd.ExecuteNonQueryAsync(ct);

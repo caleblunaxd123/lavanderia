@@ -56,6 +56,7 @@ public class InsumosController : TenantAwareControllerBase
             StockActual = Math.Max(0, dto.StockActual),
             StockMinimo = Math.Max(0, dto.StockMinimo),
             Activo = dto.Activo,
+            FechaIngreso = dto.FechaIngreso,
             FechaVencimiento = dto.FechaVencimiento
         }, ct);
         var creado = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
@@ -130,6 +131,7 @@ public class InsumosController : TenantAwareControllerBase
         existente.ContenidoUnidad = string.IsNullOrWhiteSpace(dto.ContenidoUnidad) ? null : dto.ContenidoUnidad.Trim();
         existente.StockMinimo = Math.Max(0, dto.StockMinimo);
         existente.Activo = dto.Activo;
+        existente.FechaIngreso = dto.FechaIngreso;
         existente.FechaVencimiento = dto.FechaVencimiento;
         await _repo.ActualizarAsync(existente, SedeRequeridaId, ct);
         return NoContent();
@@ -286,6 +288,7 @@ public class InsumosController : TenantAwareControllerBase
         StockMinimo = i.StockMinimo,
         Activo = i.Activo,
         UltimaCompra = i.UltimaCompra,
+        FechaIngreso = i.FechaIngreso,
         FechaVencimiento = i.FechaVencimiento,
         EnUso = i.EnUso
     };

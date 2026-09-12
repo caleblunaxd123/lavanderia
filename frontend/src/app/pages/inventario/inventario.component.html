@@ -115,6 +115,13 @@
 
             <div class="stock-meter" aria-hidden="true"><span [style.width.%]="nivelStock(i)"></span></div>
 
+            @if (i.fechaIngreso) {
+              <div class="insumo-card__meta">
+                <span>Ingresó</span>
+                <strong>{{ i.fechaIngreso | date:'dd MMM yyyy' }}</strong>
+              </div>
+            }
+
             <div class="insumo-card__meta">
               <span>Última compra</span>
               <strong>{{ i.ultimaCompra ? (i.ultimaCompra | date:'dd MMM yyyy') : 'Sin compras registradas' }}</strong>
@@ -305,6 +312,9 @@
               [(ngModel)]="formInsumo.contenidoUnidad" name="contenidoUnidad" placeholder="Ej: litros, kg, ml" aria-label="Unidad del contenido" />
           </div>
         </div>
+
+        <label for="insumo-ingreso">Fecha de ingreso <small class="hint">(cuándo ingresó al inventario; puedes poner un día anterior)</small></label>
+        <input id="insumo-ingreso" type="date" [(ngModel)]="formInsumo.fechaIngreso" name="fechaIngreso" [max]="hastaHistorial" />
 
         <label for="insumo-vencimiento">Fecha de vencimiento <small class="hint">(opcional — para avisar antes de que caduque)</small></label>
         <input id="insumo-vencimiento" type="date" [(ngModel)]="formInsumo.fechaVencimiento" name="fechaVencimiento" />

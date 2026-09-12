@@ -388,6 +388,8 @@ public class Insumo
     public decimal StockMinimo { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime? UltimaCompra { get; set; }
+    /// <summary>Fecha en que el insumo ingresó/se registró en el inventario (opcional, editable).</summary>
+    public DateOnly? FechaIngreso { get; set; }
     /// <summary>Fecha de vencimiento/caducidad del insumo (opcional). Para avisar cuando está por vencer.</summary>
     public DateOnly? FechaVencimiento { get; set; }
     /// <summary>No persistida: la calcula la query de listado (tiene movimientos registrados).</summary>
