@@ -21,7 +21,7 @@ export const TOURS: Record<string, PasoTour[]> = {
   pedidos: [
     { titulo: 'Lista de pedidos', texto: 'Aquí ves y manejas todos los pedidos de la lavandería. Te muestro cómo moverte.' },
     { ancla: 'pedidos-buscador', titulo: 'Buscar un pedido', texto: 'Escribe el número de ticket y presiona Enter para abrirlo directo. También busca por cliente, celular o DNI.' },
-    { ancla: 'pedidos-filtros', titulo: 'Filtros', texto: '"Pendientes" son los que están en proceso, "Otros" los ya entregados o anulados, y "Fecha" para buscar por día.' },
+    { ancla: 'pedidos-filtros', titulo: 'Filtros', texto: '"Pendientes" son los que están en proceso, "Entregados / Cerrados" los ya entregados o anulados, "Últimos" muestra todos, y "Fecha" para buscar por día.' },
     { ancla: 'pedidos-vista', titulo: 'Lista o tablero', texto: 'El tablero muestra los pedidos en columnas por etapa (como una pizarra). La lista los muestra en una tabla.' },
     { ancla: 'pedidos-avanzar', titulo: 'Avanzar de etapa', texto: 'Cada tarjeta tiene un botón que mueve el pedido a la siguiente etapa. El sistema te dice qué toca hacer.' },
     { titulo: 'Ver el detalle', texto: 'Haz clic en cualquier pedido para abrir su página completa: cobrar, entregar, agregar prendas, fotos e historial.' },

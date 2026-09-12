@@ -103,7 +103,7 @@
       <button class="filtros__item filtros__item--con-badge" [class.is-active]="filtro()==='otros' && !destacadoActivo()"
         (click)="cambiarFiltro('otros')" title="Pedidos ya entregados o anulados">
         @if (totalOtrosTab() > 0) { <span class="filtros__badge">{{ totalOtrosTab() }}</span> }
-        Otros
+        Entregados / Cerrados
       </button>
       <button class="filtros__item" [class.is-active]="filtro()==='fecha' && !destacadoActivo()"
         (click)="modalTipoConsulta.set(true)" title="Filtrar por rango de fechas">
