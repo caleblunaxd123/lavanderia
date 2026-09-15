@@ -8,7 +8,7 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import { ClientesService } from '../../core/services/clientes.service';
 import { PedidosService } from '../../core/services/pedidos.service';
 import { ToastService } from '../../core/services/toast.service';
-import { esCelularObligatorioValido } from '../../core/util/telefono';
+import { esCelularValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
@@ -155,7 +155,7 @@ export class RegistroAntiguoComponent implements OnInit {
 
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
-      && esCelularObligatorioValido(this.celular)
+      && esCelularValido(this.celular)
       && this.items().length > 0
       && this.subtotal() > 0
       && !this.registrando();

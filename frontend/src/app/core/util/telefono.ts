@@ -1,11 +1,11 @@
-/** Celular móvil de Perú: 9 dígitos que empiezan con 9. */
-export const CELULAR_PERU = /^9\d{8}$/;
+/** Celular nacional (Perú): solo dígitos, sin exigir una cantidad fija. */
+export const CELULAR_PERU = /^\d{4,20}$/;
 
 /**
- * Número internacional: '+' seguido del código de país y el número (7 a 15 dígitos en total,
- * según el estándar E.164). Ej: +573001234567 (Colombia), +5491122334455 (Argentina).
+ * Número internacional: '+' seguido del código de país y el número. Se acepta cualquier
+ * longitud razonable (4 a 20 dígitos). Ej: +573001234567 (Colombia), +61437622958 (Australia).
  */
-export const CELULAR_INTERNACIONAL = /^\+\d{7,15}$/;
+export const CELULAR_INTERNACIONAL = /^\+\d{4,20}$/;
 
 /** True si el número tiene formato válido: Perú (9 dígitos) o internacional (+código...). */
 function formatoValido(c: string): boolean {

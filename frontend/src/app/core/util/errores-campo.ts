@@ -47,7 +47,7 @@ export class ErroresCampo {
 /** Expresiones regulares comunes, iguales a las del backend. */
 export const RE = {
   email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/,
-  // Celular Perú: 9 dígitos empezando en 9 (opcionalmente con espacios).
-  celular: /^9\d{8}$/,
+  // Celular: solo números (Perú o extranjero con + y código de país), sin cantidad fija.
+  celular: /^\+?\d{4,20}$/,
   passwordSegura: /^(?=.*[A-Za-z])(?=.*\d).{8,}$/,
 };

@@ -148,8 +148,8 @@ public class ClientesController : TenantAwareControllerBase
 
             if (nombre.Length < 2 || nombre.Length > 120)
             { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Nombre inválido (2 a 120 caracteres)." }); continue; }
-            if (celular is not null && !System.Text.RegularExpressions.Regex.IsMatch(celular, @"^(9\d{8}|\+\d{7,15})$"))
-            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular inválido (9 dígitos para Perú, o + y código de país)." }); continue; }
+            if (celular is not null && !System.Text.RegularExpressions.Regex.IsMatch(celular, @"^\+?\d{4,20}$"))
+            { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Celular inválido (solo números; para el extranjero, + y código de país)." }); continue; }
             if (dni is not null && !System.Text.RegularExpressions.Regex.IsMatch(dni, @"^\d{8}$"))
             { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "DNI inválido (8 dígitos)." }); continue; }
 

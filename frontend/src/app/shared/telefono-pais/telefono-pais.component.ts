@@ -27,7 +27,7 @@ import { Pais, PAISES, PERU, paisPorPrefijo } from './paises';
       </button>
 
       <input class="tp__num" type="tel" inputmode="numeric" [id]="inputId"
-             [attr.maxlength]="pais().dial === '51' ? 9 : 14"
+             [attr.maxlength]="18"
              [placeholder]="placeholderActual()"
              [value]="numero()" (input)="onNumero($any($event.target).value)" (blur)="onTouched()"
              [disabled]="disabled" />
@@ -151,8 +151,8 @@ export class TelefonoPaisComponent implements ControlValueAccessor {
   }
 
   onNumero(valor: string): void {
-    const max = this.pais().dial === '51' ? 9 : 14;
-    this.numero.set(valor.replace(/\D/g, '').slice(0, max));
+    // Sin cantidad fija de dígitos: se acepta cualquier número (Perú o extranjero).
+    this.numero.set(valor.replace(/\D/g, '').slice(0, 18));
     this.emitir();
   }
 
@@ -160,8 +160,7 @@ export class TelefonoPaisComponent implements ControlValueAccessor {
     this.pais.set(p);
     this.abierto.set(false);
     this.busqueda.set('');
-    const max = p.dial === '51' ? 9 : 14;
-    this.numero.set(this.numero().slice(0, max));
+    this.numero.set(this.numero().slice(0, 18));
     this.emitir();
     this.onTouched();
   }

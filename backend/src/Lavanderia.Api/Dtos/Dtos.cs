@@ -102,8 +102,8 @@ public class ClienteDto
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)]
     public string Nombre { get; set; } = "";
-    [StringLength(20)]
-    [RegularExpression(@"^(9\d{8}|\+\d{7,15})$", ErrorMessage = "Celular inválido: 9 dígitos (Perú) o + con código de país (ej. +573001234567).")]
+    [StringLength(25)]
+    [RegularExpression(@"^\+?\d{4,20}$", ErrorMessage = "Celular inválido. Ingresa solo números (para el extranjero, empieza con + y el código de país).")]
     public string? Celular { get; set; }
     [StringLength(8, MinimumLength = 8)]
     [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 digitos.")]
@@ -561,8 +561,8 @@ public class MotorizadoDto
 {
     public int Id { get; set; }
     [Required, StringLength(120, MinimumLength = 2)] public string Nombre { get; set; } = "";
-    [StringLength(20)]
-    [RegularExpression(@"^(9\d{8}|\+\d{7,15})$", ErrorMessage = "Celular inválido: 9 dígitos (Perú) o + con código de país (ej. +573001234567).")]
+    [StringLength(25)]
+    [RegularExpression(@"^\+?\d{4,20}$", ErrorMessage = "Celular inválido. Ingresa solo números (para el extranjero, empieza con + y el código de país).")]
     public string? Celular { get; set; }
     public bool Activo { get; set; } = true;
 }
@@ -585,8 +585,8 @@ public class EmpleadoDto
     [StringLength(8, MinimumLength = 8)]
     [RegularExpression(@"^\d{8}$", ErrorMessage = "El DNI debe tener 8 digitos.")]
     public string? Dni { get; set; }
-    [StringLength(20)]
-    [RegularExpression(@"^(9\d{8}|\+\d{7,15})$", ErrorMessage = "Celular inválido: 9 dígitos (Perú) o + con código de país (ej. +573001234567).")]
+    [StringLength(25)]
+    [RegularExpression(@"^\+?\d{4,20}$", ErrorMessage = "Celular inválido. Ingresa solo números (para el extranjero, empieza con + y el código de país).")]
     public string? Celular { get; set; }
     [StringLength(60)] public string? Cargo { get; set; }
     public DateOnly? FechaIngreso { get; set; }

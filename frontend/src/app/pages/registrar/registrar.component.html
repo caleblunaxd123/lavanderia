@@ -133,9 +133,9 @@
         <label>Nombre *</label>
         <input type="text" placeholder="Nombre completo" [(ngModel)]="nombre" />
 
-        <label>Celular *</label>
+        <label>Celular</label>
         <app-telefono-pais [(ngModel)]="celular" inputId="celular"></app-telefono-pais>
-        <p class="hint">Necesario para avisar por WhatsApp y compartir el seguimiento del pedido. Para un número extranjero, elige el país en el selector.</p>
+        <p class="hint">Opcional. Sirve para avisar por WhatsApp y compartir el seguimiento del pedido; si el cliente no quiere darlo, puedes dejarlo vacío. Para un número extranjero, elige el país en el selector.</p>
 
         <label>Dirección habitual @if (modalidad === 'Recojo') { <small class="hint">*</small> }</label>
         <input type="text" [placeholder]="modalidad === 'Recojo' ? 'Dirección donde recoger el pedido' : 'Dirección habitual (opcional)'" [(ngModel)]="direccion" />

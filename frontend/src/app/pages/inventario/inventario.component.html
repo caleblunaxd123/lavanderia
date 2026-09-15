@@ -404,8 +404,12 @@
           <button type="button" class="tipo-btn" [class.is-active]="movTipo==='AJUSTE'" (click)="movTipo='AJUSTE'">Ajuste</button>
         </div>
 
+        @if (movTipo !== 'MEDICION') {
+          <p class="hint hint--tipo">{{ ayudaMovimiento }}</p>
+        }
+
         @if (movTipo === 'MEDICION') {
-          <p class="hint medicion-ayuda">Pesa el insumo y escribe cuánto queda hoy. El sistema calcula solo el consumo del día (peso de ayer − peso de hoy) y lo resta.</p>
+          <p class="hint medicion-ayuda">Recálculo por peso, ideal al final del día: pesa el insumo y escribe cuánto queda hoy. El sistema calcula solo el consumo del día (peso anterior − peso de hoy) y deja el stock cuadrado con lo que pesaste.</p>
 
           <label>Peso actual medido ({{ unidadPeso }})</label>
           <input type="number" step="0.001" min="0" max="1000000" inputmode="decimal" required

@@ -448,6 +448,16 @@ export class InventarioComponent implements OnInit, OnDestroy {
     if (!this.guardandoMovimiento()) this.modalMovimiento.set(false);
   }
 
+  /** Explicación breve del tipo de movimiento elegido, para mostrarla dentro del modal. */
+  get ayudaMovimiento(): string {
+    switch (this.movTipo) {
+      case 'COMPRA': return 'Entró material al almacén (sube el stock). Escribe cuánto entró.';
+      case 'CONSUMO': return 'Salió material del almacén (baja el stock). Escribe cuánto se usó.';
+      case 'AJUSTE': return 'Corrige el stock cuando el conteo real no coincide con el sistema. Usa negativo para restar, positivo para sumar.';
+      default: return '';
+    }
+  }
+
   get puedeRegistrarMovimiento(): boolean {
     if (this.guardandoMovimiento()) return false;
     if (this.movTipo === 'MEDICION') {

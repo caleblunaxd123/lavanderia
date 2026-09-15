@@ -195,7 +195,7 @@ export class ImportadorMasivoComponent {
       } else if (col.tipo === 'telefono') {
         const dig = bruto.replace(/\D/g, '');
         valores[col.clave] = dig || null;
-        if (dig && !/^9\d{8}$/.test(dig)) motivo ||= `${col.etiqueta} inválido (9 dígitos)`;
+        if (dig && !/^\d{4,20}$/.test(dig)) motivo ||= `${col.etiqueta} inválido`;
         if (col.requerido && !dig) motivo ||= `Falta ${col.etiqueta}`;
       } else if (col.tipo === 'dni') {
         const dig = bruto.replace(/\D/g, '');

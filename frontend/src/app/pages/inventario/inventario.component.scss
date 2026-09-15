@@ -298,6 +298,17 @@
   font-style: italic;
 }
 
+// Explicación del tipo de movimiento seleccionado: caja suave con acento, para que se lea.
+.hint--tipo {
+  font-style: normal;
+  color: #334155;
+  background: #f1f5f9;
+  border-left: 3px solid #053465;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 8px 0 4px;
+}
+
 // ---------- Resumen y tarjetas de insumos ----------
 .inventory-summary {
   display: flex;

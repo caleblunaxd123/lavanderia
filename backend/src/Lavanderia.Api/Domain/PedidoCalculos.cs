@@ -69,15 +69,15 @@ public static class PedidoCalculos
     }
 
     /// <summary>
-    /// Valida los datos de contacto del cliente para crear un pedido. El celular es obligatorio
-    /// en TODO pedido (canal de aviso); la dirección solo si es Recojo a domicilio.
+    /// Valida los datos de contacto del cliente para crear un pedido. El celular es opcional
+    /// (solo se valida su formato si viene); la dirección solo si es Recojo a domicilio.
     /// </summary>
     public static void ValidarContacto(string? celular, string? direccion, string modalidad)
     {
-        if (string.IsNullOrWhiteSpace(celular))
-            throw new InvalidOperationException("El cliente debe tener un celular registrado para crear el pedido.");
-        if (!Regex.IsMatch(celular.Trim(), @"^9\d{8}$"))
-            throw new InvalidOperationException("El celular debe tener 9 dígitos y empezar con 9.");
+        // El celular es opcional: algunos clientes no quieren darlo. Solo se valida el
+        // formato cuando viene informado.
+        if (!string.IsNullOrWhiteSpace(celular) && !Regex.IsMatch(celular.Trim(), @"^\+?\d{4,20}$"))
+            throw new InvalidOperationException("El celular no es válido. Ingresa solo números (para el extranjero, empieza con + y el código de país).");
         if (modalidad == "Recojo" && string.IsNullOrWhiteSpace(direccion))
             throw new InvalidOperationException("Para pedidos a domicilio debes registrar la dirección del cliente.");
     }

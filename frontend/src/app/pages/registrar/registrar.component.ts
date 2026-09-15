@@ -14,7 +14,7 @@ import { PedidosService } from '../../core/services/pedidos.service';
 import { PromocionValida } from '../../core/services/promociones.service';
 import { ToastService } from '../../core/services/toast.service';
 import { WhatsappService } from '../../core/services/whatsapp.service';
-import { esCelularObligatorioValido } from '../../core/util/telefono';
+import { esCelularValido } from '../../core/util/telefono';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SoloDigitosDirective } from '../../shared/directives/solo-digitos.directive';
 import { TelefonoPaisComponent } from '../../shared/telefono-pais/telefono-pais.component';
@@ -622,7 +622,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
 
   get puedeRegistrar(): boolean {
     return this.nombre.trim().length > 0
-      && esCelularObligatorioValido(this.celular)
+      && esCelularValido(this.celular)
       && (this.modalidad !== 'Recojo' || this.direccion.trim().length > 0)
       && (this.modalidad !== 'Delivery' || (
         this.direccionEntrega.trim().length > 0 && this.distritoEntrega.trim().length > 0
@@ -637,8 +637,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
 
   get validacionPedido(): string | null {
     if (!this.nombre.trim()) return 'Indica el nombre del cliente.';
-    if (!this.celular.trim()) return 'Indica un celular de contacto.';
-    if (!esCelularObligatorioValido(this.celular)) return 'Revisa el celular: 9 dígitos para Perú, o elige el país para un número extranjero.';
+    if (!esCelularValido(this.celular)) return 'Revisa el celular: solo números (o elige el país para un número extranjero). Puedes dejarlo vacío.';
     if (this.modalidad === 'Recojo' && !this.direccion.trim()) return 'Indica la dirección donde se recogerá el pedido.';
     if (this.modalidad === 'Delivery' && !this.direccionEntrega.trim()) return 'Indica la dirección exacta de entrega.';
     if (this.modalidad === 'Delivery' && !this.distritoEntrega.trim()) return 'Selecciona el distrito de entrega.';
