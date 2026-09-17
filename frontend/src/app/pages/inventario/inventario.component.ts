@@ -15,13 +15,13 @@ import { PaginacionComponent } from '../../shared/paginacion/paginacion.componen
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { debounceTime } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 import { ColumnaImport, ImportadorMasivoComponent } from '../../shared/importador-masivo/importador-masivo.component';
 
 @Component({
   selector: 'app-inventario',
-  imports: [CommonModule, FormsModule, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, ImportadorMasivoComponent, MiniBarrasComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EmptyStateComponent, PaginacionComponent, IconComponent, PageHeaderComponent, ImportadorMasivoComponent, MiniBarrasComponent],
   templateUrl: './inventario.component.html',
   styleUrl: './inventario.component.scss'
 })
@@ -197,7 +197,8 @@ export class InventarioComponent implements OnInit, OnDestroy {
 
   cambiarTab(t: 'insumos' | 'historial') {
     this.tab.set(t);
-    if (t === 'historial' && this.movimientos().length === 0) this.cargarHistorial();
+    // Al entrar al Historial se recarga para mostrarlo al día (no hay auto-refresh mientras se ve).
+    if (t === 'historial') this.cargarHistorial();
   }
 
   cargar(silencioso = false) {
@@ -492,7 +493,8 @@ export class InventarioComponent implements OnInit, OnDestroy {
           metodoPago: this.movTipo === 'COMPRA' && this.movCosto > 0 ? this.movMetodoPago : null,
           tipoGastoId: this.movTipoGastoId ? (this.movTipoGastoId as number) : null,
           descripcion: this.movDescripcion.trim() || null,
-          fecha: this.movFecha || null
+          fecha: this.movFecha || null,
+          esMedicion: false
         };
 
     this.svc.registrarMovimiento(i.id, req).subscribe({
@@ -506,9 +508,11 @@ export class InventarioComponent implements OnInit, OnDestroy {
           if (this.insumoAnimadoId() === i.id) this.insumoAnimadoId.set(null);
         }, 1200);
         // Refresco completo tras el movimiento: stock (tarjetas), gráfico de consumo e historial.
+        // El historial se recarga siempre (aunque estemos en la pestaña de insumos) para que, al
+        // abrirlo, ya muestre la medición/movimiento recién registrado — sin auto-refresh.
         this.cargar();
         this.cargarTendencia();
-        if (this.tab() === 'historial') this.cargarHistorial();
+        this.cargarHistorial();
       },
       error: (err: HttpErrorResponse) => {
         this.guardandoMovimiento.set(false);
@@ -539,7 +543,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
       const motivo = this.movEsCorreccion
         ? `Corrección por medición: quedó en ${peso} ${unidad}`
         : `Medición: subió a ${peso} ${unidad}`;
-      return { tipo: 'AJUSTE', cantidad, costoTotal: null, metodoPago: null, tipoGastoId: null, descripcion: `${motivo}${sufijo}`, fecha };
+      return { tipo: 'AJUSTE', cantidad, costoTotal: null, metodoPago: null, tipoGastoId: null, descripcion: `${motivo}${sufijo}`, fecha, esMedicion: true };
     }
     // CONSUMO del día por la diferencia.
     const consumoPeso = Math.round(deltaBase * factor * 1000) / 1000;
@@ -548,7 +552,8 @@ export class InventarioComponent implements OnInit, OnDestroy {
       cantidad: deltaBase,
       costoTotal: null, metodoPago: null, tipoGastoId: null,
       descripcion: `Medición: pesó ${peso} ${unidad}. Consumo del día: ${consumoPeso} ${unidad}${sufijo}`,
-      fecha
+      fecha,
+      esMedicion: true
     };
   }
 

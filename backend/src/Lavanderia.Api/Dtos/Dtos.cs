@@ -534,6 +534,12 @@ public class RegistrarMovimientoInsumoRequest
     [StringLength(300)] public string? Descripcion { get; set; }
     /// <summary>Fecha del movimiento (cualquier tipo). Si es null se usa la fecha/hora actual.</summary>
     public DateTime? Fecha { get; set; }
+    /// <summary>
+    /// True cuando el CONSUMO/AJUSTE proviene de una Medición (pesar lo que queda). Permite que
+    /// la trabajadora registre mediciones aunque internamente generen CONSUMO/AJUSTE, sin habilitar
+    /// el consumo/ajuste manual (que queda reservado al administrador).
+    /// </summary>
+    public bool EsMedicion { get; set; }
 }
 
 /// <summary>Corrección de un movimiento ya registrado: solo fecha y nota (no toca el stock).</summary>

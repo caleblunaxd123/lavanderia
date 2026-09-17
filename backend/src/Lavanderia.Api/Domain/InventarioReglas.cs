@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace Lavanderia.Api.Domain;
 
 /// <summary>Reglas puras de inventario (testeables sin base de datos).</summary>
@@ -14,5 +17,22 @@ public static class InventarioReglas
     {
         var c = (clase ?? "").Trim().ToUpperInvariant();
         return ClasesValidas.Contains(c) ? c : "INSUMO";
+    }
+
+    /// <summary>
+    /// Forma canónica del nombre para comparar duplicados de manera tolerante: mayúsculas,
+    /// sin tildes y solo letras/dígitos (ignora espacios, guiones y puntuación). Así
+    /// "Detergente Líquido - Prodex" y "DETERGENTE LIQUIDO PRODEX" cuentan como el mismo.
+    /// </summary>
+    public static string CanonicalNombre(string? nombre)
+    {
+        var descompuesto = (nombre ?? "").Trim().ToUpperInvariant().Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(descompuesto.Length);
+        foreach (var ch in descompuesto)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark) continue; // tilde/diacrítico
+            if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+        }
+        return sb.ToString();
     }
 }

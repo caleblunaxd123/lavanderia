@@ -76,6 +76,10 @@ public class InsumosController : TenantAwareControllerBase
             return BadRequest(new { mensaje = "Máximo 1000 insumos por importación. Divide el archivo en partes." });
 
         var resultado = new ImportarInsumosResultado();
+        // Comparación tolerante de nombres (ignora tildes, guiones, espacios y puntuación) para no
+        // duplicar un insumo que ya existe escrito distinto (ej. "Detergente Líquido - Prodex").
+        var existentes = await _repo.ListarTodosAsync(SedeRequeridaId, ct);
+        var canonExistentes = new HashSet<string>(existentes.Select(e => InventarioReglas.CanonicalNombre(e.Nombre)));
         var nombresLote = new HashSet<string>();
         var fila = 0;
         foreach (var f in req.Filas)
@@ -95,10 +99,11 @@ public class InsumosController : TenantAwareControllerBase
             if (f.StockMinimo < 0 || f.StockMinimo > 1_000_000)
             { resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Stock mínimo fuera de rango." }); continue; }
 
-            if (!nombresLote.Add(nombre.ToUpperInvariant()))
+            var canon = InventarioReglas.CanonicalNombre(nombre);
+            if (!nombresLote.Add(canon))
             { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Repetido dentro del archivo." }); continue; }
-            if (await _repo.ExisteNombreAsync(nombre, SedeRequeridaId, ct: ct))
-            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe un insumo con ese nombre." }); continue; }
+            if (canonExistentes.Contains(canon))
+            { resultado.Omitidos++; resultado.Errores.Add(new() { Fila = fila, Nombre = nombre, Motivo = "Ya existe un insumo equivalente (se conserva el actual con sus movimientos)." }); continue; }
 
             await _repo.CrearAsync(new Insumo
             {
@@ -168,6 +173,13 @@ public class InsumosController : TenantAwareControllerBase
         req.Tipo = req.Tipo.Trim().ToUpperInvariant();
         var tiposValidos = new[] { "COMPRA", "CONSUMO", "AJUSTE" };
         if (!tiposValidos.Contains(req.Tipo)) return BadRequest(new { mensaje = "Tipo de movimiento inválido." });
+
+        // La trabajadora solo registra Compra y Medición. El Consumo o Ajuste manual (correcciones
+        // del stock) es tarea del administrador. La Medición internamente genera CONSUMO/AJUSTE, por
+        // eso se permite cuando viene marcada como medición.
+        if ((req.Tipo == "CONSUMO" || req.Tipo == "AJUSTE") && !req.EsMedicion
+            && !User.IsInRole("ADMIN"))
+            return Forbid();
 
         var insumo = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (insumo is null) return NotFound();

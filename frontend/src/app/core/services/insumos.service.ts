@@ -43,6 +43,8 @@ export interface RegistrarMovimientoInsumoRequest {
   tipoGastoId?: number | null;
   descripcion?: string | null;
   fecha?: string | null;
+  /** True cuando el CONSUMO/AJUSTE viene de una Medición (permite que la trabajadora lo registre). */
+  esMedicion?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

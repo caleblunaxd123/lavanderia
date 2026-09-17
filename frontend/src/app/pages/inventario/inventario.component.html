@@ -1,6 +1,9 @@
 <div class="page">
   <app-page-header icono="package" color="morado" titulo="Inventario" tourId="inventario"
     subtitulo="Stock de consumibles: detergente, bolsas, suavizante, etc.">
+    <a class="btn btn--ghost" routerLink="/inventario/reporte">
+      <app-icon name="chart" [size]="15"></app-icon> Ver reporte
+    </a>
     @if (tab() === 'insumos' && esAdmin()) {
       <button type="button" class="btn btn--ghost" (click)="abrirImportar()">
         <app-icon name="clipboard" [size]="15"></app-icon> Importar
@@ -397,11 +400,25 @@
     <form (submit)="confirmarMovimiento(); $event.preventDefault()">
       <div class="modal__body">
         <label>Tipo de movimiento</label>
-        <div class="tipo-row">
-          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='COMPRA'" (click)="movTipo='COMPRA'">Compra</button>
-          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='MEDICION'" (click)="movTipo='MEDICION'">Medición</button>
-          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='CONSUMO'" (click)="movTipo='CONSUMO'">Consumo</button>
-          <button type="button" class="tipo-btn" [class.is-active]="movTipo==='AJUSTE'" (click)="movTipo='AJUSTE'">Ajuste</button>
+        <div class="tipo-selector">
+          <div class="tipo-grupo">
+            <span class="tipo-grupo__cap">Uso diario</span>
+            <div class="tipo-row">
+              <button type="button" class="tipo-btn" [class.is-active]="movTipo==='COMPRA'" (click)="movTipo='COMPRA'">Compra</button>
+              <button type="button" class="tipo-btn" [class.is-active]="movTipo==='MEDICION'" (click)="movTipo='MEDICION'">Medición</button>
+            </div>
+          </div>
+
+          @if (esAdmin()) {
+            <div class="tipo-divisor" aria-hidden="true"></div>
+            <div class="tipo-grupo">
+              <span class="tipo-grupo__cap">Correcciones · admin</span>
+              <div class="tipo-row">
+                <button type="button" class="tipo-btn" [class.is-active]="movTipo==='CONSUMO'" (click)="movTipo='CONSUMO'">Consumo</button>
+                <button type="button" class="tipo-btn" [class.is-active]="movTipo==='AJUSTE'" (click)="movTipo='AJUSTE'">Ajuste</button>
+              </div>
+            </div>
+          }
         </div>
 
         @if (movTipo !== 'MEDICION') {

@@ -140,6 +140,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/inventario/inventario.component').then(m => m.InventarioComponent)
       },
       {
+        path: 'inventario/reporte',
+        canActivate: [moduloGuard('INVENTARIO')],
+        loadComponent: () => import('./pages/reporte-inventario/reporte-inventario.component').then(m => m.ReporteInventarioComponent)
+      },
+      {
         path: 'reportes/:key',
         canActivate: [moduloGuard('REPORTES')],
         loadComponent: () => import('./pages/reporte-detalle/reporte-detalle.component').then(m => m.ReporteDetalleComponent)
