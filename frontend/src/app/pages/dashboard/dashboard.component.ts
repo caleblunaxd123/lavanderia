@@ -328,7 +328,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         error: () => undefined
       });
     }
-    this.timerId = setInterval(() => this.cargarSiVisible(), 15_000);
+    // Sin auto-refresco periódico (incómodo al trabajar); se actualiza por foco/cambios.
   }
 
   ngOnDestroy() {

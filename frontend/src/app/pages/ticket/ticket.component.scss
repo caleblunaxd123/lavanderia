@@ -44,7 +44,7 @@
   cursor: pointer;
   font-family: inherit;
 
-  &--primario { background: var(--naranja); color: #fff; }
+  &--primario { background: var(--naranja); color: var(--texto-sobre-acento, #fff); }
   &--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
   &--descargar { background: var(--azul-claro); color: var(--texto-sobre-secundario, #fff); display: inline-flex; align-items: center; gap: 6px; }
   &--pdf { background: #25d366; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
@@ -131,6 +131,7 @@
 
       &.is-active {
         background: var(--naranja);
+        color: var(--texto-sobre-acento, #fff);
       }
     }
   }

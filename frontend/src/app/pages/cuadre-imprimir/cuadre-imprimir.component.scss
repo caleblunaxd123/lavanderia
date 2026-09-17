@@ -35,7 +35,7 @@
   align-items: center;
   gap: 7px;
 
-  &--primario { background: var(--naranja); color: #fff; }
+  &--primario { background: var(--naranja); color: var(--texto-sobre-acento, #fff); }
   &--wsp { background: #25d366; color: #fff; }
   &--mail { background: #2563eb; color: #fff; }
   &--ghost {

@@ -283,7 +283,9 @@ export class PedidosListComponent implements OnInit, OnDestroy, AfterViewInit {
     this.cargarAbandonados();
     this.cargarMetaMensual();
     this.service.tendencia(15).subscribe({ next: t => this.tendencia.set(t), error: () => {} });
-    this.timerId = setInterval(() => this.refrescarDinamicamente(), 10_000);
+    // Sin auto-refresco periódico: resultaba incómodo mientras se trabaja en la lista. La
+    // lista se actualiza al volver a la pestaña o tras un cambio (suscripción a 'foco' arriba)
+    // y con el botón de recargar.
 
     let primera = true;
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {

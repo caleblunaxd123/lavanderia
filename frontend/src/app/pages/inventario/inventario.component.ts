@@ -182,7 +182,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
     this.cargar();
     this.cargarTendencia();
     this.cajaSvc.tiposGasto().subscribe(t => this.tiposGasto.set(t));
-    this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 20_000);
+    // Sin auto-refresco periódico (incómodo al trabajar); se actualiza por foco/cambios.
   }
 
   /** Recarga el gráfico "Consumo de insumos por día". */
@@ -228,9 +228,12 @@ export class InventarioComponent implements OnInit, OnDestroy {
   private refrescarDinamicamente() {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     if (this.cargando() || this.guardandoInsumo() || this.guardandoMovimiento()) return;
+    // El stock (insumos) y su gráfico se refrescan en segundo plano sin molestar. El
+    // Historial NO se refresca solo: el usuario lo controla (filtros, búsqueda, paginación)
+    // y recargarlo lo reiniciaría a la página 1 de forma incómoda. Se recarga solo cuando el
+    // usuario entra a la pestaña o registra/edita/elimina un movimiento.
     this.cargar(true);
     this.cargarTendencia();
-    if (this.tab() === 'historial') this.cargarHistorial();
   }
 
   cargarHistorial() {

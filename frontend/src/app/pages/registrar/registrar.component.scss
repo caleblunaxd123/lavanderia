@@ -221,7 +221,7 @@
 
   &--primario {
     background: var(--naranja);
-    color: #fff;
+    color: var(--texto-sobre-acento, #fff);
 
     &:disabled {
       background: #cbd5e1;
@@ -702,6 +702,17 @@
   .medidas {
     &__lbl, &__area { flex: 1 1 100%; }
     &__area { margin-left: 0; }
+  }
+
+  // En celular (donde más se registra), el buscador de servicios ocupa TODO el ancho
+  // para que se lea cómodo; los botones "Agregar" y "Nuevo" bajan a una fila propia.
+  .row-agregar {
+    flex-wrap: wrap;
+
+    .combo-servicio { flex: 1 1 100%; }
+
+    // Agregar + Nuevo comparten la segunda fila, mitad y mitad.
+    > .btn { flex: 1 1 0; min-height: 44px; }
   }
 }
 

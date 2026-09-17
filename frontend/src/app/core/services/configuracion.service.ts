@@ -90,6 +90,9 @@ export class ConfiguracionService {
     root.style.setProperty('--azul-claro', c.colorSecundario);
     root.style.setProperty('--naranja', c.colorAcento);
     root.style.setProperty('--texto-sobre-secundario', this.textoConMayorContraste(c.colorSecundario));
+    // Texto legible sobre el color de acento/marca (--naranja). Para marcas con acento claro
+    // (ej. dorado de Lavixa) da texto oscuro; para acentos oscuros, blanco.
+    root.style.setProperty('--texto-sobre-acento', this.textoConMayorContraste(c.colorAcento));
     document.title = c.nombreNegocio;
   }
 

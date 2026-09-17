@@ -174,7 +174,7 @@ export class ClientesComponent implements OnInit, OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(() => this.refrescarDinamicamente());
     this.recargar();
-    this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 30_000);
+    // Sin auto-refresco periódico (incómodo al trabajar); se actualiza por foco/cambios.
   }
 
   ngOnDestroy() {

@@ -1,5 +1,4 @@
-import { Component, DestroyRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -10,8 +9,6 @@ import { fechaLocalIso } from '../../core/util/fecha-local';
 import { MovimientoCaja, TipoGasto } from '../../core/models/models';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
-import { debounceTime } from 'rxjs';
-import { ActualizacionDatosService } from '../../core/services/actualizacion-datos.service';
 
 interface Denominacion {
   valor: number;
@@ -24,14 +21,11 @@ interface Denominacion {
   templateUrl: './cuadre-caja.component.html',
   styleUrl: './cuadre-caja.component.scss'
 })
-export class CuadreCajaComponent implements OnInit, OnDestroy {
+export class CuadreCajaComponent implements OnInit {
   private readonly cajaSvc = inject(CajaService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
-  private readonly actualizaciones = inject(ActualizacionDatosService);
-  private readonly destroyRef = inject(DestroyRef);
-  private timerActualizacion?: ReturnType<typeof setInterval>;
   private versionMovimientos = 0;
   private versionUsuarios = 0;
   /** Solo se elige colaborador solo en la carga inicial y al cambiar de fecha. */
@@ -95,13 +89,6 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
   gastoDescripcion = '';
   guardandoGasto = signal(false);
 
-  constructor() {
-    this.actualizaciones.cambios('caja', 'pedidos', 'foco').pipe(
-      debounceTime(180),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => this.refrescarDinamicamente());
-  }
-
   /** True si el usuario ya empezó a contar/ajustar la caja y no ha guardado el cierre. */
   private hayCierreEnProgreso(): boolean {
     if (this.guardado || this.guardando()) return false;
@@ -128,11 +115,8 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
     this.cargarMovimientos();
     this.cargarSugerenciaCajaInicial();
     this.cargarCuadreExistente();
-    this.timerActualizacion = setInterval(() => this.refrescarDinamicamente(), 15_000);
-  }
-
-  ngOnDestroy() {
-    if (this.timerActualizacion) clearInterval(this.timerActualizacion);
+    // Sin auto-refresco: esta pantalla NO se actualiza sola (ni por tiempo ni por foco).
+    // El usuario recarga con el botón / al reabrir la pantalla.
   }
 
   cambiarFecha(fecha: string) {
@@ -294,13 +278,6 @@ export class CuadreCajaComponent implements OnInit, OnDestroy {
       },
       error: () => { if (version === this.versionMovimientos) this.cargandoMovimientos.set(false); }
     });
-  }
-
-  private refrescarDinamicamente() {
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-    if (this.cargandoMovimientos() || this.guardandoGasto()) return;
-    this.cargarUsuariosDelDia();
-    this.cargarMovimientos();
   }
 
   gastosDelDia = computed(() => this.movimientos().filter(m => m.tipo === 'GASTO'));
