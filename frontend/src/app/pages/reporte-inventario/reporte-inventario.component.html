@@ -22,6 +22,8 @@
         <button type="button" class="ri-rango" [class.is-active]="rangoActivo()===14" (click)="setRangoDias(14)">14 días</button>
         <button type="button" class="ri-rango" [class.is-active]="rangoActivo()===30" (click)="setRangoDias(30)">30 días</button>
         <button type="button" class="ri-rango" [class.is-active]="rangoActivo()===90" (click)="setRangoDias(90)">90 días</button>
+        <button type="button" class="ri-rango" [class.is-active]="rangoActivo()==='m6'" (click)="setRangoMeses(6)">6 meses</button>
+        <button type="button" class="ri-rango" [class.is-active]="rangoActivo()==='m12'" (click)="setRangoMeses(12)">12 meses</button>
         <button type="button" class="ri-rango" [class.is-active]="rangoActivo()==='mes'" (click)="setEsteMes()">Este mes</button>
       </div>
     </div>
@@ -65,7 +67,7 @@
     <div class="ri-grafico card">
       <div class="ri-grafico__head">
         <div>
-          <h3>Consumo y compras por día</h3>
+          <h3>Consumo y compras {{ agrupadoPorMes() ? 'por mes' : 'por día' }}</h3>
           <p class="ri-grafico__sub">{{ insumoSel()?.nombre }} · {{ desde }} a {{ hasta }} · en {{ unidad() }}</p>
         </div>
         <div class="ri-leyenda">
@@ -95,13 +97,13 @@
             <!-- Barras -->
             @for (b of grafico().barras; track b.fecha) {
               @if (b.consumoH > 0) {
-                <rect [attr.x]="b.consumoX" [attr.y]="b.consumoY" width="12" [attr.height]="b.consumoH"
+                <rect [attr.x]="b.consumoX" [attr.y]="b.consumoY" [attr.width]="grafico().barW" [attr.height]="b.consumoH"
                       rx="2" class="ri-bar ri-bar--consumo">
                   <title>{{ b.etiqueta }} · Consumo: {{ formatoNum(b.consumo) }} {{ unidad() }}</title>
                 </rect>
               }
               @if (b.compraH > 0) {
-                <rect [attr.x]="b.compraX" [attr.y]="b.compraY" width="12" [attr.height]="b.compraH"
+                <rect [attr.x]="b.compraX" [attr.y]="b.compraY" [attr.width]="grafico().barW" [attr.height]="b.compraH"
                       rx="2" class="ri-bar ri-bar--compra">
                   <title>{{ b.etiqueta }} · Compra: {{ formatoNum(b.compra) }} {{ unidad() }}</title>
                 </rect>
@@ -133,7 +135,7 @@
                   <td><span class="ri-badge" [class.ri-badge--compra]="m.tipo==='COMPRA'"
                         [class.ri-badge--consumo]="m.tipo==='CONSUMO'"
                         [class.ri-badge--ajuste]="m.tipo==='AJUSTE'">{{ m.tipo }}</span></td>
-                  <td class="r">{{ formatoNum(m.cantidad) }} {{ unidad() }}</td>
+                  <td class="r">{{ m.cantidad | number:'1.3-3' }} {{ unidad() }}</td>
                   <td>{{ m.usuarioNombre || '—' }}</td>
                   <td class="ri-desc">{{ m.descripcion || '—' }}</td>
                 </tr>

@@ -329,6 +329,12 @@ public class RegistrarPagoRequest
     [StringLength(300)] public string? Descripcion { get; set; }
 }
 
+/// <summary>Corrige el método de un cobro ya registrado (no cambia el monto). Solo ADMIN.</summary>
+public class EditarMetodoPagoRequest
+{
+    [Required, StringLength(30)] public string Metodo { get; set; } = "EFECTIVO";  // EFECTIVO | YAPE | PLIN | TRANSFERENCIA | POS | TARJETA
+}
+
 /// <summary>Una línea de cobro (permite pago mixto: parte efectivo, parte Yape, etc.).</summary>
 public class PagoLineaDto
 {

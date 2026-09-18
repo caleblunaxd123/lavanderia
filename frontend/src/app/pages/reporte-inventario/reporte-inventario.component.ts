@@ -17,7 +17,7 @@ interface BarraVM {
 }
 interface TickVM { y: number; valor: string; }
 interface GraficoVM {
-  W: number; H: number; baseY: number; mL: number; plotDcho: number;
+  W: number; H: number; baseY: number; mL: number; plotDcho: number; barW: number;
   barras: BarraVM[]; ticks: TickVM[]; maxY: number; hayDatos: boolean;
 }
 
@@ -51,7 +51,9 @@ export class ReporteInventarioComponent implements OnInit {
   readonly cargando = signal(false);
   readonly hoy = fechaLocalIso(new Date());
   /** Rango rápido activo (para resaltar el chip elegido); null = fechas personalizadas. */
-  readonly rangoActivo = signal<number | 'mes' | null>(30);
+  readonly rangoActivo = signal<number | 'mes' | 'm6' | 'm12' | null>(30);
+
+  private readonly mesesAbrev = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
   desde = '';
   hasta = '';
@@ -99,6 +101,16 @@ export class ReporteInventarioComponent implements OnInit {
     this.cargar();
   }
 
+  /** Rango rápido: últimos N meses (el gráfico se agrupa por mes automáticamente). */
+  setRangoMeses(meses: number): void {
+    const fin = new Date();
+    const ini = new Date(fin.getFullYear(), fin.getMonth() - (meses - 1), 1);
+    this.desde = fechaLocalIso(ini);
+    this.hasta = fechaLocalIso(fin);
+    this.rangoActivo.set(meses === 6 ? 'm6' : 'm12');
+    this.cargar();
+  }
+
   /** Al cambiar una fecha a mano, el rango pasa a "personalizado". */
   fechaManual(): void { this.rangoActivo.set(null); this.cargar(); }
 
@@ -141,6 +153,32 @@ export class ReporteInventarioComponent implements OnInit {
     return dias;
   });
 
+  /** Para rangos largos (más de ~3 meses) el gráfico se agrupa por mes en vez de por día. */
+  readonly agrupadoPorMes = computed(() => this.serie().length > 92);
+
+  /** Serie lista para graficar: por día, o agrupada por mes si el rango es largo. */
+  readonly serieGrafico = computed<{ clave: string; consumo: number; compra: number; etiqueta: string }[]>(() => {
+    const dias = this.serie();
+    if (!this.agrupadoPorMes()) {
+      return dias.map(d => ({ clave: d.fecha, consumo: d.consumo, compra: d.compra, etiqueta: `${d.fecha.slice(8, 10)}/${d.fecha.slice(5, 7)}` }));
+    }
+    const mapa = new Map<string, { clave: string; consumo: number; compra: number; etiqueta: string }>();
+    const orden: { clave: string; consumo: number; compra: number; etiqueta: string }[] = [];
+    for (const d of dias) {
+      const ym = d.fecha.slice(0, 7);
+      let b = mapa.get(ym);
+      if (!b) {
+        const mesIdx = Number(d.fecha.slice(5, 7)) - 1;
+        b = { clave: ym, consumo: 0, compra: 0, etiqueta: `${this.mesesAbrev[mesIdx]} ${d.fecha.slice(2, 4)}` };
+        mapa.set(ym, b);
+        orden.push(b);
+      }
+      b.consumo += d.consumo;
+      b.compra += d.compra;
+    }
+    return orden;
+  });
+
   readonly totalConsumo = computed(() => this.serie().reduce((s, d) => s + d.consumo, 0));
   readonly totalCompra = computed(() => this.serie().reduce((s, d) => s + d.compra, 0));
   readonly promedioConsumo = computed(() => {
@@ -151,9 +189,10 @@ export class ReporteInventarioComponent implements OnInit {
   readonly movimientosOrdenados = computed(() =>
     [...this.movimientos()].sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? '')));
 
-  /** Geometría del gráfico de barras con ejes (consumo vs. compra por día). */
+  /** Geometría del gráfico de barras con ejes (consumo vs. compra, por día o por mes). */
   readonly grafico = computed<GraficoVM>(() => {
-    const serie = this.serie();
+    const serie = this.serieGrafico();
+    const porMes = this.agrupadoPorMes();
     const W = 920, H = 340, mL = 52, mR = 14, mT = 16, mB = 40;
     const plotW = W - mL - mR;
     const plotH = H - mT - mB;
@@ -164,20 +203,19 @@ export class ReporteInventarioComponent implements OnInit {
     const maxY = maximoBonito(maxDato);
 
     const slot = plotW / n;
-    const barW = Math.min(slot * 0.34, 13);
-    const pasoEtiqueta = Math.max(1, Math.ceil(n / 8));   // ~8 etiquetas como máximo
+    const barW = Math.min(slot * 0.34, porMes ? 20 : 13);
+    const pasoEtiqueta = porMes ? 1 : Math.max(1, Math.ceil(n / 8));   // por mes: todas las etiquetas
 
     const barras: BarraVM[] = serie.map((d, i) => {
       const cx = mL + slot * i + slot / 2;
       const consumoH = maxY > 0 ? (d.consumo / maxY) * plotH : 0;
       const compraH = maxY > 0 ? (d.compra / maxY) * plotH : 0;
-      const [dd, mm] = [d.fecha.slice(8, 10), d.fecha.slice(5, 7)];
       return {
-        fecha: d.fecha,
+        fecha: d.clave,
         consumo: d.consumo, compra: d.compra,
         consumoX: cx - barW - 1, consumoH, consumoY: baseY - consumoH,
         compraX: cx + 1, compraH, compraY: baseY - compraH,
-        cx, etiqueta: `${dd}/${mm}`,
+        cx, etiqueta: d.etiqueta,
         // Etiquetas espaciadas + siempre la última; se ocultan las regulares que quedarían
         // pegadas a la última para que no se encimen.
         mostrarEtiqueta: i === n - 1 || (i % pasoEtiqueta === 0 && (n - 1 - i) >= pasoEtiqueta)
@@ -189,7 +227,7 @@ export class ReporteInventarioComponent implements OnInit {
       valor: this.formatoNum(maxY * f)
     }));
 
-    return { W, H, baseY, mL, plotDcho: W - mR, barras, ticks, maxY, hayDatos: maxDato > 0 };
+    return { W, H, baseY, mL, plotDcho: W - mR, barW, barras, ticks, maxY, hayDatos: maxDato > 0 };
   });
 
   /** Formato compacto de cantidad (sin decimales innecesarios). */

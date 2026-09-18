@@ -186,10 +186,14 @@ public class InsumosController : TenantAwareControllerBase
         if (!insumo.Activo)
             return Conflict(new { mensaje = "El insumo está inactivo. Reactívalo antes de registrar movimientos." });
 
-        if (req.Tipo != "AJUSTE" && req.Cantidad <= 0)
-            return BadRequest(new { mensaje = "La cantidad debe ser mayor a 0." });
-        if (req.Tipo == "AJUSTE" && req.Cantidad == 0)
-            return BadRequest(new { mensaje = "El ajuste debe aumentar o disminuir el stock; la cantidad no puede ser 0." });
+        if (req.Tipo != "AJUSTE" && req.Cantidad < 0)
+            return BadRequest(new { mensaje = "La cantidad no puede ser negativa." });
+        // La cantidad 0 solo se permite cuando es una medición (se pesó y no hubo consumo:
+        // se registra como constancia del día). En los demás casos sigue siendo obligatoria.
+        if (req.Cantidad == 0 && !req.EsMedicion)
+            return BadRequest(new { mensaje = req.Tipo == "AJUSTE"
+                ? "El ajuste debe aumentar o disminuir el stock; la cantidad no puede ser 0."
+                : "La cantidad debe ser mayor a 0." });
 
         if (req.CostoTotal is < 0)
             return BadRequest(new { mensaje = "El costo total no puede ser negativo." });
