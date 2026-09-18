@@ -10,6 +10,8 @@ export interface Insumo {
   nombre: string;
   unidadMedida: string;
   clase: ClaseInsumo;
+  /** Marcado como favorito (compartido por sede): sube al tope de Inventario. */
+  favorito?: boolean;
   contenidoValor?: number | null;
   contenidoUnidad?: string | null;
   stockActual: number;
@@ -61,6 +63,8 @@ export class InsumosService {
   actualizar(id: number, i: Partial<Insumo>) { return this.http.put<void>(`${this.base}/${id}`, i); }
   desactivar(id: number) { return this.http.delete<{ mensaje: string }>(`${this.base}/${id}`); }
   cambiarEstado(id: number, activo: boolean) { return this.http.patch<void>(`${this.base}/${id}/estado`, { activo }); }
+  /** Marca/desmarca favorito (compartido por sede). Cualquiera con acceso a inventario. */
+  marcarFavorito(id: number, favorito: boolean) { return this.http.patch<void>(`${this.base}/${id}/favorito`, { favorito }); }
   importar(filas: Array<Record<string, string | number | null>>) {
     return this.http.post<ImportarInsumosResultado>(`${this.base}/importar`, { filas });
   }

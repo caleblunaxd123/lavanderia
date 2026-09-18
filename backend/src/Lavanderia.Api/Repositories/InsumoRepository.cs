@@ -13,6 +13,8 @@ public interface IInsumoRepository
     Task<int> CrearAsync(Insumo i, CancellationToken ct = default);
     Task ActualizarAsync(Insumo i, int sedeId, CancellationToken ct = default);
     Task CambiarEstadoAsync(int id, bool activo, int sedeId, CancellationToken ct = default);
+    /// <summary>Marca o desmarca el insumo como favorito (compartido por sede). Devuelve false si no existe.</summary>
+    Task<bool> MarcarFavoritoAsync(int id, bool favorito, int sedeId, CancellationToken ct = default);
     Task<int> RegistrarMovimientoAsync(MovimientoInsumo m, string? metodoPagoParaGasto, int? tipoGastoIdParaGasto, CancellationToken ct = default);
     /// <summary>Corrige solo la fecha y la nota de un movimiento (no afecta el stock). Si tenía un
     /// gasto de caja vinculado, también le actualiza la fecha para mantener el cuadre consistente.
@@ -37,6 +39,7 @@ public class InsumoRepository : IInsumoRepository
         Nombre = r.GetString(r.GetOrdinal("Nombre")),
         UnidadMedida = r.GetString(r.GetOrdinal("UnidadMedida")),
         Clase = r.GetString(r.GetOrdinal("Clase")),
+        Favorito = r.GetBoolean(r.GetOrdinal("Favorito")),
         ContenidoValor = r.GetNullableDecimal("ContenidoValor"),
         ContenidoUnidad = r.GetNullableString("ContenidoUnidad"),
         StockActual = r.GetDecimal(r.GetOrdinal("StockActual")),
@@ -48,7 +51,7 @@ public class InsumoRepository : IInsumoRepository
         EnUso = r.GetBoolean(r.GetOrdinal("EnUso"))
     };
 
-    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaIngreso, FechaVencimiento,
+    private const string Select = @"SELECT Id, Nombre, UnidadMedida, Clase, Favorito, ContenidoValor, ContenidoUnidad, StockActual, StockMinimo, Activo, FechaIngreso, FechaVencimiento,
         (SELECT MAX(m.Fecha) FROM dbo.MovimientoInsumo m WHERE m.InsumoId = dbo.Insumo.Id AND m.Tipo = 'COMPRA') AS UltimaCompra,
         CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.MovimientoInsumo mu WHERE mu.InsumoId = dbo.Insumo.Id) THEN 1 ELSE 0 END AS BIT) AS EnUso
         FROM dbo.Insumo";
@@ -159,6 +162,18 @@ public class InsumoRepository : IInsumoRepository
         cmd.AddParam("@Activo", activo);
         cmd.AddParam("@SedeId", sedeId);
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<bool> MarcarFavoritoAsync(int id, bool favorito, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE dbo.Insumo SET Favorito = @Favorito WHERE Id = @Id AND SedeId = @SedeId";
+        cmd.AddParam("@Id", id);
+        cmd.AddParam("@Favorito", favorito);
+        cmd.AddParam("@SedeId", sedeId);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 
     public async Task<int> RegistrarMovimientoAsync(MovimientoInsumo m, string? metodoPagoParaGasto, int? tipoGastoIdParaGasto, CancellationToken ct = default)
