@@ -30,6 +30,32 @@ public static class PermisosFinos
             "Permite registrar gastos/egresos de caja."),
         new("CAJA_VER_OTROS_TURNOS", "CAJA", "Ver toda la caja del día (otros turnos)",
             "Permite ver los movimientos de todos los colaboradores, no solo su turno."),
+
+        // ─────────── INICIO (Dashboard) ───────────
+        new("INICIO_VER_MONTOS", "INICIO", "Ver montos de ventas / ingresos",
+            "Muestra los importes de ventas e ingresos en el panel de inicio."),
+
+        // ─────────── PEDIDOS ───────────
+        new("PEDIDOS_ANULAR", "PEDIDOS", "Anular pedidos",
+            "Permite anular un pedido desde su detalle."),
+
+        // ─────────── REGISTRAR ───────────
+        new("REGISTRAR_APLICAR_DESCUENTO", "REGISTRAR", "Aplicar descuentos",
+            "Permite aplicar descuentos al registrar un pedido."),
+
+        // ─────────── CLIENTES ───────────
+        new("CLIENTES_FUSIONAR", "CLIENTES", "Fusionar clientes",
+            "Permite combinar dos clientes en uno (acción sensible)."),
+
+        // ─────────── INVENTARIO ───────────
+        new("INVENTARIO_VER_COSTOS", "INVENTARIO", "Ver costos",
+            "Muestra los costos/precios de compra en inventario y sus movimientos."),
+
+        // ─────────── REPORTES ───────────
+        new("REPORTES_VER_GERENCIAL", "REPORTES", "Ver Vista gerencial",
+            "Acceso a la vista gerencial (indicadores financieros del negocio)."),
+        new("REPORTES_VER_CONSOLIDADO", "REPORTES", "Ver Consolidado",
+            "Acceso al reporte consolidado de todas las sedes."),
     };
 
     /// <summary>Todas las claves finas, para validar solicitudes de guardado.</summary>

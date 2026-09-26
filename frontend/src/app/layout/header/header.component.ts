@@ -165,8 +165,8 @@ export class HeaderComponent implements OnInit {
       label: 'Reportes', path: '/reportes', modulo: 'REPORTES', icono: 'chart',
       children: [
         { label: 'Todos los reportes', path: '/reportes' },
-        { label: 'Vista gerencial', path: '/reportes/gerencial' },
-        { label: 'Consolidado', path: '/reportes/consolidado' },
+        { label: 'Vista gerencial', path: '/reportes/gerencial', permiso: 'REPORTES_VER_GERENCIAL' },
+        { label: 'Consolidado', path: '/reportes/consolidado', permiso: 'REPORTES_VER_CONSOLIDADO' },
         { label: 'Cuadres diarios', path: '/reportes/cuadres-caja', permiso: 'CAJA_REPORTE_CUADRES' },
       ]
     },
