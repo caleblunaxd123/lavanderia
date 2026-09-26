@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Comprobante, FacturacionService, GuiaRemisionPayload, KpiComprobantesMes } from '../../core/services/facturacion.service';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { fechaLocalIso } from '../../core/util/fecha-local';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
@@ -20,7 +21,11 @@ import { Subscription, interval } from 'rxjs';
 export class ComprobantesListComponent implements OnInit, OnDestroy {
   private readonly svc = inject(FacturacionService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+
+  // El respaldo masivo es una acción solo de administrador (el endpoint exige rol ADMIN).
+  readonly esAdmin = computed(() => this.auth.usuario()?.rol === 'ADMIN');
   private poll?: Subscription;
 
   readonly comprobantes = signal<Comprobante[]>([]);
@@ -153,7 +158,10 @@ export class ComprobantesListComponent implements OnInit, OnDestroy {
         this.carpetaRespaldo.set(r.carpeta);
         this.toast.exito(`${r.respaldados} comprobante(s) respaldado(s) en disco.`);
       },
-      error: () => { this.respaldando.set(false); this.toast.error('No se pudo generar el respaldo.'); }
+      error: (err) => {
+        this.respaldando.set(false);
+        this.toast.desdeHttp(err, 'No se pudo generar el respaldo.');
+      }
     });
   }
 

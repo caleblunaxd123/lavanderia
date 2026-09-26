@@ -3,18 +3,21 @@
     subtitulo="Boletas y facturas electrónicas emitidas ante SUNAT."
     volverTexto="Pedidos" (volver)="volver()"></app-page-header>
 
-  <!-- Respaldo local obligatorio (SUNAT): XML+CDR+PDF se guardan en disco al aceptar cada comprobante. -->
-  <section class="card respaldo-fe">
-    <div class="respaldo-fe__info">
-      <strong>Respaldo local (SUNAT)</strong>
-      <p>Cada comprobante aceptado se guarda automáticamente (XML + CDR + PDF) en:</p>
-      <code>{{ carpetaRespaldo() || 'Cargando…' }}</code>
-    </div>
-    <button class="btn btn--secundario" (click)="respaldarTodos()" [disabled]="respaldando()">
-      <app-icon name="download" [size]="15"></app-icon>
-      {{ respaldando() ? 'Respaldando…' : 'Respaldar todos ahora' }}
-    </button>
-  </section>
+  <!-- Respaldo local obligatorio (SUNAT): XML+CDR+PDF se guardan en disco al aceptar cada comprobante.
+       El respaldo masivo manual es solo para el administrador (el endpoint exige rol ADMIN). -->
+  @if (esAdmin()) {
+    <section class="card respaldo-fe">
+      <div class="respaldo-fe__info">
+        <strong>Respaldo local (SUNAT)</strong>
+        <p>Cada comprobante aceptado se guarda automáticamente (XML + CDR + PDF) en:</p>
+        <code>{{ carpetaRespaldo() || 'Cargando…' }}</code>
+      </div>
+      <button class="btn btn--secundario" (click)="respaldarTodos()" [disabled]="respaldando()">
+        <app-icon name="download" [size]="15"></app-icon>
+        {{ respaldando() ? 'Respaldando…' : 'Respaldar todos ahora' }}
+      </button>
+    </section>
+  }
 
   <section class="card filtros-fe">
     <input type="search" placeholder="Comprobante, pedido, cliente o documento" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" (keyup.enter)="aplicarFiltros()" />
