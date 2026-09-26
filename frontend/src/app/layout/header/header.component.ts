@@ -15,6 +15,7 @@ interface SubLink {
   label: string;
   path: string;
   modulo?: string; // si difiere del módulo del padre (para permisos)
+  permiso?: string; // sub-permiso fino requerido (además del módulo); ADMIN siempre lo tiene
 }
 
 interface NavLink {
@@ -146,7 +147,7 @@ export class HeaderComponent implements OnInit {
       label: 'Cuadre de Caja', path: '/cuadre-caja', modulo: 'CAJA', icono: 'cash',
       children: [
         { label: 'Cuadre del día', path: '/cuadre-caja' },
-        { label: 'Reporte de cuadres', path: '/reportes/cuadres-caja', modulo: 'CAJA' },
+        { label: 'Reporte de cuadres', path: '/reportes/cuadres-caja', modulo: 'CAJA', permiso: 'CAJA_REPORTE_CUADRES' },
       ]
     },
   ];
@@ -166,7 +167,7 @@ export class HeaderComponent implements OnInit {
         { label: 'Todos los reportes', path: '/reportes' },
         { label: 'Vista gerencial', path: '/reportes/gerencial' },
         { label: 'Consolidado', path: '/reportes/consolidado' },
-        { label: 'Cuadres diarios', path: '/reportes/cuadres-caja' },
+        { label: 'Cuadres diarios', path: '/reportes/cuadres-caja', permiso: 'CAJA_REPORTE_CUADRES' },
       ]
     },
     { label: 'Inventario', path: '/inventario', modulo: 'INVENTARIO', icono: 'package' },
@@ -192,10 +193,12 @@ export class HeaderComponent implements OnInit {
     return list.filter(l => modulos.includes(l.modulo));
   }
 
-  /** Hijos visibles según los permisos del usuario. */
+  /** Hijos visibles según los permisos del usuario (módulo + sub-permiso fino si aplica). */
   hijosVisibles(link: NavLink): SubLink[] {
     const modulos = this.usuario()?.modulosPermitidos ?? [];
-    return (link.children ?? []).filter(c => modulos.includes(c.modulo ?? link.modulo));
+    return (link.children ?? []).filter(c =>
+      modulos.includes(c.modulo ?? link.modulo) && (!c.permiso || this.auth.puede(c.permiso))
+    );
   }
 
   /** La sección está activa si la ruta actual coincide con el padre o alguno de sus hijos. */
