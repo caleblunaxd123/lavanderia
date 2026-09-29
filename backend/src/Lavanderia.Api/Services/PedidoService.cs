@@ -17,6 +17,7 @@ public interface IPedidoService
     Task<DashboardDto> DashboardAsync(int negocioId, int sedeId, CancellationToken ct = default);
     Task<PedidoContadoresDto> ContadoresAsync(int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, RegistrarPagoRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
+    Task RegistrarDevolucionAsync(int pedidoId, RegistrarDevolucionRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task EditarMetodoPagoAsync(int pedidoId, int pagoId, string metodo, int sedeId, CancellationToken ct = default);
     Task<string> EntregarAsync(int pedidoId, EntregarPedidoRequest req, int usuarioId, int sedeId, CancellationToken ct = default);
     Task<List<PedidoEntregaDto>> ObtenerEntregasAsync(int pedidoId, int sedeId, CancellationToken ct = default);
@@ -627,6 +628,28 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException("Método de pago inválido.");
 
         await _pedidos.RegistrarPagoAsync(pedidoId, req.Monto, req.Metodo.ToUpperInvariant(), usuarioId, req.Descripcion, sedeId, ct);
+    }
+
+    public async Task RegistrarDevolucionAsync(int pedidoId, RegistrarDevolucionRequest req, int usuarioId, int sedeId, CancellationToken ct = default)
+    {
+        var pedido = await _pedidos.ObtenerPorIdAsync(pedidoId, sedeId, ct)
+            ?? throw new InvalidOperationException("Pedido no encontrado.");
+
+        if (pedido.EstadoProceso == "DONADO")
+            throw new InvalidOperationException("El pedido fue donado y no admite devoluciones.");
+        if (pedido.MontoPagado <= 0.01m)
+            throw new InvalidOperationException("El pedido no tiene pagos que devolver.");
+        if (req.Monto <= 0)
+            throw new InvalidOperationException("El monto a devolver debe ser mayor a 0.");
+        if (req.Monto > pedido.MontoPagado + 0.01m)
+            throw new InvalidOperationException($"El monto a devolver excede lo pagado (S/ {pedido.MontoPagado:F2}).");
+        if (!MetodosPagoValidos.Contains((req.Metodo ?? "").Trim().ToUpperInvariant()))
+            throw new InvalidOperationException("Método de devolución inválido.");
+
+        var motivo = string.IsNullOrWhiteSpace(req.Motivo) ? "" : $" · {req.Motivo.Trim()}";
+        var descripcion = $"Devolución pedido #{pedido.Numero}{motivo}";
+        await _pedidos.RegistrarDevolucionAsync(pedidoId, req.Monto, req.Metodo!.Trim().ToUpperInvariant(),
+            usuarioId, descripcion, sedeId, ct);
     }
 
     public async Task EditarMetodoPagoAsync(int pedidoId, int pagoId, string metodo, int sedeId, CancellationToken ct = default)

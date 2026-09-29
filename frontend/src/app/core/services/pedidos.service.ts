@@ -193,6 +193,11 @@ export class PedidosService {
     return this.http.post<void>(`${this.base}/${id}/pagos`, { monto, metodo, descripcion });
   }
 
+  /** Registra una devolución/reembolso: baja el monto pagado y crea el egreso en caja. ADMIN/COORDINADOR. */
+  registrarDevolucion(id: number, monto: number, metodo: string, motivo?: string) {
+    return this.http.post<void>(`${this.base}/${id}/devolucion`, { monto, metodo, motivo });
+  }
+
   /** Corrige el método de un cobro ya registrado (no cambia el monto). Solo ADMIN. */
   editarMetodoPago(pedidoId: number, pagoId: number, metodo: string) {
     return this.http.put<void>(`${this.base}/${pedidoId}/pagos/${pagoId}/metodo`, { metodo });

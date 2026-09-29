@@ -253,6 +253,22 @@ public class PedidosController : TenantAwareControllerBase
         }
     }
 
+    /// <summary>Registra una devolución/reembolso: baja el monto pagado del pedido y crea el egreso en caja. Acción sensible.</summary>
+    [HttpPost("{id:int}/devolucion")]
+    [Authorize(Roles = "ADMIN,COORDINADOR")]
+    public async Task<IActionResult> RegistrarDevolucion(int id, [FromBody] RegistrarDevolucionRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _service.RegistrarDevolucionAsync(id, req, UsuarioId, SedeRequeridaId, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
+
     /// <summary>Corrige el método de un cobro ya registrado (ej: se puso Efectivo y era Yape). No cambia el monto. Solo ADMIN.</summary>
     [HttpPut("{id:int}/pagos/{pagoId:int}/metodo")]
     [Authorize(Roles = "ADMIN")]

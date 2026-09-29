@@ -30,6 +30,8 @@ public interface IPedidoRepository
     Task<Dictionary<DateTime, decimal>> VentasPorDiaAsync(DateTime desde, int sedeId, CancellationToken ct = default);
     Task<int> PedidosDelMesAsync(DateTime fecha, int sedeId, CancellationToken ct = default);
     Task RegistrarPagoAsync(int pedidoId, decimal monto, string metodo, int usuarioId, string? descripcion, int sedeId, CancellationToken ct = default);
+    /// <summary>Registra una devolución: baja el MontoPagado del pedido y crea el egreso en caja (revierte el cobro).</summary>
+    Task RegistrarDevolucionAsync(int pedidoId, decimal monto, string metodo, int usuarioId, string? descripcion, int sedeId, CancellationToken ct = default);
     /// <summary>Corrige solo el método de pago de un cobro ya registrado (no cambia el monto). Devuelve false si no existe.</summary>
     Task<bool> EditarMetodoPagoAsync(int pedidoId, int pagoId, string metodo, int sedeId, CancellationToken ct = default);
     /// <summary>Registra una entrega (parcial o final): actualiza CantidadEntregada de cada ítem, guarda
@@ -782,6 +784,59 @@ public class PedidoRepository : IPedidoRepository
             cmdMov.AddParam("@Metodo", metodo);
             cmdMov.AddParam("@Monto", monto);
             cmdMov.AddParam("@Descripcion", descripcion ?? $"Pago de pedido");
+            cmdMov.AddParam("@PedidoId", pedidoId);
+            cmdMov.AddParam("@UsuarioId", usuarioId);
+            await cmdMov.ExecuteNonQueryAsync(ct);
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task RegistrarDevolucionAsync(int pedidoId, decimal monto, string metodo, int usuarioId, string? descripcion, int sedeId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create();
+        await conn.OpenAsync(ct);
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            // 1) Bajar el monto pagado y recalcular estado de pago. El tope (no devolver mas de lo
+            // pagado) va en el propio WHERE como chequeo atomico, para evitar carreras.
+            await using var cmdPed = conn.CreateCommand();
+            cmdPed.Transaction = tx;
+            cmdPed.CommandText = @"
+                UPDATE dbo.Pedido
+                   SET MontoPagado = MontoPagado - @Monto,
+                       EstadoPago = CASE
+                                      WHEN (MontoPagado - @Monto) >= Total THEN 'PAGADO'
+                                      WHEN (MontoPagado - @Monto) > 0.005 THEN 'PARCIAL'
+                                      ELSE 'PENDIENTE'
+                                    END
+                 WHERE Id = @PedidoId AND SedeId = @SedeId
+                   AND MontoPagado + 0.005 >= @Monto";
+            cmdPed.AddParam("@Monto", monto);
+            cmdPed.AddParam("@PedidoId", pedidoId);
+            cmdPed.AddParam("@SedeId", sedeId);
+            var filas = await cmdPed.ExecuteNonQueryAsync(ct);
+            if (filas == 0)
+                throw new InvalidOperationException("El monto a devolver excede lo pagado en el pedido, o el pedido no existe.");
+
+            // 2) Registrar el egreso en caja (GASTO). Al ser efectivo/digital como el cobro original,
+            // se compensa el ingreso del pago y la caja del dia cuadra.
+            await using var cmdMov = conn.CreateCommand();
+            cmdMov.Transaction = tx;
+            cmdMov.CommandText = @"
+                INSERT INTO dbo.MovimientoCaja
+                       (SedeId, Fecha, Tipo, MetodoPago, Monto, Descripcion, PedidoId, UsuarioId)
+                VALUES (@SedeId, SYSDATETIME(), 'GASTO', @Metodo, @Monto, @Descripcion, @PedidoId, @UsuarioId)";
+            cmdMov.AddParam("@SedeId", sedeId);
+            cmdMov.AddParam("@Metodo", metodo);
+            cmdMov.AddParam("@Monto", monto);
+            cmdMov.AddParam("@Descripcion", descripcion ?? "Devolución de pedido");
             cmdMov.AddParam("@PedidoId", pedidoId);
             cmdMov.AddParam("@UsuarioId", usuarioId);
             await cmdMov.ExecuteNonQueryAsync(ct);

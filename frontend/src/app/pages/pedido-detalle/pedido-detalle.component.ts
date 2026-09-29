@@ -61,6 +61,8 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   private readonly service = inject(PedidosService);
   private readonly auth = inject(AuthService);
   readonly esAdmin = computed(() => this.auth.usuario()?.rol === 'ADMIN');
+  // Devolver/reembolsar es acción sensible: solo ADMIN o COORDINADOR (igual que en el backend).
+  readonly puedeDevolver = computed(() => this.auth.esRol('ADMIN') || this.auth.esRol('COORDINADOR'));
   puede(clave: string): boolean { return this.auth.puede(clave); }
   private readonly clientesSvc = inject(ClientesService);
   private readonly catalogos = inject(CatalogosService);
@@ -92,6 +94,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   readonly modalItem = signal(false);
   readonly modalFecha = signal(false);
   readonly modalAnular = signal(false);
+  readonly modalDevolucion = signal(false);
   readonly modalDestinoDelivery = signal(false);
 
   // Formularios
@@ -120,6 +123,10 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   itemCantidad = 1;
   itemDescripcion = '';
   motivoAnulacion = '';
+  // --- Devolución / reembolso ---
+  devolucionMonto = 0;
+  devolucionMetodo: 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS' = 'EFECTIVO';
+  devolucionMotivo = '';
   fechaEntregaNueva = '';
   motivoCambioFecha = '';
   readonly procesando = signal(false);
@@ -926,6 +933,41 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.modalAnular.set(true);
   }
 
+  // ---------- Devolución / reembolso ----------
+  abrirModalDevolucion() {
+    const p = this.pedido();
+    if (!p) return;
+    this.devolucionMonto = Math.round(p.montoPagado * 100) / 100;  // por defecto, devolver todo lo pagado
+    this.devolucionMetodo = 'EFECTIVO';
+    this.devolucionMotivo = '';
+    this.menuAcciones.set(false);
+    this.modalDevolucion.set(true);
+  }
+
+  confirmarDevolucion() {
+    const p = this.pedido();
+    if (!p || this.procesando()) return;
+    const pagado = Math.round(p.montoPagado * 100) / 100;
+    if (!Number.isFinite(this.devolucionMonto) || this.devolucionMonto <= 0 || this.devolucionMonto > pagado + 0.01) {
+      this.toast.advertencia(`Ingresa un monto válido de hasta S/ ${pagado.toFixed(2)}.`);
+      return;
+    }
+    this.devolucionMonto = Math.round(this.devolucionMonto * 100) / 100;
+    this.procesando.set(true);
+    this.service.registrarDevolucion(p.id, this.devolucionMonto, this.devolucionMetodo, this.devolucionMotivo.trim() || undefined).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.modalDevolucion.set(false);
+        this.toast.exito(`Devolución de S/ ${this.devolucionMonto.toFixed(2)} registrada (egreso en caja).`);
+        this.refrescar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.procesando.set(false);
+        this.toast.desdeHttp(err, 'No se pudo registrar la devolución.');
+      }
+    });
+  }
+
   confirmarAnular() {
     const p = this.pedido();
     if (!p || this.motivoAnulacion.trim().length < 3) return;
@@ -1071,6 +1113,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.modalItem.set(false);
     this.modalFecha.set(false);
     this.modalAnular.set(false);
+    this.modalDevolucion.set(false);
     this.modalEditarPago.set(false);
     this.cerrarDestinoDelivery();
   }

@@ -233,6 +233,13 @@
             <p class="hint">El cobro se hace al entregar (botón verde de "Acciones", más abajo). Puedes cobrar por partes y con varios métodos a la vez.</p>
           }
 
+          <!-- Devolución/reembolso: revierte el pago en caja y baja el monto pagado (permite luego anular). -->
+          @if (puedeDevolver() && p.montoPagado > 0.01) {
+            <button class="btn btn--outline-primary btn--block" (click)="abrirModalDevolucion()">
+              <app-icon name="cash" [size]="14"></app-icon> Registrar devolución
+            </button>
+          }
+
           <!-- Desglose de cobros: con qué pagó cada adelanto (efectivo, Yape, ...) -->
           @if (pagos().length > 0) {
             <div class="cobros">
@@ -769,10 +776,11 @@
         pero se conservará en el historial.
       </p>
 
-      @if ((pedido()?.montoPagado ?? 0) > 0) {
+      @if ((pedido()?.montoPagado ?? 0) > 0.01) {
         <p class="modal-simple__info modal-simple__info--alerta">
           <app-icon name="warning" [size]="14"></app-icon> <strong>Este pedido tiene pagos registrados por S/ {{ (pedido()?.montoPagado ?? 0) | number:'1.2-2' }}.</strong><br>
-          Al anular deberás gestionar el reembolso manualmente con el cliente. El sistema NO revierte el pago automáticamente.
+          Para poder anularlo, primero <strong>registra la devolución</strong> del dinero al cliente
+          (botón <em>“Registrar devolución”</em> en la sección Pago). Eso revierte el cobro en caja y deja el saldo en cero.
         </p>
       }
 
@@ -782,8 +790,54 @@
 
       <div class="modal-simple__actions">
         <button type="button" class="btn btn--ghost" (click)="cerrarModales()">Cancelar</button>
-        <button type="button" class="btn btn--danger" [disabled]="procesando() || motivoAnulacion.trim().length < 3" (click)="confirmarAnular()">
+        <button type="button" class="btn btn--danger"
+                [disabled]="procesando() || motivoAnulacion.trim().length < 3 || (pedido()?.montoPagado ?? 0) > 0.01"
+                (click)="confirmarAnular()">
           {{ procesando() ? 'Anulando…' : 'Sí, anular' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal: Registrar devolución / reembolso -->
+@if (modalDevolucion()) {
+  <div class="modal-backdrop" (click)="cerrarModales()"></div>
+  <div class="modal-simple" role="dialog" aria-modal="true" aria-labelledby="titulo-devolucion">
+    <div class="modal-simple__head">
+      <h3 id="titulo-devolucion"><app-icon name="cash" [size]="15"></app-icon> Registrar devolución</h3>
+      <button type="button" aria-label="Cerrar devolución" (click)="cerrarModales()"><app-icon name="close" [size]="15"></app-icon></button>
+    </div>
+    <div class="modal-simple__body">
+      <p class="modal-simple__info">
+        Registra el dinero que ya devolviste al cliente. Se creará un <strong>egreso en caja</strong>
+        por ese monto (revierte el cobro) y bajará el saldo pagado del pedido.
+        Este pedido tiene pagos por <strong>S/ {{ (pedido()?.montoPagado ?? 0) | number:'1.2-2' }}</strong>.
+      </p>
+
+      <label>Monto a devolver *</label>
+      <input type="number" min="0.01" step="0.01" inputmode="decimal" [(ngModel)]="devolucionMonto"
+             (focus)="$any($event.target).select()" placeholder="0.00" />
+
+      <label>¿Por qué método devolviste? *</label>
+      <select [(ngModel)]="devolucionMetodo">
+        <option value="EFECTIVO">Efectivo</option>
+        <option value="YAPE">Yape</option>
+        <option value="PLIN">Plin</option>
+        <option value="TRANSFERENCIA">Transferencia</option>
+        <option value="POS">POS / Tarjeta</option>
+      </select>
+
+      <label>Motivo <small class="hint">(opcional)</small></label>
+      <textarea rows="2" maxlength="200" [(ngModel)]="devolucionMotivo"
+                placeholder="Ej: Se ingresó mal el monto a cobrar."></textarea>
+
+      <div class="modal-simple__actions">
+        <button type="button" class="btn btn--ghost" (click)="cerrarModales()">Cancelar</button>
+        <button type="button" class="btn btn--danger"
+                [disabled]="procesando() || devolucionMonto <= 0 || devolucionMonto > (pedido()?.montoPagado ?? 0) + 0.01"
+                (click)="confirmarDevolucion()">
+          {{ procesando() ? 'Registrando…' : 'Registrar devolución' }}
         </button>
       </div>
     </div>

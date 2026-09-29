@@ -331,6 +331,14 @@ public class RegistrarPagoRequest
     [StringLength(300)] public string? Descripcion { get; set; }
 }
 
+/// <summary>Registra una devolución/reembolso de un pedido: baja el monto pagado y crea el egreso en caja.</summary>
+public class RegistrarDevolucionRequest
+{
+    [Range(0.01, 100000)] public decimal Monto { get; set; }
+    [Required] public string Metodo { get; set; } = "EFECTIVO";  // método por el que se devolvió
+    [StringLength(300)] public string? Motivo { get; set; }
+}
+
 /// <summary>Marca o desmarca un insumo como favorito (compartido por sede).</summary>
 public class MarcarFavoritoInsumoRequest
 {
