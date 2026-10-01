@@ -327,8 +327,9 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   accionPrincipalLabel(p: Pedido): string {
     if (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL') {
       const verbo = p.estadoProceso === 'ENTREGA_PARCIAL' ? 'Entregar resto' : 'Entregar';
+      // Con saldo: este botón entrega Y cobra a la vez. Para cobrar sin entregar hay un botón aparte.
       return this.saldoPendiente() > 0.01
-        ? `${verbo} / cobrar (falta S/ ${this.saldoPendiente().toFixed(2)})`
+        ? `${verbo} y cobrar S/ ${this.saldoPendiente().toFixed(2)}`
         : `${verbo} pedido`;
     }
     if (p.estadoProceso === 'PENDIENTE' && p.areaActualId == null) return 'Iniciar proceso';
@@ -370,8 +371,12 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.entregaPagos.set(saldo > 0.01 ? [{ metodo: 'EFECTIVO', monto: Math.round(saldo * 100) / 100 }] : []);
     this.entregaNota = '';
     this.recibidoPor = '';
+    this.notificarEntrega = true;   // marcado por defecto; el usuario puede desmarcarlo
     this.modalEntrega.set(true);
   }
+
+  /** Mensaje de WhatsApp al registrar la entrega (marcado por defecto, opcional). */
+  notificarEntrega = true;
 
   // --- Derivados del modal de entrega ---
   /** Total a cobrar en esta visita (suma de las líneas de pago). */
@@ -517,6 +522,16 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     const titular = (p.clienteNombre ?? '').trim();
     const recibidoPor = nombreTercero && nombreTercero.toLowerCase() !== titular.toLowerCase() ? nombreTercero : null;
 
+    // Resumen de lo entregado (antes de cerrar el modal, que limpia las filas).
+    const resumenEntrega = this.entregaItems()
+      .filter(f => (Number(f.cantidad) || 0) > 0.001)
+      .map(f => `• ${Number(f.cantidad)} ${f.unidad} ${f.servicioNombre}`.replace(/\s+/g, ' ').trim());
+
+    // WhatsApp opcional: la ventana se abre ahora (durante el clic) para que el navegador no la
+    // bloquee al abrirla luego, tras la respuesta del servidor.
+    const notificar = this.notificarEntrega && !!p.clienteCelular?.trim();
+    const ventanaWa = notificar ? window.open('', '_blank') : null;
+
     this.procesando.set(true);
     this.service.entregar(p.id, { items, pagos, recibidoPor, nota: this.entregaNota.trim() || null }).subscribe({
       next: res => {
@@ -530,13 +545,34 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
         } else {
           this.toast.exito(`Entrega parcial registrada${restante > 0.01 ? ` — queda S/ ${restante.toFixed(2)} por cobrar` : ''}`);
         }
+        if (notificar) this.avisarEntregaWhatsapp(p, res.estadoProceso === 'ENTREGADO', resumenEntrega, restante, ventanaWa);
+        else ventanaWa?.close();
         this.refrescar();
       },
       error: (err: HttpErrorResponse) => {
         this.procesando.set(false);
+        ventanaWa?.close();
         this.toast.desdeHttp(err, 'No se pudo registrar la entrega.');
       }
     });
+  }
+
+  /** Abre WhatsApp con el aviso de entrega (final o parcial). Solo si el usuario dejó marcada la opción. */
+  private avisarEntregaWhatsapp(p: Pedido, esFinal: boolean, resumen: string[], restante: number, ventana: Window | null) {
+    if (!p.clienteCelular) { ventana?.close(); return; }
+    const cliente = (p.clienteNombre ?? '').trim().split(' ')[0] || 'cliente';
+    const numero = String(p.numero);
+    const saldoTxt = restante > 0.01 ? `\n\nSaldo pendiente: S/ ${restante.toFixed(2)}.` : '';
+    let mensaje: string;
+    if (esFinal) {
+      const fallback = `¡Hola ${cliente}! Tu pedido #${numero} fue entregado. ¡Gracias por tu preferencia!${saldoTxt}`;
+      mensaje = this.whatsapp.mensaje('ENTREGADO', { cliente, numero, total: p.total.toFixed(2) }, fallback);
+      if (saldoTxt && !mensaje.includes('Saldo pendiente')) mensaje += saldoTxt;
+    } else {
+      const detalle = resumen.length ? `\n${resumen.join('\n')}` : '';
+      mensaje = `¡Hola ${cliente}! Te entregamos una parte de tu pedido #${numero}:${detalle}${saldoTxt}\n\nEl resto lo recoges cuando gustes. ¡Gracias!`;
+    }
+    this.whatsapp.enviar(p.clienteCelular, mensaje, ventana);
   }
 
   private ejecutarAvance(p: Pedido) {

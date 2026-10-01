@@ -173,26 +173,72 @@
   gap: 8px;
   padding: 11px 16px;
   border-radius: 10px;
-  border: 1.5px solid var(--gris-borde);
+  // Borde marcado + sombra suave: antes el borde era casi invisible y se leía como texto.
+  border: 1.5px solid #94a3b8;
   background: #fff;
-  color: #1e293b;
+  color: var(--azul-oscuro, #053465);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15,23,42,.10);
   transition: border-color .14s, background .14s, box-shadow .14s;
 
   &:hover:not(:disabled) {
     border-color: var(--azul-oscuro);
-    background: #f8fafc;
-    box-shadow: 0 2px 8px rgba(15,23,42,.08);
+    background: #eef2f7;
+    box-shadow: 0 3px 10px rgba(15,23,42,.14);
   }
   &:disabled { opacity: .5; cursor: default; }
 
-  &-peligro {
-    border-color: #fca5a5;
-    color: #b91c1c;
-    &:hover:not(:disabled) { border-color: #ef4444; background: #fef2f2; }
+  // Cada acción con su color sólido por función (sin degradados ni fondos tenues), para que
+  // se lean claramente como botones y se distingan entre sí.
+  &-ticket {
+    background: #2563eb; border-color: #2563eb; color: #fff;
+    &:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }
   }
+  &-comprobante {
+    background: #16a34a; border-color: #16a34a; color: #fff;
+    &:hover:not(:disabled) { background: #15803d; border-color: #15803d; }
+  }
+  // Ámbar: letra oscura (en blanco no se lee sobre amarillo).
+  &-fecha {
+    background: #f59e0b; border-color: #f59e0b; color: #1f2937;
+    &:hover:not(:disabled) { background: #d97706; border-color: #d97706; }
+  }
+  &-delivery {
+    background: #7c3aed; border-color: #7c3aed; color: #fff;
+    &:hover:not(:disabled) { background: #6d28d9; border-color: #6d28d9; }
+  }
+  &-peligro {
+    background: #dc2626; border-color: #dc2626; color: #fff;
+    &:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
+  }
+}
+
+// "Registrar devolución" (sección Pago): botón sólido naranja, ancho completo.
+.btn-devolucion {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border: 1.5px solid #ea580c;
+  border-radius: 10px;
+  background: #ea580c;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15,23,42,.12);
+  transition: background .14s, border-color .14s, box-shadow .14s;
+
+  &:hover:not(:disabled) {
+    background: #c2410c;
+    border-color: #c2410c;
+    box-shadow: 0 3px 10px rgba(194,65,12,.3);
+  }
+  &:disabled { opacity: .5; cursor: default; }
 }
 
 @media (max-width: 640px) {
@@ -299,6 +345,32 @@
     box-shadow: 0 4px 14px rgba(20,122,69,.28);
     &:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(20,122,69,.33); }
   }
+
+  // "Solo cobrar" (sin entregar): azul sólido, distinto del verde de entrega.
+  &--cobrar {
+    background: #2563eb;
+    box-shadow: 0 4px 14px rgba(37,99,235,.28);
+    &:hover:not(:disabled) { box-shadow: 0 8px 20px rgba(37,99,235,.33); }
+  }
+}
+
+// Opción de avisar por WhatsApp dentro del modal de entrega.
+.ent-wsp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+
+  input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; margin: 0; cursor: pointer; }
+  span { display: inline-flex; align-items: center; gap: 6px; }
 }
 
 // ---------- Grid 2 columnas ----------
@@ -488,24 +560,32 @@
     font-size: 11px;
   }
 
-  // Botón "Corregir método" (solo admin): discreto, en su propia fila.
+  // Botón "Corregir método" (solo admin): botón visible con color de marca, en su propia fila.
   &__editar {
     grid-column: 1 / -1;
     justify-self: start;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    margin-top: 2px;
-    padding: 3px 8px;
-    border: none;
-    background: transparent;
-    color: var(--azul-oscuro, #053465);
-    font-size: 11px;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 6px 12px;
+    border: 1px solid var(--azul-oscuro, #053465);
+    border-radius: 8px;
+    background: var(--azul-oscuro, #053465);   // color sólido, sin degradado
+    color: #fff;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(5, 52, 101, .25);
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
 
-    &:hover { background: #eef2f7; }
+    &:hover {
+      filter: brightness(1.12);
+      box-shadow: 0 4px 10px rgba(5, 52, 101, .32);
+      transform: translateY(-1px);
+    }
+    &:active { transform: translateY(0); box-shadow: 0 1px 3px rgba(5, 52, 101, .25); }
+    &:focus-visible { outline: 2px solid var(--azul-claro, #06B0BD); outline-offset: 2px; }
   }
 }
 

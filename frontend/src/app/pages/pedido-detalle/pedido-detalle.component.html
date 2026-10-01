@@ -230,13 +230,13 @@
             </button>
           }
           @if (saldoPendiente() > 0 && (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL')) {
-            <p class="hint">El cobro se hace al entregar (botón verde de "Acciones", más abajo). Puedes cobrar por partes y con varios métodos a la vez.</p>
+            <p class="hint">En "Acciones" (más abajo) puedes <strong>solo cobrar</strong> si el cliente recoge después, o <strong>entregar y cobrar</strong> a la vez. Se puede cobrar por partes y con varios métodos.</p>
           }
 
           <!-- Devolución/reembolso: revierte el pago en caja y baja el monto pagado (permite luego anular). -->
           @if (puedeDevolver() && p.montoPagado > 0.01) {
-            <button class="btn btn--outline-primary btn--block" (click)="abrirModalDevolucion()">
-              <app-icon name="cash" [size]="14"></app-icon> Registrar devolución
+            <button type="button" class="btn-devolucion" (click)="abrirModalDevolucion()">
+              <app-icon name="cash" [size]="16"></app-icon> Registrar devolución
             </button>
           }
 
@@ -257,7 +257,7 @@
                     }
                     @if (esAdmin()) {
                       <button type="button" class="cobros__editar" (click)="abrirEditarMetodo(pago)">
-                        <app-icon name="edit" [size]="12"></app-icon> Corregir método
+                        <app-icon name="edit" [size]="14"></app-icon> Corregir método
                       </button>
                     }
                   </li>
@@ -311,28 +311,36 @@
           @if (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL') { <app-icon name="package" [size]="20"></app-icon> }
           {{ avanzando() ? 'Actualizando…' : accionPrincipalLabel(p) }}
         </button>
+
+        <!-- Cobrar SIN entregar: el cliente paga hoy y recoge después (otro día). -->
+        @if (saldoPendiente() > 0.01 && (p.estadoProceso === 'LISTO' || p.estadoProceso === 'ENTREGA_PARCIAL')) {
+          <button type="button" class="btn-principal btn-principal--cobrar" (click)="abrirModalPago()">
+            <app-icon name="cash" [size]="20"></app-icon>
+            Solo cobrar S/ {{ saldoPendiente() | number:'1.2-2' }} (sin entregar)
+          </button>
+        }
       }
 
       <div class="acciones-pedido__secundarias">
-        <button type="button" class="btn btn--accion" (click)="imprimirTicket(p)">
+        <button type="button" class="btn btn--accion btn--accion-ticket" (click)="imprimirTicket(p)">
           <app-icon name="printer" [size]="18"></app-icon> Reimprimir ticket
         </button>
         @if (!p.anulado && saldoPendiente() === 0) {
-          <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('BOLETA')">
+          <button type="button" class="btn btn--accion btn--accion-comprobante" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('BOLETA')">
             <app-icon name="note" [size]="18"></app-icon> Emitir Boleta
           </button>
           @if (!soloBoletas()) {
-            <button type="button" class="btn btn--accion" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('FACTURA')">
+            <button type="button" class="btn btn--accion btn--accion-comprobante" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('FACTURA')">
               <app-icon name="note" [size]="18"></app-icon> Emitir Factura
             </button>
           }
         }
         @if (!p.anulado && p.estadoProceso !== 'ENTREGADO') {
-          <button type="button" class="btn btn--accion" (click)="abrirModalFecha()">
+          <button type="button" class="btn btn--accion btn--accion-fecha" (click)="abrirModalFecha()">
             <app-icon name="calendar" [size]="18"></app-icon> Cambiar fecha
           </button>
           @if (p.modalidad === 'Tienda') {
-            <button type="button" class="btn btn--accion" (click)="abrirDestinoDelivery(p)">
+            <button type="button" class="btn btn--accion btn--accion-delivery" (click)="abrirDestinoDelivery(p)">
               <app-icon name="pin" [size]="18"></app-icon> Convertir a Delivery
             </button>
           }
@@ -572,6 +580,17 @@
         <input type="text" maxlength="120" [(ngModel)]="recibidoPor" [placeholder]="pedido()?.clienteNombre || 'Nombre de la persona que recibe'" />
         <label>Nota de la entrega <small class="hint">(opcional)</small></label>
         <input type="text" maxlength="300" [(ngModel)]="entregaNota" placeholder="Ej. Se lleva 2 sábanas; falta 1 frazada" />
+
+        <!-- WhatsApp opcional: marcado por defecto; si se desmarca, no se avisa al cliente. -->
+        @if (pedido()?.clienteCelular) {
+          <label class="ent-wsp">
+            <input type="checkbox" [(ngModel)]="notificarEntrega" />
+            <span>
+              <app-icon name="whatsapp" [size]="14"></app-icon>
+              Avisar al cliente por WhatsApp al entregar
+            </span>
+          </label>
+        }
       </div>
 
       <div class="modal-simple__actions">

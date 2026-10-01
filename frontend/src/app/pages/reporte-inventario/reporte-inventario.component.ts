@@ -68,12 +68,26 @@ export class ReporteInventarioComponent implements OnInit {
     this.hasta = fechaLocalIso(hoy);
     this.desde = fechaLocalIso(inicio);
 
-    this.svc.listar().subscribe(list => {
+    this.svc.listar().subscribe(lista => {
+      // Consumibles primero (lo que se usa a diario), luego el resto; cada grupo por nombre.
+      const orden = (c: string) => (c === 'INSUMO' ? 0 : 1);
+      const list = [...lista].sort((a, b) =>
+        orden(a.clase) - orden(b.clase) || a.nombre.localeCompare(b.nombre, 'es'));
       this.insumos.set(list);
-      if (list.length) {
-        this.insumoId.set(list[0].id);
-        this.cargar();
-      }
+      if (!list.length) return;
+
+      // Insumo inicial: el que más movimientos tuvo en el periodo, para que el reporte abra
+      // con datos (antes abría con el primero de la lista, que podía no tener ninguno).
+      this.svc.movimientos(undefined, this.desde, this.hasta).subscribe({
+        next: movs => {
+          const conteo = new Map<number, number>();
+          for (const m of movs) conteo.set(m.insumoId, (conteo.get(m.insumoId) ?? 0) + 1);
+          const mejor = list.reduce((a, b) => ((conteo.get(b.id) ?? 0) > (conteo.get(a.id) ?? 0) ? b : a), list[0]);
+          this.insumoId.set(mejor.id);
+          this.cargar();
+        },
+        error: () => { this.insumoId.set(list[0].id); this.cargar(); }
+      });
     });
   }
 
