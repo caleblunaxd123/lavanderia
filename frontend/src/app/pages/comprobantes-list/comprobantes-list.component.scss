@@ -89,6 +89,8 @@
   &--verde  { background: #e6f9ee; color: #147a45; }
   &--gris   { background: #eef0f3; color: #64748b; }
   &--rojo   { background: #fde8e8; color: #b91c1c; }
+  // ANULADO: rojo sólido con letra blanca para que resalte y no se confunda con RECHAZADO/ERROR (rojo suave).
+  &--anulado { background: #dc2626; color: #fff; }
   &--amarillo { background: #fff7e6; color: #92400e; }
 }
 

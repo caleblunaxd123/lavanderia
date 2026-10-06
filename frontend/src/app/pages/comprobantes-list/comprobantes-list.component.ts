@@ -190,7 +190,7 @@ export class ComprobantesListComponent implements OnInit, OnDestroy {
     if (motivo.length < 3) { this.toast.advertencia('Indica un motivo de al menos 3 caracteres.'); return; }
     this.svc.anular(c.id, motivo).subscribe({
       next: actualizado => { this.toast.info(`Anulación: ${actualizado.estadoAnulacion ?? actualizado.estado}`); this.confirmarAnular.set(null); this.cargar(); },
-      error: () => { this.toast.error('No se pudo anular el comprobante.'); this.confirmarAnular.set(null); }
+      error: e => { this.toast.desdeHttp(e, 'No se pudo anular el comprobante.'); this.confirmarAnular.set(null); }
     });
   }
 
@@ -300,7 +300,7 @@ export class ComprobantesListComponent implements OnInit, OnDestroy {
     switch (estado) {
       case 'ACEPTADO': return 'badge--verde';
       case 'RECHAZADO': case 'ERROR': return 'badge--rojo';
-      case 'ANULADO': return 'badge--gris';
+      case 'ANULADO': return 'badge--anulado';   // rojo sólido: resalta
       case 'SIMULADO': return 'badge--gris';
       default: return 'badge--amarillo';
     }

@@ -43,6 +43,8 @@ public interface IFacturacionRepository
         string motivo, string? codigo, string? descripcion, DateTime? fechaAnulacion, CancellationToken ct = default);
     Task<bool> TieneComprobanteVigenteAsync(int pedidoId, int sedeId, CancellationToken ct = default);
     Task<List<ComprobanteElectronico>> ListarPendientesGlobalAsync(int limite, CancellationToken ct = default);
+    /// <summary>Suma de las notas de crédito vigentes (pendientes, aceptadas o con error) de un documento.</summary>
+    Task<decimal> SumarNotasCreditoActivasAsync(int comprobanteId, CancellationToken ct = default);
     /// <summary>Ids (con su sede) de todos los comprobantes ACEPTADOS con XML de un negocio, para el respaldo local.</summary>
     Task<List<(int Id, int SedeId)>> ListarIdsAceptadosAsync(int negocioId, CancellationToken ct = default);
 }
@@ -235,7 +237,9 @@ public class FacturacionRepository : IFacturacionRepository
                 vigenteCmd.Transaction = tx;
                 vigenteCmd.CommandText = ComprobanteSelect + @"
                     WHERE c.PedidoId = @PedidoId AND c.SedeId = @SedeId
+                      AND c.Tipo IN ('BOLETA','FACTURA')
                       AND c.Estado IN ('PENDIENTE','ACEPTADO','ERROR')
+                      AND (c.EstadoAnulacion IS NULL OR c.EstadoAnulacion <> 'ANULADO')
                     ORDER BY c.FechaEmision DESC";
                 vigenteCmd.AddParam("@PedidoId", c.PedidoId).AddParam("@SedeId", c.SedeId);
                 var vigente = await vigenteCmd.ReadFirstOrDefaultAsync(MapComprobante, ct);
@@ -322,6 +326,29 @@ public class FacturacionRepository : IFacturacionRepository
         await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
         try
         {
+            // Una nota de crédito no puede acreditar más que el total de su documento. Se bloquea la fila del
+            // original dentro de la transacción: dos notas simultáneas sobre el mismo documento no se cruzan.
+            if (c.Tipo == "NOTA_CREDITO" && c.ComprobanteRefId is int refId)
+            {
+                await using var lockOriginal = conn.CreateCommand();
+                lockOriginal.Transaction = tx;
+                lockOriginal.CommandText = @"
+                    SELECT o.Total, ISNULL((SELECT SUM(n.Total) FROM dbo.ComprobanteElectronico n
+                                             WHERE n.ComprobanteRefId = o.Id AND n.Tipo = 'NOTA_CREDITO'
+                                               AND n.Estado IN ('PENDIENTE','ACEPTADO','ERROR','SIMULADO')), 0) AS Acreditado
+                      FROM dbo.ComprobanteElectronico o WITH (UPDLOCK, HOLDLOCK) WHERE o.Id = @RefId";
+                lockOriginal.AddParam("@RefId", refId);
+                await using var rd = await lockOriginal.ExecuteReaderAsync(ct);
+                if (await rd.ReadAsync(ct))
+                {
+                    var totalOriginal = rd.GetDecimal(0);
+                    var acreditado = rd.GetDecimal(1);
+                    if (acreditado + c.Total > totalOriginal + 0.01m)
+                        throw new InvalidOperationException(
+                            "Este comprobante ya tiene una nota de crédito vigente (aceptada, pendiente o con error). No se puede acreditar más que su total.");
+                }
+            }
+
             // Correlativo de la nota según su tipo (NC/ND) y el tipo del documento referenciado (01 factura / 03 boleta).
             var columna = c.DocRefTipo == "01" ? $"{raiz}Factura" : $"{raiz}Boleta";
             await using (var corrCmd = conn.CreateCommand())
@@ -547,6 +574,23 @@ public class FacturacionRepository : IFacturacionRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    /// <summary>
+    /// Efecto de una nota de crédito ACEPTADA sobre su documento original: si el motivo anula toda la operación
+    /// (01 anulación, 02 error en RUC, 06 devolución total; ver <see cref="FacturacionReglas"/>) el original pasa
+    /// a ANULADO. No toca la respuesta SUNAT del original (código/CDR) y es idempotente.
+    /// </summary>
+    private const string SqlEfectoNotaSobreOriginal = @"
+        UPDATE o SET o.Estado = 'ANULADO', o.EstadoAnulacion = 'ANULADO',
+               o.MotivoAnulacion = COALESCE(o.MotivoAnulacion, LEFT(n.MotivoNotaDescripcion, 400)),
+               o.FechaSolicitudAnulacion = COALESCE(o.FechaSolicitudAnulacion, n.FechaEmision),
+               o.FechaAnulacion = COALESCE(n.FechaRespuesta, n.FechaEmision),
+               o.FechaActualizacion = SYSDATETIME()
+          FROM dbo.ComprobanteElectronico o
+         INNER JOIN dbo.ComprobanteElectronico n ON n.ComprobanteRefId = o.Id
+         WHERE n.Id = @NotaId AND n.Tipo = 'NOTA_CREDITO' AND n.Estado IN ('ACEPTADO','SIMULADO')
+           AND n.MotivoNotaCodigo IN ('01','02','06')
+           AND o.Tipo IN ('BOLETA','FACTURA') AND o.Estado = 'ACEPTADO'";
+
     private const string ComprobanteSelect = @"
         SELECT c.Id, c.NegocioId, c.SedeId, c.PedidoId, p.Numero AS PedidoNumero, c.Tipo, c.Serie, c.Correlativo,
                c.ClienteNombre, c.ClienteTipoDoc, c.ClienteNumDoc, c.OpGravada, c.Igv, c.Total, c.Estado,
@@ -556,7 +600,16 @@ public class FacturacionRepository : IFacturacionRepository
                c.CodigoEstablecimientoEmisor, c.Moneda, c.IgvPorcentaje, c.Subtotal, c.Descuento,
                c.Recargo, c.Redondeo, c.EsSimulado, c.FechaActualizacion, c.FechaRespuesta,
                c.EstadoAnulacion, c.MotivoAnulacion, c.FechaSolicitudAnulacion, c.FechaAnulacion,
-               c.ComprobanteRefId, c.DocRefTipo, c.DocRefSerieNumero, c.MotivoNotaCodigo, c.MotivoNotaDescripcion
+               c.ComprobanteRefId, c.DocRefTipo, c.DocRefSerieNumero, c.MotivoNotaCodigo, c.MotivoNotaDescripcion,
+               -- Nota de crédito vigente que referencia a este documento (la más reciente), si existe.
+               (SELECT TOP 1 n.Serie + '-' + CONVERT(varchar(12), n.Correlativo)
+                  FROM dbo.ComprobanteElectronico n
+                 WHERE n.ComprobanteRefId = c.Id AND n.Tipo = 'NOTA_CREDITO'
+                   AND n.Estado IN ('PENDIENTE','ACEPTADO','ERROR','SIMULADO') ORDER BY n.Id DESC) AS NotaCreditoNumero,
+               (SELECT TOP 1 n.Estado
+                  FROM dbo.ComprobanteElectronico n
+                 WHERE n.ComprobanteRefId = c.Id AND n.Tipo = 'NOTA_CREDITO'
+                   AND n.Estado IN ('PENDIENTE','ACEPTADO','ERROR','SIMULADO') ORDER BY n.Id DESC) AS NotaCreditoEstado
         FROM dbo.ComprobanteElectronico c
         INNER JOIN dbo.Pedido p ON p.Id = c.PedidoId";
 
@@ -610,7 +663,9 @@ public class FacturacionRepository : IFacturacionRepository
         DocRefTipo = r.GetNullableString("DocRefTipo"),
         DocRefSerieNumero = r.GetNullableString("DocRefSerieNumero"),
         MotivoNotaCodigo = r.GetNullableString("MotivoNotaCodigo"),
-        MotivoNotaDescripcion = r.GetNullableString("MotivoNotaDescripcion")
+        MotivoNotaDescripcion = r.GetNullableString("MotivoNotaDescripcion"),
+        NotaCreditoNumero = r.GetNullableString("NotaCreditoNumero"),
+        NotaCreditoEstado = r.GetNullableString("NotaCreditoEstado")
     };
 
     public async Task<ComprobanteElectronico?> ObtenerPorIdAsync(int id, int sedeId, CancellationToken ct = default)
@@ -633,7 +688,9 @@ public class FacturacionRepository : IFacturacionRepository
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = ComprobanteSelect + @"
-            WHERE c.PedidoId = @PedidoId AND c.Estado IN ('PENDIENTE', 'ACEPTADO', 'ERROR')
+            WHERE c.PedidoId = @PedidoId AND c.Tipo IN ('BOLETA','FACTURA')
+              AND c.Estado IN ('PENDIENTE', 'ACEPTADO', 'ERROR')
+              AND (c.EstadoAnulacion IS NULL OR c.EstadoAnulacion <> 'ANULADO')
             ORDER BY c.FechaEmision DESC";
         cmd.AddParam("@PedidoId", pedidoId);
         return await cmd.ReadFirstOrDefaultAsync(MapComprobante, ct);
@@ -807,6 +864,17 @@ public class FacturacionRepository : IFacturacionRepository
         cmd.Parameters.Add("@Xml", System.Data.SqlDbType.VarBinary).Value = (object?)xml ?? DBNull.Value;
         cmd.Parameters.Add("@Cdr", System.Data.SqlDbType.VarBinary).Value = (object?)cdr ?? DBNull.Value;
         if (await cmd.ExecuteNonQueryAsync(ct) != 1) throw new InvalidOperationException("El comprobante ya no esta disponible.");
+
+        // Una nota de crédito que acaba de quedar aceptada deja sin efecto su documento original. Se aplica
+        // aquí (y no en cada llamador) para que NINGÚN camino —emisión directa, sincronizador en segundo plano,
+        // sincronización manual o reenvío— pueda olvidarlo. Es idempotente: si ya se aplicó, no hace nada.
+        if (estado is "ACEPTADO" or "SIMULADO")
+        {
+            await using var efecto = conn.CreateCommand();
+            efecto.CommandText = SqlEfectoNotaSobreOriginal;
+            efecto.AddParam("@NotaId", id);
+            await efecto.ExecuteNonQueryAsync(ct);
+        }
     }
 
     public async Task ActualizarAnulacionAsync(int id, int sedeId, string estadoAnulacion, string? estadoComprobante,
@@ -830,16 +898,34 @@ public class FacturacionRepository : IFacturacionRepository
         await using var conn = _factory.Create();
         await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(1) FROM dbo.ComprobanteElectronico WHERE PedidoId=@PedidoId AND SedeId=@SedeId AND Estado IN ('PENDIENTE','ACEPTADO','ERROR')";
+        // Solo cuenta el documento de venta vigente: las notas/guías y los documentos anulados no bloquean al pedido.
+        cmd.CommandText = @"SELECT COUNT(1) FROM dbo.ComprobanteElectronico
+            WHERE PedidoId=@PedidoId AND SedeId=@SedeId AND Tipo IN ('BOLETA','FACTURA')
+              AND Estado IN ('PENDIENTE','ACEPTADO','ERROR') AND (EstadoAnulacion IS NULL OR EstadoAnulacion <> 'ANULADO')";
         cmd.AddParam("@PedidoId", pedidoId).AddParam("@SedeId", sedeId);
         return await cmd.ReadScalarAsync<int>(ct) > 0;
+    }
+
+    public async Task<decimal> SumarNotasCreditoActivasAsync(int comprobanteId, CancellationToken ct = default)
+    {
+        await using var conn = _factory.Create(); await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"SELECT ISNULL(SUM(Total), 0) FROM dbo.ComprobanteElectronico
+            WHERE ComprobanteRefId = @Id AND Tipo = 'NOTA_CREDITO' AND Estado IN ('PENDIENTE','ACEPTADO','ERROR','SIMULADO')";
+        cmd.AddParam("@Id", comprobanteId);
+        return await cmd.ReadScalarAsync<decimal>(ct);
     }
 
     public async Task<List<ComprobanteElectronico>> ListarPendientesGlobalAsync(int limite, CancellationToken ct = default)
     {
         await using var conn = _factory.Create(); await conn.OpenAsync(ct);
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = ComprobanteSelect + @" WHERE (c.Estado='PENDIENTE' OR c.EstadoAnulacion='PENDIENTE') AND c.EsSimulado=0
+        // Una anulación pendiente se sigue consultando solo 72 h: pasado ese tiempo no se resuelve sola
+        // y consultar cada 30 s indefinidamente solo satura la API (queda para revisión manual).
+        cmd.CommandText = ComprobanteSelect + @" WHERE (c.Estado='PENDIENTE'
+                OR (c.EstadoAnulacion='PENDIENTE'
+                    AND (c.FechaSolicitudAnulacion IS NULL OR c.FechaSolicitudAnulacion > DATEADD(hour,-72,SYSDATETIME()))))
+            AND c.EsSimulado=0
             AND c.ExternalId IS NOT NULL AND c.FechaActualizacion < DATEADD(second,-10,SYSDATETIME())
             ORDER BY c.FechaActualizacion OFFSET 0 ROWS FETCH NEXT @Limite ROWS ONLY";
         cmd.AddParam("@Limite", Math.Clamp(limite, 1, 100));

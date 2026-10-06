@@ -93,11 +93,19 @@
       @if (c.estado === 'RECHAZADO') {
         <button class="btn btn--sm btn--desactivar" (click)="irAlPedido(c)" title="Corregir y emitir con nueva numeración">Corregir pedido</button>
       }
-      @if (c.estado === 'ACEPTADO' && !c.esSimulado && c.estadoAnulacion !== 'PENDIENTE') {
+      <!-- "Anular" (baja) solo aplica a FACTURAS sin nota de crédito. Una boleta se anula con una Nota de crédito,
+           y anular una nota reabriría la venta que corrigió. -->
+      @if (c.estado === 'ACEPTADO' && !c.esSimulado && c.tipo === 'FACTURA' && c.estadoAnulacion !== 'PENDIENTE' && !c.notaCreditoNumero) {
         <button class="btn btn--sm btn--desactivar" (click)="pedirAnular(c)" title="Solicitar anulación"><app-icon name="disable" [size]="14"></app-icon> Anular</button>
       }
       @if (c.estado === 'ACEPTADO' && esVenta(c) && c.estadoAnulacion !== 'ANULADO') {
-        <button class="btn btn--sm btn--nc" (click)="pedirNotaCredito(c)" title="Emitir nota de crédito"><app-icon name="note" [size]="14"></app-icon> Nota de crédito</button>
+        <!-- Una sola nota de crédito por documento: si ya tiene una vigente, no se ofrece otra. -->
+        @if (!c.notaCreditoNumero) {
+          <button class="btn btn--sm btn--nc" (click)="pedirNotaCredito(c)"
+            [title]="c.tipo === 'BOLETA' ? 'Anular la boleta con una nota de crédito' : 'Emitir nota de crédito'">
+            <app-icon name="note" [size]="14"></app-icon> {{ c.tipo === 'BOLETA' ? 'Anular (nota de crédito)' : 'Nota de crédito' }}
+          </button>
+        }
         <button class="btn btn--sm btn--nd" (click)="pedirNotaDebito(c)" title="Emitir nota de débito"><app-icon name="note" [size]="14"></app-icon> Nota de débito</button>
         <button class="btn btn--sm btn--guia" (click)="pedirGuia(c)" title="Emitir guía de remisión"><app-icon name="truck" [size]="14"></app-icon> Guía de remisión</button>
       }
@@ -117,6 +125,9 @@
               <td class="nombre">
                 {{ c.numeroCompleto }} <span class="tipo" [class.tipo--nc]="esNotaCredito(c)" [class.tipo--nd]="esNotaDebito(c)" [class.tipo--guia]="esGuia(c)">{{ etiquetaTipo(c.tipo) }}</span>
                 @if (esNota(c) && c.docRefSerieNumero) { <div class="ref-nc">ref. {{ c.docRefSerieNumero }}</div> }
+                @if (esVenta(c) && c.notaCreditoNumero) {
+                  <div class="ref-nc">{{ c.estado === 'ANULADO' ? 'anulada con' : 'nota de crédito' }} {{ c.notaCreditoNumero }}{{ c.notaCreditoEstado === 'PENDIENTE' ? ' (en trámite)' : '' }}</div>
+                }
                 @if (esGuia(c) && c.pedidoNumero) { <div class="ref-nc">traslado · pedido #{{ c.pedidoNumero }}</div> }
               </td>
               <td>{{ c.pedidoNumero ? '#' + c.pedidoNumero : '—' }}</td>
@@ -146,6 +157,9 @@
             <span [class]="'badge ' + claseEstado(c.estado)">{{ c.estado }}</span>
           </div>
           @if (esNota(c) && c.docRefSerieNumero) { <div class="ref-nc">ref. {{ c.docRefSerieNumero }}</div> }
+          @if (esVenta(c) && c.notaCreditoNumero) {
+            <div class="ref-nc">{{ c.estado === 'ANULADO' ? 'anulada con' : 'nota de crédito' }} {{ c.notaCreditoNumero }}{{ c.notaCreditoEstado === 'PENDIENTE' ? ' (en trámite)' : '' }}</div>
+          }
           @if (esGuia(c) && c.pedidoNumero) { <div class="ref-nc">traslado · pedido #{{ c.pedidoNumero }}</div> }
           <div class="comp-card__row"><span>Cliente</span><strong>{{ c.clienteNombre }}</strong></div>
           <div class="comp-card__row"><span>Documento</span><strong>{{ c.clienteNumDoc || '—' }}</strong></div>
@@ -333,6 +347,11 @@
         <span><strong>Estado:</strong> {{ c.estado }}</span><span><strong>Proveedor:</strong> {{ c.proveedor }}</span>
         <span><strong>Ambiente:</strong> {{ c.ambiente }}</span><span><strong>Cliente:</strong> {{ c.clienteNombre }}</span>
         @if (c.estadoAnulacion) { <span><strong>Anulación:</strong> {{ c.estadoAnulacion }}</span> }
+        @if (esNota(c) && c.docRefSerieNumero) { <span><strong>Documento de referencia:</strong> {{ c.docRefSerieNumero }}</span> }
+        @if (esNota(c) && c.motivoNotaDescripcion) { <span><strong>Motivo:</strong> {{ c.motivoNotaDescripcion }}</span> }
+        @if (esVenta(c) && c.notaCreditoNumero) {
+          <span><strong>Nota de crédito:</strong> {{ c.notaCreditoNumero }} ({{ c.notaCreditoEstado }})</span>
+        }
       </div>
       @if (c.guia; as g) {
         <div class="guia-detalle">

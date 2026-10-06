@@ -63,6 +63,9 @@ export interface Comprobante {
   docRefSerieNumero?: string | null;
   motivoNotaCodigo?: string | null;
   motivoNotaDescripcion?: string | null;
+  // Boleta/factura: nota de crédito vigente asociada (la que la anula o acredita), p.ej. "BC01-1".
+  notaCreditoNumero?: string | null;
+  notaCreditoEstado?: string | null;
   // Guía de remisión: datos de traslado (null en los demás tipos).
   guia?: GuiaRemision | null;
   detalles: ComprobanteDetalle[];

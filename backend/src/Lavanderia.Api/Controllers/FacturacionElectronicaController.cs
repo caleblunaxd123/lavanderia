@@ -325,8 +325,10 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
     {
         var c = await _repo.ObtenerPorIdAsync(id, SedeRequeridaId, ct);
         if (c is null) return NotFound();
-        if (c.EsSimulado || c.Estado != "ACEPTADO") return Bad("Solo se puede anular un comprobante real aceptado.");
-        if (c.EstadoAnulacion is "PENDIENTE" or "ANULADO") return Bad("El comprobante ya tiene una anulacion en curso o aceptada.");
+        // SUNAT/APISUNAT solo dan de baja FACTURAS por este medio. Una boleta se deja sin efecto con una nota de
+        // crédito, y anular una nota reabriría la venta que corrigió (ver FacturacionReglas.ValidarBaja).
+        var errorBaja = FacturacionReglas.ValidarBaja(c.Tipo, c.Estado, c.EsSimulado, c.EstadoAnulacion, c.NotaCreditoNumero);
+        if (errorBaja is not null) return Bad(errorBaja);
         var motivo = req.Motivo.Trim();
         var config = await _repo.ObtenerConfigAsync(NegocioId, ct) ?? throw new InvalidOperationException("Configuracion no encontrada.");
         var r = await Seleccionar(c.Proveedor).AnularAsync(c, Credenciales(config), motivo, ct);
@@ -360,9 +362,12 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         var esDebito = tipoNota == "NOTA_DEBITO";
         var original = await CargarCompleto(id, ct);
         if (original is null) return NotFound();
-        if (original.Tipo is not ("BOLETA" or "FACTURA")) return Bad($"Solo se emite una {etiqueta} sobre una boleta o factura.");
-        if (original.Estado != "ACEPTADO") return Bad($"Solo se emite {etiqueta} sobre un comprobante aceptado por SUNAT.");
-        if (original.EstadoAnulacion is "PENDIENTE" or "ANULADO") return Bad("El comprobante ya está anulado o con una anulación en curso.");
+        // Reglas centralizadas: documento de venta aceptado y no anulado, y una nota de crédito no puede
+        // acreditar más que el total (evita acreditar dos veces la misma venta).
+        var acreditado = esDebito ? 0m : await _repo.SumarNotasCreditoActivasAsync(original.Id, ct);
+        var errorNota = FacturacionReglas.ValidarNota(tipoNota, etiqueta, original.Tipo, original.Estado,
+            original.EstadoAnulacion, original.Total, acreditado, original.Total);
+        if (errorNota is not null) return Bad(errorNota);
 
         var motivoCodigo = (motivoCodigoRaw ?? "").Trim();
         if (!motivosValidos.Contains(motivoCodigo)) return Bad($"El motivo de la {etiqueta} no es válido ({catalogo} de SUNAT).");
@@ -428,6 +433,8 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         var origen = await CargarCompleto(id, ct);
         if (origen is null) return NotFound();
         if (origen.Tipo is not ("BOLETA" or "FACTURA")) return Bad("La guía de remisión se emite desde una boleta o factura.");
+        if (origen.Estado == "ANULADO" || origen.EstadoAnulacion == "ANULADO")
+            return Bad("El comprobante está anulado: no se puede emitir una guía de remisión desde él.");
         if (origen.Detalles.Count == 0) return Bad("El comprobante no tiene bienes para trasladar.");
 
         // Catálogo 20 de SUNAT (motivo de traslado) — subconjunto habitual para una lavandería.
@@ -580,6 +587,7 @@ public class FacturacionElectronicaController : TenantAwareControllerBase
         MotivoAnulacion = c.MotivoAnulacion, FechaAnulacion = c.FechaAnulacion,
         DocRefSerieNumero = c.DocRefSerieNumero, MotivoNotaCodigo = c.MotivoNotaCodigo,
         MotivoNotaDescripcion = c.MotivoNotaDescripcion,
+        NotaCreditoNumero = c.NotaCreditoNumero, NotaCreditoEstado = c.NotaCreditoEstado,
         Guia = c.Guia is null ? null : new GuiaRemisionDto(
             c.Guia.MotivoTrasladoCodigo, c.Guia.MotivoTrasladoDescripcion, c.Guia.PesoBrutoTotal, c.Guia.UnidadPeso,
             c.Guia.NumeroBultos, c.Guia.FechaInicioTraslado, c.Guia.ModalidadTransporte,

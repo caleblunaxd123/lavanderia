@@ -1009,6 +1009,9 @@ public class ComprobanteDto
     public string? DocRefSerieNumero { get; set; }
     public string? MotivoNotaCodigo { get; set; }
     public string? MotivoNotaDescripcion { get; set; }
+    // Boleta/factura: nota de crédito vigente asociada (la que la anula o la acredita), p.ej. "BC01-1".
+    public string? NotaCreditoNumero { get; set; }
+    public string? NotaCreditoEstado { get; set; }
     // Guía de Remisión: datos de traslado (null en los demás tipos).
     public GuiaRemisionDto? Guia { get; set; }
     public List<ComprobanteDetalleDto> Detalles { get; set; } = [];

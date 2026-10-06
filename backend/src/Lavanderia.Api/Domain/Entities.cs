@@ -582,6 +582,9 @@ public class ComprobanteElectronico
     public string? DocRefSerieNumero { get; set; }   // p.ej. F001-00000123
     public string? MotivoNotaCodigo { get; set; }    // catálogo 09 (01, 02, 03, 06…)
     public string? MotivoNotaDescripcion { get; set; }
+    // Solo lectura (no se guarda): nota de crédito vigente que referencia a ESTE documento, p.ej. "BC01-1".
+    public string? NotaCreditoNumero { get; set; }
+    public string? NotaCreditoEstado { get; set; }
     public List<ComprobanteElectronicoDetalle> Detalles { get; set; } = [];
     public List<ComprobanteElectronicoIntento> Intentos { get; set; } = [];
     // Guía de Remisión (Tipo = GUIA_REMISION): datos de traslado.

@@ -123,24 +123,35 @@ public class PedidoCalculosTests
     }
 
     // ---------------- Validación de contacto ----------------
+    // El celular es OPCIONAL (hay clientes que no lo quieren dar): vacío no bloquea el pedido.
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Contacto_celularVacio_lanza(string? celular)
-        => Assert.Throws<InvalidOperationException>(() => PedidoCalculos.ValidarContacto(celular, null, "Tienda"));
+    public void Contacto_celularVacio_pasa(string? celular)
+        => PedidoCalculos.ValidarContacto(celular, null, "Tienda"); // no lanza
 
+    // Solo se valida el formato cuando viene informado: números (con "+" y código de país para el extranjero).
     [Theory]
-    [InlineData("12345678")]    // 8 dígitos
-    [InlineData("812345678")]   // no empieza en 9
-    [InlineData("9123")]        // muy corto
-    [InlineData("9123456789")]  // muy largo
+    [InlineData("abc")]
+    [InlineData("987-654-321")]
+    [InlineData("98765432x")]
+    [InlineData("123")]                    // muy corto
+    [InlineData("+")]
+    [InlineData("123456789012345678901")]  // más de 20 dígitos
     public void Contacto_celularFormatoInvalido_lanza(string celular)
         => Assert.Throws<InvalidOperationException>(() => PedidoCalculos.ValidarContacto(celular, null, "Tienda"));
 
-    [Fact]
-    public void Contacto_celularValidoTienda_pasa()
-        => PedidoCalculos.ValidarContacto("987654321", null, "Tienda"); // no lanza
+    // Cualquier número, peruano o extranjero, sin exigir una cantidad fija de dígitos.
+    [Theory]
+    [InlineData("987654321")]       // Perú
+    [InlineData("12345678")]
+    [InlineData("812345678")]
+    [InlineData("+61437622958")]    // Australia
+    [InlineData("+573001234567")]   // Colombia
+    [InlineData("+5491122334455")]  // Argentina
+    public void Contacto_celularValido_pasa(string celular)
+        => PedidoCalculos.ValidarContacto(celular, null, "Tienda"); // no lanza
 
     [Fact]
     public void Contacto_recojoSinDireccion_lanza()
