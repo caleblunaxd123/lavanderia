@@ -46,60 +46,58 @@
 
   &--primario { background: var(--naranja); color: var(--texto-sobre-acento, #fff); }
   &--ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
-  &--descargar { background: var(--azul-claro); color: var(--texto-sobre-secundario, #fff); display: inline-flex; align-items: center; gap: 6px; }
-  &--pdf { background: #25d366; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
   &:disabled { opacity: .55; cursor: not-allowed; }
 }
 
-.whatsapp-envio {
+// ---- Enviar al cliente: UNA fila compacta (título + celular + 3 botones con texto) ----
+.envio {
+  flex: 1 1 100%;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 12px 6px 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.18);
 
-  &__boton {
+  &__titulo { font-size: 12px; font-weight: 800; opacity: .95; white-space: nowrap; }
+
+  &__celular {
+    width: 150px;
+    min-height: 36px;
+    padding: 6px 10px;
     border: none;
-    border-radius: 50%;
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #25d366;
-    color: #fff;
-    cursor: pointer;
-    flex-shrink: 0;
-
-    &:disabled { opacity: .5; cursor: not-allowed; }
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a202c;
+    font-family: inherit;
+    background: #fff;
+    &:focus { outline: 2px solid #fcd34d; }
   }
+}
 
-  &__campo {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
+.envio-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter .12s ease;
 
-    span {
-      font-size: 10px;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: .03em;
-    }
+  &--pdf { background: #16a34a; }
+  &--msg { background: #2563eb; }
+  &--img { background: #0e7490; }
 
-    input {
-      border: none;
-      font-size: 13px;
-      font-weight: 700;
-      color: #1a202c;
-      font-family: inherit;
-      width: 130px;
-      padding: 0;
-
-      &:focus { outline: none; }
-    }
-  }
+  &:hover:not(:disabled) { filter: brightness(1.1); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
 }
 
 .toggle-grupo {
@@ -161,18 +159,19 @@
     font-size: 12px;
   }
 
-  .whatsapp-envio {
-    grid-column: 1 / -1;
-    padding-right: 8px;
-
-    &__campo {
-      flex: 1;
-      min-width: 0;
-
-      input {
-        width: 100%;
-      }
-    }
+  // Envío al cliente: título arriba, celular a todo el ancho y los 3 botones repartidos en una fila.
+  .envio { grid-column: 1 / -1; }
+  .envio__titulo { flex: 1 1 100%; }
+  .envio__celular { flex: 1 1 100%; width: auto; min-height: 40px; }
+  .envio-op {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+    padding: 6px;
+    font-size: 12px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
   }
 
   .toggle-grupo {

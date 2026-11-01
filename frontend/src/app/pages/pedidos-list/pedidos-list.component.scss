@@ -848,8 +848,9 @@
     background: #fbfcfe;
 
     .btn-wsp {
-      width: 28px;
-      height: 28px;
+      min-height: 28px;
+      padding: 0 9px;
+      font-size: 11px;
     }
   }
 
@@ -1208,18 +1209,26 @@
   margin-bottom: 10px !important;
 }
 
+// Botón de WhatsApp con texto (antes era solo un círculo con ícono y no se entendía qué hacía).
 .btn-wsp {
   border: none;
-  background: #25d366;
+  background: #128c7e;
   color: #fff;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
+
+  &:hover { background: #0f766e; }
 }
 
 // ---------- Cards mobile ----------

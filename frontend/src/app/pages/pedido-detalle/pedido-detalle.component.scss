@@ -192,6 +192,11 @@
 
   // Cada acción con su color sólido por función (sin degradados ni fondos tenues), para que
   // se lean claramente como botones y se distingan entre sí.
+  // Voucher por WhatsApp: verde WhatsApp, a todo el ancho en celular (es la acción de enviar al cliente).
+  &-wsp {
+    background: #128c7e; border-color: #128c7e; color: #fff;
+    &:hover:not(:disabled) { background: #0f766e; border-color: #0f766e; }
+  }
   &-ticket {
     background: #2563eb; border-color: #2563eb; color: #fff;
     &:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }
@@ -214,6 +219,39 @@
     &:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
   }
 }
+
+// Buscador de servicios del modal "Agregar ítem": la lista va en línea (debajo del campo) para que el
+// modal no la recorte, con scroll propio si hay muchos servicios.
+.combo-item__lista {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, .10);
+}
+.combo-item__opcion {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover, &.is-sel { background: #eef2f7; }
+}
+.combo-item__nombre { font-size: 13.5px; font-weight: 700; color: #1e293b; }
+.combo-item__precio { font-size: 12px; color: #64748b; white-space: nowrap; }
+.combo-item__vacio { padding: 12px; text-align: center; font-size: 13px; color: #94a3b8; }
 
 // "Registrar devolución" (sección Pago): botón sólido naranja, ancho completo.
 .btn-devolucion {
@@ -242,8 +280,23 @@
 }
 
 @media (max-width: 640px) {
-  // En móvil, cada acción ocupa toda la fila para que sean fáciles de tocar.
-  .acciones-pedido__secundarias .btn--accion { flex: 1 1 100%; justify-content: center; }
+  // En móvil, las acciones se acomodan de a 2 por fila (2 o 3 filas en total en vez de una columna larga).
+  // Si queda una sola al final, ocupa toda su fila (flex-grow). El texto largo baja a 2 líneas.
+  .acciones-pedido__secundarias { gap: 8px; }
+  .acciones-pedido__secundarias .btn--accion {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    min-height: 52px;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 6px;
+    font-size: 13px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+  }
+  // El voucher al cliente ocupa toda la fila para que se lea completo y destaque.
+  .acciones-pedido__secundarias .btn--accion-wsp { flex-basis: 100%; }
 }
 
 // ---------- Banners ----------

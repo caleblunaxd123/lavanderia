@@ -416,7 +416,8 @@ export class RegistrarComponent implements OnInit, OnDestroy {
             const piezas = (i.piezas ?? 1) + 1;
             return { ...i, piezas, cantidad: this.areaM2(i.ancho, i.largo, piezas) };
           }
-          return { ...i, cantidad: i.cantidad + 1 };
+          // Sin cantidad escrita todavía (0) no se suma: el operario debe indicar la cantidad real.
+          return { ...i, cantidad: i.cantidad > 0 ? i.cantidad + 1 : 0 };
         })
       );
     } else {
@@ -426,7 +427,9 @@ export class RegistrarComponent implements OnInit, OnDestroy {
         precio: servicio.precio,
         unidad: servicio.unidad,
         // m²: arranca en 1.00 × 1.00 = 1 m²; el operario ajusta las medidas reales.
-        cantidad: 1,
+        // Resto (kg, prenda, unidad…): arranca SIN cantidad (0, el campo se ve vacío con "0.00 Kg" de fondo).
+        // Antes arrancaba en 1 y, si se olvidaban de cambiarlo, se registraba 1 kg por error y había que anular el ticket.
+        cantidad: esM2 ? 1 : 0,
         descripcion: '',
         ...(esM2 ? { ancho: 1, largo: 1, piezas: 1 } : {})
       }]);
@@ -565,11 +568,22 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     this.items.update(list => list.filter(i => i.servicioId !== id));
   }
 
-  cambiarCantidad(id: number, cantidad: number) {
-    if (cantidad < 0.1) return;
+  cambiarCantidad(id: number, cantidad: number | null) {
+    // Campo vacío o inválido = 0 (sin cantidad): no se puede registrar hasta que escriban una cantidad.
+    const c = Number(cantidad);
+    if (Number.isFinite(c) && c < 0) return;
+    const valor = Number.isFinite(c) ? c : 0;
     this.items.update(list =>
-      list.map(i => i.servicioId === id ? { ...i, cantidad } : i)
+      list.map(i => i.servicioId === id ? { ...i, cantidad: valor } : i)
     );
+  }
+
+  /**
+   * Texto de fondo del campo de cantidad. Siempre "0.00 Kg": en el catálogo casi todo está como "UND" aunque
+   * se cobre por peso, y mostrar "0 UND" confundía. La unidad del catálogo sigue visible junto al nombre del ítem.
+   */
+  placeholderCantidad(_it: ItemAgregado): string {
+    return '0.00 Kg';
   }
 
   cambiarDescripcion(id: number, descripcion: string) {
@@ -634,7 +648,7 @@ export class RegistrarComponent implements OnInit, OnDestroy {
         && this.ubicacionEntregaConfirmada
       ))
       && this.tieneServicioLavanderia()
-      && !this.items().some(i => this.esItemM2(i) && i.cantidad <= 0)
+      && !this.items().some(i => i.cantidad <= 0)   // ningún ítem sin cantidad (evita registrar 1 kg por olvido)
       && this.totalFinal() > 0
       && !this.registrando();
   }
@@ -650,6 +664,8 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     if (!this.tieneServicioLavanderia()) return 'Agrega al menos un servicio de lavandería; la tarifa de delivery no cuenta como servicio.';
     const m2SinMedida = this.items().find(i => this.esItemM2(i) && i.cantidad <= 0);
     if (m2SinMedida) return `Indica el ancho y el largo de "${m2SinMedida.nombre}" (el área debe ser mayor a cero).`;
+    const sinCantidad = this.items().find(i => i.cantidad <= 0);
+    if (sinCantidad) return `Escribe la cantidad o el peso de "${sinCantidad.nombre}".`;
     if (this.totalFinal() <= 0) return 'El total del pedido debe ser mayor a cero.';
     return null;
   }
@@ -808,6 +824,11 @@ export class RegistrarComponent implements OnInit, OnDestroy {
     if (!p) return;
     const query = tipo === 'produccion' ? '?tipo=produccion' : '';
     window.open(`/ticket/${p.id}${query}`, '_blank');
+  }
+
+  /** Botón "Enviar voucher al cliente por WhatsApp": abre la ventana en el clic (evita el bloqueo de pop-ups). */
+  enviarVoucherCliente() {
+    this.enviarWhatsapp(window.open('', '_blank'));
   }
 
   enviarWhatsapp(ventana?: Window | null) {

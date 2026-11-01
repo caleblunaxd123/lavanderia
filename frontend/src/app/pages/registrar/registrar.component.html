@@ -57,10 +57,18 @@
         <app-icon name="printer" [size]="16"></app-icon> Imprimir ticket del cliente
       </button>
 
-      <!-- WhatsApp con seguimiento: solo tiene sentido cuando el pedido es Delivery. -->
+      <!-- Voucher al cliente: botón explícito para cualquier pedido con celular (también sirve para reenviarlo). -->
+      @if (pedidoCreado()?.clienteCelular) {
+        <button class="btn btn--wsp btn--grande" (click)="enviarVoucherCliente()"
+          title="Abre WhatsApp con el resumen del pedido listo para enviar">
+          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar voucher al cliente por WhatsApp
+        </button>
+      }
+
+      <!-- Aviso "va en camino" con seguimiento: solo tiene sentido cuando el pedido es Delivery. -->
       @if (notificarWhatsapp && pedidoCreado()?.clienteCelular && pedidoCreado()?.modalidad === 'Delivery') {
         <button class="btn btn--wsp btn--grande" (click)="enviarEnCamino()">
-          <app-icon name="whatsapp" [size]="16"></app-icon> Enviar pedido y seguimiento
+          <app-icon name="whatsapp" [size]="16"></app-icon> Avisar "va en camino" y enviar seguimiento
         </button>
       }
 
@@ -206,7 +214,11 @@
                   @if (esItemM2(it)) {
                     <span class="cant-m2" title="Área calculada">{{ it.cantidad.toFixed(2) }} m²</span>
                   } @else {
-                    <input type="number" step="0.01" min="0.01" [ngModel]="it.cantidad"
+                    <!-- Sin "1" por defecto: el campo arranca vacío y muestra de fondo "0.00 Kg" (o "0 UND"). -->
+                    <input type="number" step="0.01" min="0.01" inputmode="decimal"
+                      [ngModel]="it.cantidad > 0 ? it.cantidad : null"
+                      [placeholder]="placeholderCantidad(it)"
+                      [class.input-cantidad--falta]="it.cantidad <= 0"
                       (ngModelChange)="cambiarCantidad(it.servicioId, $event)" class="input-cantidad" />
                   }
                 </td>

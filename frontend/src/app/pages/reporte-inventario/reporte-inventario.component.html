@@ -119,7 +119,13 @@
 
     <!-- Tabla de movimientos -->
     <div class="ri-tabla card">
-      <h3>Movimientos del periodo ({{ movimientos().length }})</h3>
+      <div class="ri-tabla__cab">
+        <h3>Movimientos del periodo ({{ movimientos().length }})</h3>
+        <button type="button" class="btn btn--ghost" (click)="descargarMovimientos()" [disabled]="movimientosOrdenados().length === 0"
+          title="Descarga estos movimientos en un archivo que abre en Excel">
+          <app-icon name="download" [size]="15"></app-icon> Descargar Excel
+        </button>
+      </div>
       @if (movimientosOrdenados().length === 0) {
         <div class="ri-estado">Sin movimientos en el rango.</div>
       } @else {

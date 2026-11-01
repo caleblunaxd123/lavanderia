@@ -10,6 +10,8 @@ import { PuntoBarra } from '../../shared/mini-barras/mini-barras.component';
 import { ToastService } from '../../core/services/toast.service';
 import { TipoGasto } from '../../core/models/models';
 import { ErroresCampo } from '../../core/util/errores-campo';
+import { descargarCsv, fechaHoraCsv } from '../../core/util/descargar-csv';
+import { fechaLocalIso } from '../../core/util/fecha-local';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { PaginacionComponent } from '../../shared/paginacion/paginacion.component';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -442,7 +444,7 @@ export class InventarioComponent implements OnInit, OnDestroy {
       return;
     }
     this.insumoMovimiento = i;
-    this.movTipo = 'COMPRA';
+    this.movTipo = 'MEDICION';  // lo más frecuente en el día a día; Compra queda a un toque
     this.movCantidad = null;
     this.movCosto = null;
     this.movMetodoPago = 'EFECTIVO';
@@ -657,6 +659,47 @@ export class InventarioComponent implements OnInit, OnDestroy {
         this.toast.desdeHttp(err, 'No se pudo eliminar el movimiento.');
       }
     });
+  }
+
+  /** Descarga (CSV, abre en Excel) la lista de insumos tal como está filtrada, no solo la página visible. */
+  descargarInsumos() {
+    const lista = this.insumosOrdenados();
+    if (lista.length === 0) { this.toast.advertencia('No hay insumos para descargar.'); return; }
+    const clases = new Map(this.clases.map(c => [c.valor, c.etiqueta]));
+    const columnas = ['Insumo', 'Clase', 'Unidad', 'Contenido por unidad', 'Stock actual', 'Stock mínimo',
+      'Estado', 'Favorito', 'Última compra', 'Fecha de ingreso', 'Vencimiento'];
+    const filas = lista.map(i => [
+      i.nombre,
+      clases.get(i.clase) ?? i.clase,
+      i.unidadMedida,
+      i.contenidoValor && i.contenidoValor > 0 ? `${i.contenidoValor} ${i.contenidoUnidad ?? ''}`.trim() : '',
+      i.stockActual,
+      i.stockMinimo,
+      !i.activo ? 'Inactivo' : (this.bajoStock(i) ? 'Requiere reposición' : 'OK'),
+      !!i.favorito,
+      (i.ultimaCompra ?? '').slice(0, 10),
+      (i.fechaIngreso ?? '').slice(0, 10),
+      (i.fechaVencimiento ?? '').slice(0, 10)
+    ]);
+    descargarCsv(`inventario-${fechaLocalIso(new Date())}`, columnas, filas);
+  }
+
+  /** Descarga (CSV, abre en Excel) el historial de movimientos del rango elegido, completo. */
+  descargarHistorial() {
+    const lista = this.movimientos();
+    if (lista.length === 0) { this.toast.advertencia('No hay movimientos para descargar.'); return; }
+    const conCostos = this.puede('INVENTARIO_VER_COSTOS');
+    const columnas = ['Fecha', 'Insumo', 'Tipo', 'Cantidad', ...(conCostos ? ['Costo (S/)'] : []), 'Usuario', 'Descripción'];
+    const filas = lista.map(m => [
+      fechaHoraCsv(m.fecha),
+      m.insumoNombre ?? '',
+      this.etiquetaTipo(m.tipo),
+      m.cantidad,
+      ...(conCostos ? [m.costoTotal ?? null] : []),
+      m.usuarioNombre ?? '',
+      m.descripcion ?? ''
+    ]);
+    descargarCsv(`inventario-movimientos-${this.desdeHistorial || 'inicio'}-a-${this.hastaHistorial || fechaLocalIso(new Date())}`, columnas, filas);
   }
 
   etiquetaTipo(tipo: string): string {

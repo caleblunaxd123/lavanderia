@@ -613,8 +613,14 @@
 }
 
 .input-cantidad {
-  width: 50px !important;
-  padding: 4px !important;
+  width: 78px !important;     // cabe el texto de fondo "0.00 Kg"
+  padding: 4px 6px !important;
+
+  // El texto de fondo ("trama") se ve claro: indica qué escribir sin parecer un valor ya puesto.
+  &::placeholder { color: #94a3b8; font-size: 12px; font-weight: 500; }
+
+  // Ítem sin cantidad: borde ámbar para que se note cuál falta completar.
+  &--falta { border-color: #f59e0b !important; background: #fffbeb; }
 }
 
 // Precio editable por ítem (el del catálogo es solo referencial)

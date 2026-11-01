@@ -6,6 +6,8 @@ import { InsumosService, Insumo, MovimientoInsumo } from '../../core/services/in
 import { PageHeaderComponent } from '../../shared/page-header/page-header.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { fechaLocalIso } from '../../core/util/fecha-local';
+import { descargarCsv, fechaHoraCsv } from '../../core/util/descargar-csv';
+import { ToastService } from '../../core/services/toast.service';
 
 interface DiaSerie { fecha: string; consumo: number; compra: number; }
 
@@ -44,6 +46,7 @@ function maximoBonito(v: number): number {
 export class ReporteInventarioComponent implements OnInit {
   private readonly svc = inject(InsumosService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly insumos = signal<Insumo[]>([]);
   readonly insumoId = signal<number | null>(null);
@@ -92,6 +95,17 @@ export class ReporteInventarioComponent implements OnInit {
   }
 
   volver(): void { this.router.navigate(['/inventario']); }
+
+  /** Descarga (CSV, abre en Excel) los movimientos del insumo y rango que se están viendo. */
+  descargarMovimientos(): void {
+    const lista = this.movimientosOrdenados();
+    const ins = this.insumoSel();
+    if (!ins || lista.length === 0) { this.toast.advertencia('No hay movimientos para descargar.'); return; }
+    const columnas = ['Fecha', 'Insumo', 'Tipo', `Cantidad (${ins.unidadMedida})`, 'Usuario', 'Descripción'];
+    const filas = lista.map(m => [fechaHoraCsv(m.fecha), ins.nombre, m.tipo, m.cantidad, m.usuarioNombre ?? '', m.descripcion ?? '']);
+    const nombre = ins.nombre.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+    descargarCsv(`reporte-${nombre}-${this.desde}-a-${this.hasta}`, columnas, filas);
+  }
 
   cambiarInsumo(id: number): void { this.insumoId.set(Number(id)); this.cargar(); }
 

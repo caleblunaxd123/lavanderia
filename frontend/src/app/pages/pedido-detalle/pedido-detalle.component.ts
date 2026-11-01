@@ -371,12 +371,12 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     this.entregaPagos.set(saldo > 0.01 ? [{ metodo: 'EFECTIVO', monto: Math.round(saldo * 100) / 100 }] : []);
     this.entregaNota = '';
     this.recibidoPor = '';
-    this.notificarEntrega = true;   // marcado por defecto; el usuario puede desmarcarlo
+    this.notificarEntrega = false;   // siempre desmarcado al abrir; el usuario lo marca si quiere avisar
     this.modalEntrega.set(true);
   }
 
-  /** Mensaje de WhatsApp al registrar la entrega (marcado por defecto, opcional). */
-  notificarEntrega = true;
+  /** Aviso por WhatsApp al registrar la entrega: desmarcado por defecto, opcional (no bloqueado). */
+  notificarEntrega = false;
 
   // --- Derivados del modal de entrega ---
   /** Total a cobrar en esta visita (suma de las líneas de pago). */
@@ -677,6 +677,16 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * "Enviar voucher al cliente por WhatsApp": manda el resumen del pedido (prendas, total, saldo, fecha
+   * de entrega y condiciones). En pedidos a domicilio incluye el enlace de seguimiento; en tienda no.
+   */
+  enviarVoucher(p: Pedido) {
+    if (!p.clienteCelular) { this.toast.advertencia('Este cliente no tiene celular registrado.'); return; }
+    if (this.esDomicilio()) { this.enviarLinkPago(p); return; }
+    this.whatsapp.enviar(p.clienteCelular, this.whatsapp.mensajeIngreso(p, this.config.configuracion()));
+  }
+
   // ---------- Repartidor ----------
   asignarMotorizado(p: Pedido, motorizadoIdTexto: string) {
     if (this.asignandoMotorizado()) return;
@@ -784,10 +794,39 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
   }
 
   // ---------- Ítems ----------
+  // Buscador de servicios del modal "Agregar ítem" (sin distinguir mayúsculas ni tildes).
+  readonly busquedaServicioItem = signal('');
+  readonly comboItemAbierto = signal(false);
+  readonly serviciosFiltrados = computed(() => {
+    const q = this.normalizarTexto(this.busquedaServicioItem());
+    const lista = this.servicios();
+    return q ? lista.filter(s => this.normalizarTexto(s.nombre).includes(q)) : lista;
+  });
+
+  private normalizarTexto(v: string): string {
+    return (v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  }
+
+  onBuscarServicioItem(valor: string) {
+    this.busquedaServicioItem.set(valor);
+    this.comboItemAbierto.set(true);
+    this.itemServicioId = '';   // al escribir se "deselecciona" hasta elegir de la lista
+  }
+
+  elegirServicioItem(s: Servicio) {
+    this.itemServicioId = s.id;
+    this.busquedaServicioItem.set(s.nombre);
+    this.comboItemAbierto.set(false);
+  }
+
+  cerrarComboItem() { this.comboItemAbierto.set(false); }
+
   abrirModalItem() {
     this.itemServicioId = '';
     this.itemCantidad = 1;
     this.itemDescripcion = '';
+    this.busquedaServicioItem.set('');
+    this.comboItemAbierto.set(false);
     this.modalItem.set(true);
   }
 
@@ -952,7 +991,7 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
         // Al convertir se agregó la tarifa de domicilio, así que el total y el ticket cambiaron:
         // se ofrece reimprimir el ticket actualizado.
         if (fueConversion && confirm('Se agregó la tarifa de domicilio y el total cambió. ¿Reimprimir el ticket actualizado?')) {
-          this.imprimirTicket(p);
+          this.imprimirTicket(p, 'cliente');
         }
       },
       error: (err: HttpErrorResponse) => {
@@ -1046,9 +1085,11 @@ export class PedidoDetalleComponent implements OnInit, OnDestroy {
     });
   }
 
-  imprimirTicket(p: Pedido) {
+  /** Por defecto abre el ticket de PRODUCCIÓN (el que va con las prendas); `'cliente'` abre el del cliente. */
+  imprimirTicket(p: Pedido, tipo: 'produccion' | 'cliente' = 'produccion') {
     this.menuAcciones.set(false);
-    window.open(`/ticket/${p.id}`, '_blank');
+    const query = tipo === 'produccion' ? '?tipo=produccion' : '';
+    window.open(`/ticket/${p.id}${query}`, '_blank');
   }
 
   // ---------- Fotos ----------

@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ErroresCampo } from '../../core/util/errores-campo';
+import { descargarCsv } from '../../core/util/descargar-csv';
+import { fechaLocalIso } from '../../core/util/fecha-local';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -64,6 +66,28 @@ export class AjustesServiciosComponent implements OnInit {
     const inicio = (this.pagina() - 1) * this.tamanoPagina();
     return this.serviciosFiltrados().slice(inicio, inicio + this.tamanoPagina());
   });
+  /** Descarga (CSV, abre en Excel) el catálogo tal como está filtrado, no solo la página visible. */
+  descargarServicios() {
+    const lista = this.serviciosFiltrados();
+    if (lista.length === 0) { this.toast.advertencia('No hay servicios para descargar.'); return; }
+    const columnas = ['Servicio', 'Categoría', 'Unidad', 'Precio (S/)', 'Costo (S/)', 'Margen (S/)', 'Margen (%)', 'Estado'];
+    const filas = lista.map(s => {
+      const costo = s.costo || 0;
+      const margen = s.precio - costo;
+      return [
+        s.nombre,
+        s.categoriaNombre ?? '',
+        s.unidad,
+        s.precio,
+        s.costo ? s.costo : null,
+        Math.round(margen * 100) / 100,
+        s.precio ? Math.round((margen / s.precio) * 1000) / 10 : null,
+        s.activo ? 'Activo' : 'Inactivo'
+      ];
+    });
+    descargarCsv(`servicios-y-precios-${fechaLocalIso(new Date())}`, columnas, filas);
+  }
+
   cambiarPagina(p: number) { this.pagina.set(p); }
   cambiarTamanoPagina(t: number) { this.tamanoPagina.set(t); this.pagina.set(1); }
   actualizarBusqueda(valor: string) { this.busqueda.set(valor); this.pagina.set(1); }

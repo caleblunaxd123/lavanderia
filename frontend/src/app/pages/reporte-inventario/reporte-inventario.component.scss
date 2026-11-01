@@ -154,6 +154,11 @@
 .ri-tabla {
   padding: 16px;
   h3 { margin: 0 0 12px; font-size: 15px; color: var(--azul-oscuro, #053465); }
+  &__cab {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 12px;
+    h3 { margin: 0; }
+  }
   &__scroll { width: 100%; overflow-x: auto; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }

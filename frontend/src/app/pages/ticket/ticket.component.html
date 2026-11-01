@@ -3,51 +3,48 @@
   <div class="acciones-print__inner">
     <button class="btn btn--primario" (click)="imprimir()"><app-icon name="printer" [size]="16"></app-icon> Imprimir ticket</button>
 
-    <div class="whatsapp-envio">
-      <button class="whatsapp-envio__boton" (click)="enviarWhatsapp()" [disabled]="!celularEnvio().trim()" title="Enviar mensaje de WhatsApp">
-        <app-icon name="whatsapp" [size]="20"></app-icon>
-      </button>
-      <label class="whatsapp-envio__campo">
-        <span>Número Celular:</span>
-        <input
-          type="text"
-          [value]="celularEnvio()"
-          (input)="celularEnvio.set($any($event.target).value)"
-          placeholder="Sin celular"
-        />
-      </label>
-    </div>
-
-    <button class="btn btn--descargar" (click)="descargarImagen()" [disabled]="generandoImagen()">
-      <app-icon name="download" [size]="16"></app-icon> {{ generandoImagen() ? 'Generando…' : 'Descargar Imagen' }}
-    </button>
-
-    <button class="btn btn--pdf" (click)="compartirPdfWhatsapp()" [disabled]="generandoPdf() || !celularEnvio().trim()">
-      <app-icon name="download" [size]="16"></app-icon> {{ generandoPdf() ? 'Generando PDF…' : 'Compartir PDF' }}
-    </button>
-
     <button class="btn btn--ghost" (click)="cerrar()">Cerrar</button>
 
     <div class="toggle-grupo">
-      <span class="toggle-grupo__label">Tipo Ticket:</span>
+      <span class="toggle-grupo__label">Ticket para:</span>
       <div class="toggle-grupo__botones">
-        <button type="button" [class.is-active]="tipoTicket()==='CLIENTE'" (click)="tipoTicket.set('CLIENTE')">Cliente</button>
-        <button type="button" [class.is-active]="tipoTicket()==='PRODUCCION'" (click)="tipoTicket.set('PRODUCCION')">Producción</button>
+        <button type="button" [class.is-active]="tipoTicket()==='CLIENTE'" (click)="tipoTicket.set('CLIENTE')"
+          title="El ticket que se le entrega al cliente">Cliente</button>
+        <button type="button" [class.is-active]="tipoTicket()==='PRODUCCION'" (click)="tipoTicket.set('PRODUCCION')"
+          title="El ticket que acompaña las prendas al taller">Taller (producción)</button>
       </div>
     </div>
 
     <div class="toggle-grupo">
-      <span class="toggle-grupo__label">Descripción:</span>
+      <span class="toggle-grupo__label" title="Muestra u oculta la nota de cada prenda en el ticket">Observaciones:</span>
       <div class="toggle-grupo__botones">
         <button type="button" [class.is-active]="!mostrarDescripcion()" (click)="mostrarDescripcion.set(false)">Ocultar</button>
         <button type="button" [class.is-active]="mostrarDescripcion()" (click)="mostrarDescripcion.set(true)">Mostrar</button>
       </div>
     </div>
 
-    <p class="acciones-print__hint">
-      Si tu ticketera está lista, elige "{{ negocio().nombreNegocio }}" o tu impresora térmica en el diálogo.
-      Ancho configurado: <strong>{{ negocio().anchoTicketMm }}mm</strong>.
-    </p>
+    <!-- Enviar al cliente: una sola fila compacta; cada botón dice qué hace (detalle al pasar el cursor). -->
+    <div class="envio" role="group" aria-label="Enviar el ticket al cliente">
+      <span class="envio__titulo">Enviar al cliente:</span>
+      <input class="envio__celular" type="text" inputmode="tel" aria-label="WhatsApp del cliente"
+        [value]="celularEnvio()" (input)="celularEnvio.set($any($event.target).value)"
+        placeholder="Celular del cliente" />
+
+      <button type="button" class="envio-op envio-op--pdf" (click)="compartirPdfWhatsapp()"
+        [disabled]="generandoPdf() || !celularEnvio().trim()"
+        title="Manda el ticket como archivo PDF por WhatsApp (recomendado en celular)">
+        <app-icon name="whatsapp" [size]="16"></app-icon> {{ generandoPdf() ? 'Generando…' : 'Enviar PDF' }}
+      </button>
+      <button type="button" class="envio-op envio-op--msg" (click)="enviarWhatsapp()"
+        [disabled]="!celularEnvio().trim()"
+        title="Abre WhatsApp con un mensaje de texto con los datos del pedido, sin archivo">
+        <app-icon name="whatsapp" [size]="16"></app-icon> Enviar mensaje
+      </button>
+      <button type="button" class="envio-op envio-op--img" (click)="descargarImagen()" [disabled]="generandoImagen()"
+        title="Descarga el ticket como foto para adjuntarla tú en WhatsApp">
+        <app-icon name="download" [size]="16"></app-icon> {{ generandoImagen() ? 'Generando…' : 'Guardar imagen' }}
+      </button>
+    </div>
   </div>
 </div>
 

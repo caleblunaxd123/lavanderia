@@ -410,7 +410,10 @@ public class PedidosController : TenantAwareControllerBase
 
     [HttpPost("{id:int}/anular")]
     [Authorize(Policy = "Modulo:PEDIDOS")]
-    [Authorize(Roles = "ADMIN,COORDINADOR")] // anular es acción sensible: no basta con tener el módulo
+    // Anular es acción sensible: no basta con tener el módulo. Se exige el permiso fino PEDIDOS_ANULAR que el
+    // administrador asigna por rol en "Roles y accesos" (el ADMIN siempre pasa). Antes se exigía el rol fijo
+    // ADMIN/COORDINADOR y se ignoraba el permiso: los roles con el permiso marcado recibían 403 igual.
+    [Authorize(Policy = "Modulo:PEDIDOS_ANULAR")]
     public async Task<IActionResult> Anular(int id, [FromBody] AnularPedidoRequest req, CancellationToken ct)
     {
         try

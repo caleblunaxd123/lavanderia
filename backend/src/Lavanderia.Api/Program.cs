@@ -261,6 +261,16 @@ builder.Services.AddAuthorization(options =>
             policy.Requirements.Add(new ModuloRequirement(modulo));
         });
     }
+    // Permisos "finos" (ej. PEDIDOS_ANULAR): también tienen política, para que el backend los exija igual que
+    // el frontend (antes solo se ocultaba el botón y el endpoint pedía un rol fijo, ignorando el permiso).
+    foreach (var clave in Lavanderia.Api.Domain.PermisosFinos.ClavesTodas)
+    {
+        options.AddPolicy(ModuloPolicies.For(clave), policy =>
+        {
+            policy.RequireAuthenticatedUser();
+            policy.Requirements.Add(new ModuloRequirement(clave));
+        });
+    }
     // El reporte de cuadres es parte de la operación de caja: lo pueden ver quienes manejan
     // la caja (CAJA) o quienes ven reportes (REPORTES). ADMIN siempre pasa.
     options.AddPolicy("Modulo:CAJA_O_REPORTES", policy =>

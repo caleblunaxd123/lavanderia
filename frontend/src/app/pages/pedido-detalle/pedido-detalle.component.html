@@ -101,8 +101,9 @@
           <div class="cliente-contacto">
             @if (p.clienteCelular) {
               <span class="cliente-celular"><app-icon name="smartphone" [size]="13"></app-icon> {{ p.clienteCelular }}</span>
-              <button type="button" class="btn btn--wsp btn--sm" (click)="abrirWhatsapp(p)">
-                <app-icon name="whatsapp" [size]="14"></app-icon> WhatsApp
+              <button type="button" class="btn btn--wsp btn--sm" (click)="abrirWhatsapp(p)"
+                title="Manda un aviso del estado actual del pedido (en proceso, listo o entregado)">
+                <app-icon name="whatsapp" [size]="14"></app-icon> Avisar estado por WhatsApp
               </button>
             } @else {
               <span class="hint">Sin celular registrado</span>
@@ -322,8 +323,22 @@
       }
 
       <div class="acciones-pedido__secundarias">
-        <button type="button" class="btn btn--accion btn--accion-ticket" (click)="imprimirTicket(p)">
-          <app-icon name="printer" [size]="18"></app-icon> Reimprimir ticket
+        <!-- Voucher al cliente: botón explícito (antes solo había un "WhatsApp" suelto en la ficha del cliente). -->
+        @if (!p.anulado) {
+          <button type="button" class="btn btn--accion btn--accion-wsp" (click)="enviarVoucher(p)"
+            [disabled]="!p.clienteCelular || enviandoLinkPago()"
+            [title]="p.clienteCelular ? 'Abre WhatsApp con el resumen del pedido listo para enviar' : 'Este cliente no tiene celular registrado'">
+            <app-icon name="whatsapp" [size]="18"></app-icon>
+            {{ enviandoLinkPago() ? 'Preparando…' : 'Enviar voucher al cliente por WhatsApp' }}
+          </button>
+        }
+        <button type="button" class="btn btn--accion btn--accion-ticket" (click)="imprimirTicket(p, 'produccion')"
+          title="Imprime el ticket que va con las prendas al taller">
+          <app-icon name="printer" [size]="18"></app-icon> Ticket de producción
+        </button>
+        <button type="button" class="btn btn--accion btn--accion-ticket" (click)="imprimirTicket(p, 'cliente')"
+          title="Imprime el ticket que se le entrega al cliente">
+          <app-icon name="printer" [size]="18"></app-icon> Ticket del cliente
         </button>
         @if (!p.anulado && saldoPendiente() === 0) {
           <button type="button" class="btn btn--accion btn--accion-comprobante" [disabled]="emitiendoComprobante()" (click)="emitirComprobante('BOLETA')">
@@ -581,13 +596,13 @@
         <label>Nota de la entrega <small class="hint">(opcional)</small></label>
         <input type="text" maxlength="300" [(ngModel)]="entregaNota" placeholder="Ej. Se lleva 2 sábanas; falta 1 frazada" />
 
-        <!-- WhatsApp opcional: marcado por defecto; si se desmarca, no se avisa al cliente. -->
+        <!-- WhatsApp opcional: desmarcado por defecto; solo se avisa al cliente si el usuario lo marca. -->
         @if (pedido()?.clienteCelular) {
           <label class="ent-wsp">
             <input type="checkbox" [(ngModel)]="notificarEntrega" />
             <span>
               <app-icon name="whatsapp" [size]="14"></app-icon>
-              Avisar al cliente por WhatsApp al entregar
+              Avisar al cliente por WhatsApp al entregar (opcional)
             </span>
           </label>
         }
@@ -709,13 +724,30 @@
       <button type="button" aria-label="Cerrar nuevo ítem" (click)="cerrarModales()"><app-icon name="close" [size]="15"></app-icon></button>
     </div>
     <div class="modal-simple__body">
-      <label>Servicio</label>
-      <select [(ngModel)]="itemServicioId">
-        <option [ngValue]="''" disabled>Escoge…</option>
-        @for (s of servicios(); track s.id) {
-          <option [ngValue]="s.id">{{ s.nombre }} — S/ {{ s.precio }} / {{ s.unidad }}</option>
-        }
-      </select>
+      <label for="item-servicio">Servicio</label>
+      <!-- Buscador: escribe parte del nombre y elige de la lista. -->
+      <input id="item-servicio" type="text" class="combo-item__input" autocomplete="off" inputmode="search"
+        placeholder="Escribe para buscar un servicio…"
+        [value]="busquedaServicioItem()"
+        (input)="onBuscarServicioItem($any($event.target).value)"
+        (focus)="comboItemAbierto.set(true)"
+        (blur)="cerrarComboItem()"
+        (keydown.escape)="cerrarComboItem()"
+        (keydown.enter)="$event.preventDefault(); serviciosFiltrados()[0] && elegirServicioItem(serviciosFiltrados()[0])" />
+      @if (comboItemAbierto()) {
+        <ul class="combo-item__lista" role="listbox">
+          @for (s of serviciosFiltrados(); track s.id) {
+            <li>
+              <button type="button" class="combo-item__opcion" [class.is-sel]="s.id === itemServicioId" (mousedown)="elegirServicioItem(s)">
+                <span class="combo-item__nombre">{{ s.nombre }}</span>
+                <span class="combo-item__precio">S/ {{ s.precio }} / {{ s.unidad }}</span>
+              </button>
+            </li>
+          } @empty {
+            <li class="combo-item__vacio">Sin resultados para “{{ busquedaServicioItem() }}”.</li>
+          }
+        </ul>
+      }
 
       <label>Cantidad</label>
       <input type="number" step="0.01" min="0.01" max="10000" inputmode="decimal" [(ngModel)]="itemCantidad" />

@@ -4,6 +4,12 @@
     <a class="btn btn-ver-reporte" routerLink="/inventario/reporte">
       <app-icon name="chart" [size]="15"></app-icon> Ver reporte
     </a>
+    @if (tab() === 'insumos') {
+      <button type="button" class="btn btn--ghost" (click)="descargarInsumos()" [disabled]="insumos().length === 0"
+        title="Descarga la lista de insumos (con los filtros actuales) en un archivo que abre en Excel">
+        <app-icon name="download" [size]="15"></app-icon> Descargar Excel
+      </button>
+    }
     @if (tab() === 'insumos' && esAdmin()) {
       <button type="button" class="btn btn--ghost" (click)="abrirImportar()">
         <app-icon name="clipboard" [size]="15"></app-icon> Importar
@@ -166,6 +172,10 @@
         <input type="date" [(ngModel)]="hastaHistorial" />
       </div>
       <button type="button" class="btn btn--secundario" (click)="cargarHistorial()">Filtrar</button>
+      <button type="button" class="btn btn--ghost" (click)="descargarHistorial()" [disabled]="movimientos().length === 0"
+        title="Descarga todos los movimientos del rango en un archivo que abre en Excel">
+        <app-icon name="download" [size]="15"></app-icon> Descargar Excel
+      </button>
     </div>
 
     @if (cargandoHistorial()) {
@@ -387,8 +397,8 @@
           <div class="tipo-grupo">
             <span class="tipo-grupo__cap">Uso diario</span>
             <div class="tipo-row">
-              <button type="button" class="tipo-btn" [class.is-active]="movTipo==='COMPRA'" (click)="movTipo='COMPRA'">Compra</button>
               <button type="button" class="tipo-btn" [class.is-active]="movTipo==='MEDICION'" (click)="movTipo='MEDICION'">Medición</button>
+              <button type="button" class="tipo-btn" [class.is-active]="movTipo==='COMPRA'" (click)="movTipo='COMPRA'">Compra</button>
             </div>
           </div>
 
